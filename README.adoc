@@ -6,6 +6,8 @@ ASG is application server for golang, which allows makes it possible to process 
 
 ASG is built on Enduro/X middleware framework, which by itself implements extended XATMI specification. For distributed transaction processing XA API is used. XA must be supported by underlaying SQL (or any other resource) driver.
 
+Thus before try to build ASG, you need to install Enduro/X Middleware Platform, https://github.com/endurox-dev/endurox
+
 == Buffer Types
 
 === String buffer
