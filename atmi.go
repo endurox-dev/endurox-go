@@ -620,3 +620,15 @@ func TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
 
 	return int64(ret), err
 }
+
+//Terminate the client
+//@return ATMI error
+func TpTerm() ATMIError {
+        ret:=C.tpterm()
+        if SUCCEED!=ret {
+                return NewAtmiError()
+        }
+
+        return nil
+}
+
