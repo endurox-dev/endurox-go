@@ -1,0 +1,23 @@
+= Application Server for GO (ASG)
+
+ASG is application server for golang, which allows makes it possible to process distributed transactions in Golang. It is possible to reload the application components with out service interruption. Basically system is service oriented where server components advertises services (service is just a literal name like "GETBALANCE", "TRXREQ", etc.), then later these services are called by client binaries. Clients and servers can be located on different physical machines and they can call each other with out knowledge of their psychical location. As these servers binaries are stateless, they can be started in multiple copies. This ensures fault tolerant processing Services might receive three kind of buffers with request data: 1) Arbitrary string 2) Byte array 3) Unified Buffer Format (UBF)
+
+== Foundation
+
+ASG is built on Enduro/X middleware framework, which by itself implements extended XATMI specification. For distributed transaction processing XA API is used. XA must be supported by underlaying SQL (or any other resource) driver.
+
+== Buffer Types
+
+=== String buffer
+It is possible to send to services arbitrary strings. These could be JSON, XML or whatever data. The service might respond with the same buffer format, with changed contents. 
+
+=== Byte array (Carray)
+It is possible to send to services byte arrays. The data could include binary zeros.
+
+=== Unified Buffer Format buffer
+UBF buffer basically is hash-list where for each value there could be array of elements (e.g. one or more). The buffer is typed. Fields are predefined in field definition tables, later with Enduro/X's 'mkfldhdr -m1' can be generated field constant tables which provides go format.
+
+== XA SQL Drivers
+Currently Enduro/X supports Oracle DB OCI driver. The patched version for XA processing is available here: https://github.com/endurox-dev/go-oci8. When doing processing in XA mode, the connection string must be empty ("").
+
+
