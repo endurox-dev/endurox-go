@@ -30,7 +30,7 @@ func TESTSVC(svc *atmi.TPSVCINFO) {
                 goto out
         }
 
-	//Set some file
+	//Set some field
 	if err := ub.BChg(ubftab.T_STRING_FLD, 0, "Hello World from Enduro/X service"); err != nil {
 		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
                 ret = FAIL
