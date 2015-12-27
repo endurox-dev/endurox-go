@@ -1,0 +1,9 @@
+Before try to build & run NOTE:
+
+** BUILD **
+1. Set the oracle install params in: `src/oci8.pc'
+
+** RUN **
+1. Configure DB SID/username/password in: `conf/setndrx'
+2. Install under the same Oracle user `src/scheme.sql'
+3. call ./run.sh

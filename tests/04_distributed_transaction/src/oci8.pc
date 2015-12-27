@@ -1,0 +1,14 @@
+prefix=/devel/target/XXXXXXXXXXXXXXXXXXXXXXXXXX
+exec_prefix=${prefix}
+libdir=/u01/app/oracle/product/11.2.0/dbhome_1/lib
+includedir=/u01/app/oracle/product/11.2.0/dbhome_1/rdbms/public
+
+glib_genmarshal=glib-genmarshal
+gobject_query=gobject-query
+glib_mkenums=glib-mkenums
+
+Name: oci8
+Description: oci8 library
+Version: 11.1
+Cflags: -I${includedir}
+Libs: -L${libdir} -lclntsh
