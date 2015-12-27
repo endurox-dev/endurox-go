@@ -45,6 +45,7 @@ func NewCarray(b []byte) (*TypedCarray, ATMIError) {
 
 		/* Copy off the bytes to C buf */
 		cpyGo2C(buf.Buf.C_ptr, b)
+		buf.Buf.C_len = C.long(len(b))
 
 		return &buf, nil
 	}
