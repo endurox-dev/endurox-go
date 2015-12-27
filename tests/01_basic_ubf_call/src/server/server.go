@@ -36,6 +36,7 @@ func TESTSVC(svc *atmi.TPSVCINFO) {
                 ret = FAIL
                 goto out
 	}
+	//Set second occurance too of the T_STRING_FLD field
 	if err:=ub.BChg(ubftab.T_STRING_FLD, 1, "This is line2"); err!=nil {
 		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
                 ret = FAIL
