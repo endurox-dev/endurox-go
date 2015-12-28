@@ -77,7 +77,7 @@ func main() {
 	}
 	
 	//Commit the transaction
-	if err := atmi.TpCommit(0); err != nil {
+	if err := atmi.TpAbort(0); err != nil {
 		fmt.Printf("Got error: [%s]\n", err.Message())
 		ret = FAIL
 		goto out
