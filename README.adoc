@@ -1,12 +1,12 @@
 = Application Server for GO (ASG)
 
-ASG is application server for Golang, which allows makes it possible to process distributed transactions in Golang. It is possible to reload the application components without service interruption. Basically system is service oriented where server components advertises services (service is just a literal name like "GETBALANCE", "TRXREQ", etc.), then later these services are called by client binaries. Clients and servers can be located on different physical machines and they can call each other with out knowledge of their psychical location. As these servers binaries are stateless, they can be started in multiple copies. This ensures fault tolerant processing Services might receive three kind of buffers with request data: 1) Arbitrary string 2) Byte array 3) Unified Buffer Format (UBF)
+ASG is application server for Golang, which makes it possible to process distributed transactions in Golang. It is possible to reload the application components without service interruption. Basically system is service oriented where server components advertises services (service is just a literal name like "GETBALANCE", "TRXREQ", etc.), then later these services are called by client binaries. Clients and servers can be located on different physical machines and they can call each other with out knowledge of their psychical location. As these server binaries are stateless, they can be started in multiple copies. This ensures fault tolerant processing. Clients and Server Services comunicate via middleware which supports three kind of buffers for request/responde data: 1) Arbitrary string 2) Byte array 3) Unified Buffer Format (UBF)
 
 == Foundation
 
-ASG is built on Enduro/X middleware framework, which by itself implements extended XATMI specification. For distributed transaction processing XA API is used. XA must be supported by underlaying SQL (or any other resource) driver.
+ASG is built on Enduro/X middleware framework, which by itself implements extended XATMI specification. For distributed transaction processing XA API is used. XA must be supported by underlaying SQL (or any other resource) driver. The platform is build on GNU/Linux technology and it utilizes Posix kernel queues for gaining high IPC throughput.
 
-Thus before try to build ASG, you need to install Enduro/X Middleware Platform, https://github.com/endurox-dev/endurox
+Before try to build ASG, you need to install Enduro/X Middleware Platform, https://github.com/endurox-dev/endurox
 
 == Buffer Types
 
