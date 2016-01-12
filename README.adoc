@@ -24,4 +24,4 @@ Currently Enduro/X supports Oracle DB OCI driver. The patched version for XA pro
 
 
 == Contact
-PS, feel free to contact me at madars@atrbaltic.com. I will gladly help you.
+PS, feel free to contact me at madars@atrbaltic.com. I will gladly help you to get Enduro/X ASG running ;)
