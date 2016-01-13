@@ -90,7 +90,6 @@ out:
 	if SUCCEED != ret {
 		if err := atmi.TpAbort(0); err != nil {
 			fmt.Printf("Got error: [%s]\n", err.Message())
-			ret = FAIL
 		}	
 	}
 	
