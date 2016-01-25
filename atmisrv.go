@@ -491,3 +491,10 @@ func TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb TPPollerFdCall
 
 	return err
 }
+
+//Return server id
+//@return server_id
+func TpGetSrvId() int {
+    return int(C.tpgetsrvid())
+}
+
