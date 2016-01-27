@@ -361,7 +361,7 @@ func (u *TypedUBF) BNext(first bool) (int, int, UBFError) {
 		fldid = FAIL
 	}
 
-	if ret := C.Bnext(C.GetU(u.Buf.C_ptr), &fldid, &occ, nil, nil); SUCCEED != ret {
+	if ret := C.Bnext(C.GetU(u.Buf.C_ptr), &fldid, &occ, nil, nil); 1 != ret {
 		return FAIL, FAIL, NewUBFError()
 	}
 
