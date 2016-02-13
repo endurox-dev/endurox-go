@@ -695,13 +695,13 @@ func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add bo
 		dval := ival.(float64)
 		c_val := C.double(dval)
 		if do_add {
-			if ret := C.CBchg(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), C.GetCharPtr(unsafe.Pointer(&c_val)), 0, BFLD_DOUBLE); ret != SUCCEED {
+			if ret := C.CBadd(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
+				C.GetCharPtr(unsafe.Pointer(&c_val)), 0, BFLD_DOUBLE); ret != SUCCEED {
 				return NewUBFError()
 			}
 		} else {
-			if ret := C.CBadd(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
-				C.GetCharPtr(unsafe.Pointer(&c_val)), 0, BFLD_DOUBLE); ret != SUCCEED {
+			if ret := C.CBchg(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
+				C.BFLDOCC(occ), C.GetCharPtr(unsafe.Pointer(&c_val)), 0, BFLD_DOUBLE); ret != SUCCEED {
 				return NewUBFError()
 			}
 		}
