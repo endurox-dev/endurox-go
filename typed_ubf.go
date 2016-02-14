@@ -545,7 +545,7 @@ func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError) {
 //@param occ	Occurrance
 //@return double, UBF error
 func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError) {
-	var c_val C.float
+	var c_val C.double
 	if ret := C.CBget(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), C.GetCharPtr(unsafe.Pointer(&c_val)), nil, BFLD_DOUBLE); ret != SUCCEED {
 		return 0, NewUBFError()
