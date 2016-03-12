@@ -4,3 +4,4 @@ all:
 	$(MAKE) -C 02_basic_string_call
 	$(MAKE) -C 03_basic_carray_call
 	$(MAKE) -C 05_basic_json_call
+	$(MAKE) -C 06_ubf_marshal
