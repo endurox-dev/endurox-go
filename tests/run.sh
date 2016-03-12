@@ -32,5 +32,6 @@ run_test () {
 run_test "01_basic_ubf_call"
 run_test "02_basic_string_call"
 run_test "03_basic_carray_call"
+run_test "05_basic_json_call"
 
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"

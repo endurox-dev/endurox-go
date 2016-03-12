@@ -24,10 +24,10 @@ func (u *TypedJSON) GetBuf() *ATMIBuf {
 
 //Allocate new string buffer
 //@param s - source string
-func NewJSON(gs string) (*TypedJSON, ATMIError) {
+func NewJSON(b []byte) (*TypedJSON, ATMIError) {
 	var buf TypedJSON
 
-	c_val := C.CString(gs)
+	c_val := C.CString(string(b))
 	defer C.free(unsafe.Pointer(c_val))
 
 	size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
@@ -52,27 +52,37 @@ func CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError) {
 
 //Get the string value out from buffer
 //@return JSON value
-func (s *TypedJSON) GetJSONText() string {
-	return C.GoString(s.Buf.C_ptr)
+func (j *TypedJSON) GetJSONText() string {
+	return C.GoString(j.Buf.C_ptr)
+}
+
+//Get JSON bytes..
+func (j *TypedJSON) GetJSON() []byte {
+	return []byte(C.GoString(j.Buf.C_ptr))
+}
+
+//Set JSON bytes
+func (j *TypedJSON) SetJSON(b []byte) ATMIError {
+	return j.SetJSONText(string(b))
 }
 
 //Set the string to the buffer
 //@param str 	JSON value
-func (s *TypedJSON) SetJSONText(gs string) ATMIError {
+func (j *TypedJSON) SetJSONText(gs string) ATMIError {
 	c_val := C.CString(gs)
 	defer C.free(unsafe.Pointer(c_val))
 
 	new_size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
 
-	if cur_size, err := TpTypes(s.Buf, nil, nil); nil != err {
+	if cur_size, err := TpTypes(j.Buf, nil, nil); nil != err {
 		return err
 	} else {
 		if cur_size >= new_size {
-			C.strcpy(s.Buf.C_ptr, c_val)
-		} else if err := s.Buf.TpRealloc(new_size); nil != err {
+			C.strcpy(j.Buf.C_ptr, c_val)
+		} else if err := j.Buf.TpRealloc(new_size); nil != err {
 			return err
 		} else {
-			C.strcpy(s.Buf.C_ptr, c_val)
+			C.strcpy(j.Buf.C_ptr, c_val)
 		}
 	}
 
