@@ -1,2 +1,2 @@
-server: server.go
+../../bin/server: server.go
 	go build && go install

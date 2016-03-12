@@ -1,2 +1,2 @@
-client: client.go
+../../bin/client: client.go
 	go build && go install
