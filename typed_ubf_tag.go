@@ -3,12 +3,12 @@ package atmi
 import "reflect"
 import "fmt"
 
-//
 // Unmarshal the value
-//
-func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, occ int) UBFError {
+func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
+	rvv *reflect.Value, fldid int) UBFError {
 
-	fmt.Printf("Field: [%s] Type: [%s]/%s Tag: [%s] %s -> %T\n", p.Name, p.Type, p.Type.Name(), p.Tag.Get("ubf"), p.Type.Kind(), p)
+	//fmt.Printf("Field: [%s] Type: [%s]/%s Tag: [%s] %s -> %T\n",
+	//		p.Name, p.Type, p.Type.Name(), p.Tag.Get("ubf"), p.Type.Kind(), p)
 
 	switch p.Type.Kind() {
 	case reflect.Int,
@@ -16,8 +16,7 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, oc
 		reflect.Int16,
 		reflect.Int32,
 		reflect.Int64:
-		fmt.Printf("This is int...\n")
-		fldid, _ := BFldId(p.Tag.Get("ubf"))
+		//fmt.Printf("This is int...\n")
 		if v, err := u.BGetInt64(fldid, 0); err == nil {
 			rvv.FieldByName(p.Name).SetInt(v)
 		}
@@ -26,58 +25,54 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, oc
 		reflect.Uint16,
 		reflect.Uint32,
 		reflect.Uint64:
-		fmt.Printf("This is uint...\n")
-		fldid, _ := BFldId(p.Tag.Get("ubf"))
+		//fmt.Printf("This is uint...\n")
 		if v, err := u.BGetInt64(fldid, 0); err == nil {
 			rvv.FieldByName(p.Name).SetUint(uint64(v))
 		}
 	case reflect.Float32,
 		reflect.Float64:
-		fmt.Printf("This is float32/64...\n")
-		fldid, _ := BFldId(p.Tag.Get("ubf"))
+		//fmt.Printf("This is float32/64...\n")
 		if v, err := u.BGetFloat64(fldid, 0); err == nil {
 			rvv.FieldByName(p.Name).SetFloat(v)
 		}
 	case reflect.String:
-		fmt.Printf("This is string...\n")
-		fldid, _ := BFldId(p.Tag.Get("ubf"))
+		//fmt.Printf("This is string...\n")
 		if v, err := u.BGetString(fldid, 0); err == nil {
 			rvv.FieldByName(p.Name).SetString(v)
 		}
 	case reflect.Slice:
-		fldid, _ := BFldId(p.Tag.Get("ubf"))
 		occ, _ := u.BOccur(fldid)
 		if occ > 0 {
 			x := reflect.MakeSlice(p.Type, occ, occ)
 
 			switch p.Type.Elem().Kind() {
-			case reflect.Uint,
-				reflect.Uint8,
-				reflect.Uint16,
-				reflect.Uint32,
-				reflect.Uint64:
-				fmt.Printf("Slice array... of uint ...\n")
-				for i := 0; i < occ; i++ {
-					if v, err := u.BGetInt64(fldid, i); err == nil {
-						x.Index(i).SetUint(uint64(v))
-					}
-				}
-				rvv.FieldByName(p.Name).Set(x)
 			case reflect.Int,
 				reflect.Int8,
 				reflect.Int16,
 				reflect.Int32,
 				reflect.Int64:
-				fmt.Printf("Slice array... of int ...\n")
+				//fmt.Printf("Slice array... of int ...\n")
 				for i := 0; i < occ; i++ {
 					if v, err := u.BGetInt64(fldid, i); err == nil {
 						x.Index(i).SetInt(v)
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
+			case reflect.Uint,
+				reflect.Uint8,
+				reflect.Uint16,
+				reflect.Uint32,
+				reflect.Uint64:
+				//fmt.Printf("Slice array... of uint ...\n")
+				for i := 0; i < occ; i++ {
+					if v, err := u.BGetInt64(fldid, i); err == nil {
+						x.Index(i).SetUint(uint64(v))
+					}
+				}
+				rvv.FieldByName(p.Name).Set(x)
 			case reflect.Float32,
 				reflect.Float64:
-				fmt.Printf("Slice array... of float64 ...\n")
+				//fmt.Printf("Slice array... of float64 ...\n")
 				for i := 0; i < occ; i++ {
 					if v, err := u.BGetFloat64(fldid, i); err == nil {
 						x.Index(i).SetFloat(v)
@@ -85,7 +80,7 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, oc
 				}
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.String:
-				fmt.Printf("Slice array... of string ...\n")
+				//fmt.Printf("Slice array... of string ...\n")
 				for i := 0; i < occ; i++ {
 					if v, err := u.BGetString(fldid, i); err == nil {
 						x.Index(i).SetString(v)
@@ -94,7 +89,7 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, oc
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.Slice:
 				if reflect.Uint8 == p.Type.Elem().Elem().Kind() {
-					fmt.Printf("C_ARRAY support...\n")
+					//fmt.Printf("C_ARRAY support...\n")
 					for i := 0; i < occ; i++ {
 						if v, err := u.BGetByteArr(fldid, i); err == nil {
 							//x.Index(i).Set(v)
@@ -128,11 +123,150 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField, rvv *reflect.Value, oc
 	return nil
 }
 
+// Unmarshal the value
+func (u *TypedUBF) marshalValue(p *reflect.StructField,
+	rvv *reflect.Value, fldid int) UBFError {
+
+	//fmt.Printf("Field: [%s] Type: [%s]/%s Tag: [%s] %s -> %T\n",
+	//		p.Name, p.Type, p.Type.Name(), p.Tag.Get("ubf"), p.Type.Kind(), p)
+
+	switch p.Type.Kind() {
+	case reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64:
+		//fmt.Printf("This is int...\n")
+
+		if err := u.BChg(fldid, 0, rvv.FieldByName(p.Name).Int()); err != nil {
+			return err
+		}
+
+	case reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64:
+		//fmt.Printf("This is uint...\n")
+
+		if err := u.BChg(fldid, 0, rvv.FieldByName(p.Name).Uint()); err != nil {
+			return err
+		}
+	case reflect.Float32,
+		reflect.Float64:
+		//fmt.Printf("This is float32/64...\n")
+		if err := u.BChg(fldid, 0, rvv.FieldByName(p.Name).Float()); err != nil {
+			return err
+		}
+	case reflect.String:
+		//fmt.Printf("This is string...\n")
+
+		if err := u.BChg(fldid, 0, rvv.FieldByName(p.Name).String()); err != nil {
+			return err
+		}
+	case reflect.Slice:
+		occ := rvv.FieldByName(p.Name).Len()
+		if occ > 0 {
+			x := reflect.MakeSlice(p.Type, occ, occ)
+
+			switch p.Type.Elem().Kind() {
+			case reflect.Int,
+				reflect.Int8,
+				reflect.Int16,
+				reflect.Int32,
+				reflect.Int64:
+				//fmt.Printf("Slice array... of int ...\n")
+				for i := 0; i < occ; i++ {
+					if err := u.BChg(fldid, i,
+						rvv.FieldByName(p.Name).Index(i).Int()); err != nil {
+						return err
+					}
+				}
+				rvv.FieldByName(p.Name).Set(x)
+			case reflect.Uint,
+				reflect.Uint8,
+				reflect.Uint16,
+				reflect.Uint32,
+				reflect.Uint64:
+				//fmt.Printf("Slice array... of uint ...\n")
+				for i := 0; i < occ; i++ {
+					if err := u.BChg(fldid, i,
+						rvv.FieldByName(p.Name).Index(i).Uint()); err != nil {
+						return err
+					}
+				}
+				rvv.FieldByName(p.Name).Set(x)
+			case reflect.Float32,
+				reflect.Float64:
+				//fmt.Printf("Slice array... of float64 ...\n")
+				for i := 0; i < occ; i++ {
+					if err := u.BChg(fldid, i,
+						rvv.FieldByName(p.Name).Index(i).Float()); err != nil {
+						return err
+					}
+				}
+				rvv.FieldByName(p.Name).Set(x)
+			case reflect.String:
+				//fmt.Printf("Slice array... of string ...\n")
+				for i := 0; i < occ; i++ {
+					if err := u.BChg(fldid, i,
+						rvv.FieldByName(p.Name).Index(i).String()); err != nil {
+						return err
+					}
+				}
+				rvv.FieldByName(p.Name).Set(x)
+			case reflect.Slice:
+				if reflect.Uint8 == p.Type.Elem().Elem().Kind() {
+					//fmt.Printf("C_ARRAY support...\n")
+
+					for i := 0; i < occ; i++ {
+						if err := u.BChg(fldid, i,
+							rvv.FieldByName(p.Name).Index(i).Bytes()); err != nil {
+							return err
+						}
+					}
+
+				} else {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("%s - Not a C array!", p.Name))
+				}
+
+			default:
+				return NewCustomUBFError(BEINVAL,
+					fmt.Sprintf("%s - Unsupported slice!", p.Name))
+			}
+		}
+	default:
+		return NewCustomUBFError(BEINVAL,
+			fmt.Sprintf("%s - Unsupported field type!", p.Name))
+	}
+
+	return nil
+}
+
 //Copy the specified fields to the local structure
 //according to the `ubf'
 //@param v  local struct
 //@return UBF error
 func (u *TypedUBF) Unmarshal(v interface{}) UBFError {
+	return u._marshal(false, v)
+}
+
+//Copy the specified fields to the local structure
+//Copy the local struct to UBF
+//@param v  local struct
+//@return UBF error
+func (u *TypedUBF) Marshal(v interface{}) UBFError {
+	return u._marshal(true, v)
+}
+
+//Copy the specified fields to the local structure
+//or copy the local struct to UBF
+//according to the `ubf'
+//@param is_marshal true -> marshal mode, false -> unmarshal mode
+//@param v  local struct
+//@return UBF error
+func (u *TypedUBF) _marshal(is_marshal bool, v interface{}) UBFError {
 
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -145,9 +279,9 @@ func (u *TypedUBF) Unmarshal(v interface{}) UBFError {
 
 	typ := reflect.TypeOf(v)
 	// if a pointer to a struct is passed, get the type of the dereferenced object
-	//if typ.Kind() == reflect.Ptr {
-	typ = typ.Elem()
-	//}
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
 
 	if typ.Kind() != reflect.Struct {
 		return NewCustomUBFError(BEINVAL, "Not a struct passed in!")
@@ -157,8 +291,20 @@ func (u *TypedUBF) Unmarshal(v interface{}) UBFError {
 		p := typ.Field(i)
 		if !p.Anonymous {
 			if p.Tag.Get("ubf") != "" {
-				if err := u.unmarshalValue(&p, &rvv, 0); nil != err {
-					return err
+				if fldid, _ := BFldId(p.Tag.Get("ubf")); fldid != BBADFLDID {
+					if is_marshal {
+						if err := u.marshalValue(&p, &rvv, fldid); nil != err {
+							return err
+						}
+					} else {
+						if err := u.unmarshalValue(&p, &rvv, fldid); nil != err {
+							return err
+						}
+					}
+				} else {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("Field Name [%s] not resolved!",
+							p.Tag.Get("ubf")))
 				}
 			}
 		}

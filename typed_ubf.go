@@ -77,6 +77,7 @@ static int c_proxy_Bboolsetcbf(char *funcname)
 */
 import "C"
 import "fmt"
+
 import "unsafe"
 import "runtime"
 
@@ -796,6 +797,24 @@ func (u *TypedUBF) BBoolEv(tree *ExprTree) bool {
 	}
 
 	return false
+}
+
+//Quick eval of the expression (compiles & frees the handler automatically)
+//@param expr Expression tree
+//@return result: true or false, UBF error
+func (u *TypedUBF) BQBoolEv(expr string) (bool, UBFError) {
+
+	h_exp, err := BBoolCo(expr)
+
+	if err == nil {
+		defer BTreeFree(h_exp)
+	} else {
+		return false, err
+	}
+
+	ret := u.BBoolEv(h_exp)
+
+	return ret, nil
 }
 
 //Evalute expression value in float64 format
