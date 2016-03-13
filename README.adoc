@@ -19,6 +19,9 @@ It is possible to send to services byte arrays. The data could include binary ze
 === Unified Buffer Format buffer
 UBF buffer basically is hash-list where for each value there could be array of elements (e.g. one or more). The buffer is typed. Fields are predefined in field definition tables, later with Enduro/X's 'mkfldhdr -m1' can be generated field constant tables which provides go format.
 
+=== JSON buffer
+JSON Text format buffer is supported. This can be used to call Enduro/X server or receive JSON format calls from the system.
+
 == XA SQL Drivers
 Currently Enduro/X supports Oracle DB OCI driver. The patched version for XA processing is available here: https://github.com/endurox-dev/go-oci8. When doing processing in XA mode, the connection string must be empty ("").
 
