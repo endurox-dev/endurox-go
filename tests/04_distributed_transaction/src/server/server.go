@@ -42,7 +42,7 @@ func MKCUST(svc *atmi.TPSVCINFO) {
 	if rows, err := M_db.Query("select nvl(max(CUSTOMER_ID),0)+1  from customers"); err != nil {
 		fmt.Println("Query error: ", err)
 	} else {
-		defer rows.Close()
+	//	defer rows.Close()
 		for rows.Next() {
 			if err := rows.Scan(&id); err != nil {
 				ret = FAIL
@@ -107,7 +107,8 @@ func Init() int {
 	}
 
 	//Connect to XA driver (empty conn string...) & get the SQL handler.
-	if db, err := sql.Open("oci8", ""); err != nil {
+	if db, err := sql.Open("oci8", "dummy_user:dummy_pass@localhost:1111/SID?enable_xa=YES"); err != nil {
+//	if db, err := sql.Open("oci8", "endurotest:endurotest1@localhost:1521/ROCKY"); err != nil {
 		fmt.Printf("Failed to get SQL handler: %s\n", err)
 		return atmi.FAIL
 	} else {

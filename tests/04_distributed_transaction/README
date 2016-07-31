@@ -2,6 +2,7 @@ Before try to build & run NOTE:
 
 ** BUILD **
 1. Set the oracle install params in: `src/oci8.pc'
+2. export CGO_CFLAGS=-DOCI8_ENABLE_XA
 
 ** RUN **
 1. Configure DB SID/username/password in: `conf/setndrx'

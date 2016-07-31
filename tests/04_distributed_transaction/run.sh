@@ -14,7 +14,8 @@ popd
 xadmin start -y
 
 # should print some hello world
-client | tee test.out
+client > test.out 2>&1
+ret=$?
 
 # Test the logfile for content
 
@@ -25,9 +26,13 @@ if [[ "X$OUT" == "X" ]]; then
         exit 1
 fi
 
-echo "Test OK"
+if [[ "$ret" == "0" ]]; then
+        echo "Test OK"
+else
+        echo "Ret $ret -> FAIL"
+fi
 
 # shutdown the app server
 xadmin stop -c -y
 
-exit 0
+exit $ret
