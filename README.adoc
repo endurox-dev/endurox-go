@@ -33,4 +33,4 @@ Currently Enduro/X supports Oracle DB OCI driver. The patched version for XA pro
 Please refer to Enduro/X documentation located here: https://github.com/endurox-dev/endurox/tree/master/doc (e.g. getting_started_tutorial.adoc, building_guide.adoc, etc.) Basic ASG application layout can be checked out from this repository "tests" folder.
 
 == Contact
-PS, feel free to contact me at madars@atrbaltic.com. I will gladly help you to get Enduro/X ASG running ;)
+Forums: http://www.endurox.org/projects/endurox-go/boards
