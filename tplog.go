@@ -111,3 +111,50 @@ func TpLog(lev int, format string, a ...interface{}) {
 
 	C.tplog(C.int(lev), c_msg)
 }
+
+//Return request logging file (if there is one currenlty in sue)
+//@return Status (request logger open or not), full path to request file
+func TpLogGetReqFile() (bool, string) {
+
+	var status bool
+	var reqfile string
+
+	c_reqfile := C.malloc(C.PATH_MAX)
+	c_reqfile_ptr := (*C.char)(unsafe.Pointer(c_reqfile))
+	defer C.free(c_reqfile)
+
+	if SUCCEED != C.tploggetreqfile(c_reqfile_ptr, C.PATH_MAX) {
+		status = false
+	} else {
+		status = true
+		reqfile = C.GoString(c_reqfile_ptr)
+	}
+
+	return status, reqfile
+}
+
+//Configure Enduro/X logger
+//@param logger is bitwise 'ored' (see LOG_FACILITY_*)
+//@param lev is optional (if not set: -1), log level to be assigned to facilites
+//@param debug_string optional Enduro/X debug string (see ndrxdebug.conf(5) manpage)
+//@param new_file optional (if not set - empty string) logging output file, overrides debug_string file tag
+//@return NSTDError - standard library error
+func TpLogConfig(logger int, lev int, debug_string string, module string, new_file string) NSTDError {
+
+	var err NSTDError
+	c_debug_string := C.CString(debug_string)
+	defer C.free(unsafe.Pointer(c_debug_string))
+
+	c_module := C.CString(module)
+	defer C.free(unsafe.Pointer(c_module))
+
+	c_new_file := C.CString(new_file)
+	defer C.free(unsafe.Pointer(c_new_file))
+
+	if SUCCEED != C.tplogconfig(C.int(logger), C.int(lev), c_debug_string,
+		c_module, c_new_file) {
+		err = NewNstdError()
+	}
+
+	return err
+}

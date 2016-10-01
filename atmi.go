@@ -13,9 +13,16 @@ static int go_tpinit(void) {
 	return tpinit(NULL);
 }
 
+//ATMI library error code
 static int go_tperrno(void) {
 	return tperrno;
 }
+
+//Standard library error code
+static int go_Nerror(void) {
+	return Nerror;
+}
+
 
 static void free_string(char* s) { free(s); }
 static char * malloc_string(int size) { return malloc(size); }
@@ -371,6 +378,17 @@ const (
 )
 
 /*
+ * Logging facilites
+ */
+const (
+	LOG_FACILITY_NDRX       = 0x00001 /* settings for ATMI logging             */
+	LOG_FACILITY_UBF        = 0x00002 /* settings for UBF logging              */
+	LOG_FACILITY_TP         = 0x00004 /* settings for TP logging               */
+	LOG_FACILITY_TP_THREAD  = 0x00008 /* settings for TP, thread based logging */
+	LOG_FACILITY_TP_REQUEST = 0x00010 /* Request logging, thread based         */
+)
+
+/*
  * Transaction ID type
  */
 type TPTRANID struct {
@@ -438,7 +456,7 @@ func (u *ATMIBuf) GetBuf() *ATMIBuf {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
-// Error Handlers
+// Error Handlers, ATMI level
 ///////////////////////////////////////////////////////////////////////////////////
 
 //ATMI Error type
@@ -485,6 +503,57 @@ func (e atmiError) Code() int {
 
 //message getter
 func (e atmiError) Message() string {
+	return e.message
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Error Handlers, NSTD - Enduro/X Standard library
+///////////////////////////////////////////////////////////////////////////////////
+
+//NSTD Error type
+type nstdError struct {
+	code    int
+	message string
+}
+
+//NSTD error interface
+type NSTDError interface {
+	Error() string
+	Code() int
+	Message() string
+}
+
+//Generate NSTD error, read the codes
+func NewNstdError() NSTDError {
+	var err nstdError
+	err.code = int(C.go_Nerror())
+	err.message = C.GoString(C.Nstrerror(C.go_Nerror()))
+	return err
+}
+
+//Build a custom error
+//@param err		Error buffer to build
+//@param code	Error code to setup
+//@param msg		Error message
+func NewCustomNstdError(code int, msg string) NSTDError {
+	var err nstdError
+	err.code = code
+	err.message = msg
+	return err
+}
+
+//Standard error interface
+func (e nstdError) Error() string {
+	return fmt.Sprintf("%d: %s", e.code, e.message)
+}
+
+//code getter
+func (e nstdError) Code() int {
+	return e.code
+}
+
+//message getter
+func (e nstdError) Message() string {
 	return e.message
 }
 
