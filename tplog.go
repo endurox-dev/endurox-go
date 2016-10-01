@@ -158,3 +158,32 @@ func TpLogConfig(logger int, lev int, debug_string string, module string, new_fi
 
 	return err
 }
+
+/*
+
+extern NDRX_API void tplogclosereqfile(void);
+extern NDRX_API void tplogclosethread(void);
+extern NDRX_API void tplogsetreqfile_direct(char *filename);
+
+*/
+
+//Close request logger
+func TpLogCloseReqFile() {
+	C.tplogclosereqfile()
+}
+
+//Close request logger
+func TpLogCloseThread() {
+	C.tplogclosethread()
+}
+
+//Set request logging file, direct version
+//Which does operate with thread local storage
+//If fails to open request logging file, it will
+//automatically fall-back to stderr.
+func TpLogSetReqFile_Direct(filename string) {
+	c_filename := C.CString(filename)
+	defer C.free(unsafe.Pointer(c_filename))
+
+	C.tplogsetreqfile_direct(c_filename)
+}
