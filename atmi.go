@@ -3,6 +3,7 @@ package atmi
 /*
 #cgo LDFLAGS: -latmi -lrt -lm -lubf -lnstd -ldl
 
+#include <ndebug.h>
 #include <xatmi.h>
 #include <string.h>
 #include <stdlib.h>
@@ -355,6 +356,18 @@ const (
 	TMCORRIDLEN      = 32
 	TMQNAMELEN       = 15
 	NDRX_MAX_ID_SIZE = 96
+)
+
+/*
+ * Log levels for TPLOG (corresponding to ndebug.h)
+ */
+const (
+	LOG_ALWAYS = 1
+	LOG_ERROR  = 2
+	LOG_WARN   = 3
+	LOG_INFO   = 4
+	LOG_DEBUG  = 5
+	LOG_DUMP   = 6
 )
 
 /*
