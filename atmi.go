@@ -238,7 +238,7 @@ const (
 )
 
 /*
- * List of ATMI Error codes
+ * List of ATMI Error codes (atmi.h/xatmi.h)
  */
 const (
 	TPMINVAL      = 0
@@ -386,6 +386,19 @@ const (
 	LOG_FACILITY_TP         = 0x00004 /* settings for TP logging               */
 	LOG_FACILITY_TP_THREAD  = 0x00008 /* settings for TP, thread based logging */
 	LOG_FACILITY_TP_REQUEST = 0x00010 /* Request logging, thread based         */
+)
+
+/*
+ * Enduro/X standard library error codes
+ */
+const (
+	NEINVALINI  = 1 /* Invalid INI file */
+	NEMALLOC    = 2 /* Malloc failed */
+	NEUNIX      = 3 /* Unix error occurred */
+	NEINVAL     = 4 /* Invalid value passed to function */
+	NESYSTEM    = 5 /* System failure */
+	NEMANDATORY = 6 /* Mandatory field is missing */
+	NEFORMAT    = 7 /* Format error */
 )
 
 /*

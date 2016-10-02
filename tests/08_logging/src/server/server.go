@@ -3,6 +3,7 @@ package main
 import (
 	"atmi"
 	"fmt"
+	"runtime"
 	"ubftab"
 )
 
@@ -11,54 +12,104 @@ const (
 	FAIL    = -1
 )
 
-//TESTSVC service
-func TESTSVC(svc *atmi.TPSVCINFO) {
+var M_counter = 0
 
+//Set the request file
+func GETLOGFILE(svc *atmi.TPSVCINFO) {
+	runtime.LockOSThread()
 	ret := SUCCEED
 
 	//Get UBF Handler
 	ub, _ := atmi.CastToUBF(&svc.Data)
 
-	//Print the buffer to stdout
-        fmt.Println("Incoming request:")
-	ub.BPrint()
+	//Return to the caller
+	defer func() {
 
-        //Resize buffer, to have some more space
-        if err :=ub.TpRealloc(1024); err!=nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
-        }
+		atmi.TpLogCloseReqFile()
+		if SUCCEED == ret {
+			atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+		} else {
+			atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+		}
+	}()
+
+	M_counter++
+	atmi.TpLog(atmi.LOG_DEBUG, "Current counter = %d", M_counter)
+
+	atmi.TpLogSetReqFile(&svc.Data, fmt.Sprintf("/tmp/08_request%d.log", M_counter), "")
+
+	atmi.TpLog(atmi.LOG_WARN, "Hello from GETLOGFILE!")
+
+}
+
+//TESTSVC service
+func TESTSVC(svc *atmi.TPSVCINFO) {
+	ret := SUCCEED
+
+	//Get UBF Handler
+	ub, _ := atmi.CastToUBF(&svc.Data)
+
+	atmi.TpLogSetReqFile(&svc.Data, "", "")
+	//Print the buffer to stdout
+
+	ub.TpLogPrintUBF(atmi.LOG_ERROR, "Got call")
+
+	//Resize buffer, to have some more space
+	size, _ := ub.BSizeof()
+	if err := ub.TpRealloc(size + 1024); err != nil {
+		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		goto out
+	}
 
 	//Set some field
-	if err := ub.BChg(ubftab.T_STRING_FLD, 0, "Hello World from Enduro/X service"); err != nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
+	if err := ub.BAdd(ubftab.T_STRING_FLD, "Hello World from Enduro/X service"); err != nil {
+		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		goto out
 	}
 	//Set second occurance too of the T_STRING_FLD field
-	if err:=ub.BChg(ubftab.T_STRING_FLD, 1, "This is line2"); err!=nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
-        }
+	if err := ub.BAdd(ubftab.T_STRING_FLD, "This is line2"); err != nil {
+		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		goto out
+	}
 
 out:
-        //Return to the caller
-        if SUCCEED==ret {
-        	atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
-        } else {
-        	atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
-        }
+	atmi.TpLog(atmi.LOG_ERROR, "Returning... %d", ret)
+
+	atmi.TpLogCloseReqFile()
+
+	atmi.TpLog(atmi.LOG_DEBUG, "bank to main")
+
+	//Return to the caller
+	if SUCCEED == ret {
+		atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+	} else {
+		atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+	}
 	return
 }
 
 //Server init
 func Init() int {
 
+	//This will affect the main thread & dispatcher
+	//Thus above services will be locked to thread
+	runtime.LockOSThread()
+
+	//Configure logger
+	atmi.TpLogConfig(atmi.LOG_FACILITY_NDRX|atmi.LOG_FACILITY_UBF|atmi.LOG_FACILITY_TP,
+		-1, "file=/tmp/08_server.log ndrx=5 ubf=0 tp=5", "SRV", "")
+
 	//Advertize TESTSVC
 	if err := atmi.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
-		fmt.Println(err)
+		atmi.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
+		return atmi.FAIL
+	}
+
+	if err := atmi.TpAdvertise("GETLOGFILE", "GETLOGFILE", GETLOGFILE); err != nil {
+		atmi.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
 		return atmi.FAIL
 	}
 
@@ -76,4 +127,3 @@ func main() {
 	//Run as server
 	atmi.TpRun(Init, Uninit)
 }
-

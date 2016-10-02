@@ -19,7 +19,7 @@ import (
 // Logging sub-system tplog*
 ////////////////////////////////////////////////////////////////////////////////
 
-//Print the byte array buffer to Enduro/X logger
+//Print the byte array buffer to Enduro/X logger (see tplogdump(3) manpage)
 //@param lev     Logging level (see LOG_* constants)
 //@param comment Title of the buffer dump
 //@param ptr   Pointer to buffer for dump
@@ -52,6 +52,7 @@ func TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
 }
 
 //Function compares to byte array buffers and prints the differences to Enduro/X logger
+//(see tplogdumpdiff(3) manpage)
 //@param lev     Logging level (see LOG_* constants)
 //@param comment Title of the buffer diff
 //@param ptr1   Pointer to buffer1 for compare
@@ -99,7 +100,7 @@ func TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen in
 	return nil
 }
 
-//Log the message to Enduro/X loggers
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
 //@param lev	Logging level
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
@@ -112,7 +113,8 @@ func TpLog(lev int, format string, a ...interface{}) {
 	C.tplog(C.int(lev), c_msg)
 }
 
-//Return request logging file (if there is one currenlty in sue)
+//Return request logging file (if there is one currenlty in use)
+// (see tploggetreqfile(3) manpage)
 //@return Status (request logger open or not), full path to request file
 func TpLogGetReqFile() (bool, string) {
 
@@ -133,7 +135,7 @@ func TpLogGetReqFile() (bool, string) {
 	return status, reqfile
 }
 
-//Configure Enduro/X logger
+//Configure Enduro/X logger (see tplogconfig(3) manpage)
 //@param logger is bitwise 'ored' (see LOG_FACILITY_*)
 //@param lev is optional (if not set: -1), log level to be assigned to facilites
 //@param debug_string optional Enduro/X debug string (see ndrxdebug.conf(5) manpage)
@@ -159,31 +161,84 @@ func TpLogConfig(logger int, lev int, debug_string string, module string, new_fi
 	return err
 }
 
-/*
-
-extern NDRX_API void tplogclosereqfile(void);
-extern NDRX_API void tplogclosethread(void);
-extern NDRX_API void tplogsetreqfile_direct(char *filename);
-
-*/
-
-//Close request logger
+//Close request logger (see tplogclosereqfile(3) manpage)
 func TpLogCloseReqFile() {
 	C.tplogclosereqfile()
 }
 
-//Close request logger
+//Close request logger (see tplogclosethread(3) manpage)
 func TpLogCloseThread() {
 	C.tplogclosethread()
 }
 
-//Set request logging file, direct version
+//Set request logging file, direct version (see tplogsetreqfile_direct(3) manpage)
 //Which does operate with thread local storage
 //If fails to open request logging file, it will
 //automatically fall-back to stderr.
+//@param filename	Set file name to perform logging to
 func TpLogSetReqFile_Direct(filename string) {
 	c_filename := C.CString(filename)
 	defer C.free(unsafe.Pointer(c_filename))
 
 	C.tplogsetreqfile_direct(c_filename)
+}
+
+//Set request file to log to (see tplogsetreqfile(3) manpage)
+//@param data	pointer to  XATMI buffer (must be UBF, others will cause error), optional
+//@param filename	field name to set (this goes to UBF buffer too, if set), optional
+//@param filesvc	XATMI service name to call for requesting the new request file name, optional
+//@return	ATMI error
+func TpLogSetReqFile(data TypedBuffer, filename string, filesvc string) ATMIError {
+	var err ATMIError
+
+	c_filename := C.CString(filename)
+	defer C.free(unsafe.Pointer(c_filename))
+
+	c_filesvc := C.CString(filesvc)
+	defer C.free(unsafe.Pointer(c_filesvc))
+
+	buf := data.GetBuf()
+
+	if SUCCEED != C.tplogsetreqfile(&buf.C_ptr, c_filename, c_filesvc) {
+		err = NewAtmiError()
+	}
+
+	return err
+}
+
+//Get the request file name from UBF buffer (see tploggetbufreqfile(3) manpage)
+//@param data	XATMI buffer (must be UBF)
+//@return file name, ATMI error
+func TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
+	var err ATMIError
+	var reqfile string
+
+	c_reqfile := C.malloc(C.PATH_MAX)
+	c_reqfile_ptr := (*C.char)(unsafe.Pointer(c_reqfile))
+	defer C.free(c_reqfile)
+
+	buf := data.GetBuf()
+
+	if SUCCEED != C.tploggetbufreqfile(buf.C_ptr, c_reqfile_ptr, C.PATH_MAX) {
+		err = NewAtmiError()
+	} else {
+		reqfile = C.GoString(c_reqfile_ptr)
+	}
+
+	return reqfile, err
+}
+
+//Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage)
+//@param data XATMI buffer, must be UBF type
+//@return ATMI error
+func TpLogDelBufReqFile(data TypedBuffer) ATMIError {
+	var err ATMIError
+
+	buf := data.GetBuf()
+
+	if SUCCEED != C.tplogdelbufreqfile(buf.C_ptr) {
+		err = NewAtmiError()
+	}
+
+	return err
 }

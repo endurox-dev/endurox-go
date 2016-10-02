@@ -990,6 +990,18 @@ func (u *TypedUBF) BPrint() UBFError {
 	return nil
 }
 
+//Print the buffer to stdout
+//@return UBF error
+func (u *TypedUBF) TpLogPrintUBF(lev int, title string) {
+
+	c_title := C.CString(title)
+	defer C.free(unsafe.Pointer(c_title))
+
+	C.tplogprintubf(C.int(lev), c_title, C.GetU(u.Buf.C_ptr))
+
+	return
+}
+
 //Alternative for Bfprint. Will return the output in string variable
 //So that caller can do anything it wants with the string output
 //@return Printed buffer, UBF error

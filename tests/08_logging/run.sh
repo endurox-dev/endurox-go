@@ -13,15 +13,48 @@ popd
 
 xadmin start -y
 
-# should print some hello world
-client | tee test.out
+# Run the client
+client
+
+RET=$?
+
+if [ "X$RET" != "X0"]; then
+        echo "Invalid exit code $RET"
+        exit $RET
+fi
 
 # Test the logfile for content
-
-OUT=`grep 'Hello World from Enduro/X service' test.out`
-
+OUT=`grep '00 01 02 03 04 05 06 08 09' /tmp/08_client_process.log`
 if [[ "X$OUT" == "X" ]]; then
-        echo "TESTERROR: Content not found"
+        echo "TESTERROR: [00 01 02 03 04 05 06 08 09] not found in /tmp/08_client_process.log"
+        exit 1
+fi
+
+# Test the logfile for content
+OUT=`grep '02 03 04 05 06 07 08 09 0a' /tmp/08_client_process.log`
+if [[ "X$OUT" == "X" ]]; then
+        echo "TESTERROR: [02 03 04 05 06 07 08 09 0a] not found in /tmp/08_client_process.log"
+        exit 1
+fi
+
+# test Th1
+OUT=`grep 'Hello from TH1' /tmp/08_th1.log`
+if [[ "X$OUT" == "X" ]]; then
+        echo "TESTERROR: [Hello from TH1] not found in /tmp/08_th1.log"
+        exit 1
+fi
+
+# test Th2
+OUT=`grep 'Hello from TH2' /tmp/08_th2.log`
+if [[ "X$OUT" == "X" ]]; then
+        echo "TESTERROR: [Hello from TH2] not found in /tmp/08_th2.log"
+        exit 1
+fi
+
+# Test reqeust logging
+OUT=`grep 'HELLO FROM CLIENT 94 abc' /tmp/08_request95.log`
+if [[ "X$OUT" == "X" ]]; then
+        echo "TESTERROR: [HELLO FROM CLIENT 94 abc] not found in /tmp/08_request95.log"
         exit 1
 fi
 
