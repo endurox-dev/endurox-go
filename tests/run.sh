@@ -35,5 +35,6 @@ run_test "03_basic_carray_call"
 run_test "05_basic_json_call"
 run_test "06_ubf_marshal"
 run_test "07_basic_durable_queue"
+run_test "08_logging"
 
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"

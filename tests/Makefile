@@ -6,3 +6,4 @@ all:
 	$(MAKE) -C 05_basic_json_call
 	$(MAKE) -C 06_ubf_marshal
 	$(MAKE) -C 07_basic_durable_queue
+	$(MAKE) -C 08_logging
