@@ -3,9 +3,9 @@ package atmi
 /*
 #cgo LDFLAGS: -latmisrvinteg -latmi -lrt -lm -lubf -lnstd -ldl
 
-#include <xatmi.h>
 #include <string.h>
 #include <stdlib.h>
+#include <oatmi.h>
 
 static void free_string(char* s) { free(s); }
 static char * malloc_string(int size) { return malloc(size); }
@@ -33,30 +33,36 @@ static void c_init(void)
 	G_tpsvrdone__ = c_tpsrvdone;
 }
 
-static int run_serv(int *argc, char **argv)
+static int run_serv(TPCONTEXT_T *p_ctx, int *argc, char **argv)
 {
-	return ndrx_main(*argc, argv);
+	return Ondrx_main(p_ctx, *argc, argv);
 }
 
 //Proxy function for service call
 static void _GO_SVC_ENTRY (TPSVCINFO *p_svc)
 {
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
 	//Call the service entry
-	go_cb_dispatch_call(p_svc, p_svc->name, p_svc->fname, p_svc->cltid.clientdata);
+	go_cb_dispatch_call(ctx, p_svc, p_svc->name, p_svc->fname, p_svc->cltid.clientdata);
 }
 
 //Wrapper for advertise
-static int __run_advertise(char *svcnm, char *fname)
+static int __run_advertise(TPCONTEXT_T *p_ctx, char *svcnm, char *fname)
 {
 	int ret;
 
-	ret = tpadvertise_full(svcnm, _GO_SVC_ENTRY, fname);
+	ret = Otpadvertise_full(p_ctx, svcnm, _GO_SVC_ENTRY, fname);
 
 	return ret;
 }
 
 //Wrapper for doing for doing free of the service string
-static void go_tpforward (char *svc, char *data, long len, long flags)
+static void go_tpforward (TPCONTEXT_T *p_ctx, char *svc, char *data, long len, long flags)
 {
 	char svcnm[XATMI_SERVICE_NAME_LENGTH+1];
 
@@ -64,11 +70,11 @@ static void go_tpforward (char *svc, char *data, long len, long flags)
 	svcnm[XATMI_SERVICE_NAME_LENGTH] = '\0';
 	free(svc);
 
-	tpforward (svc, data, len, flags);
+	Otpforward (p_ctx, svc, data, len, flags);
 }
 
 //Wrapper for tpsubscribe() - to handle data types more accurately.
-static long go_tpsubscribe (char *eventexpr, char *filter,
+static long go_tpsubscribe (TPCONTEXT_T *p_ctx, char *eventexpr, char *filter,
 			long ctl_flags, char *ctl_name1, char *ctl_name2, long flags)
 {
 	long ret;
@@ -79,7 +85,7 @@ static long go_tpsubscribe (char *eventexpr, char *filter,
 	ctl.name2[XATMI_SERVICE_NAME_LENGTH] = '\0';
 	ctl.flags = ctl_flags;
 
-	ret = tpsubscribe (eventexpr, filter, &ctl, flags);
+	ret = Otpsubscribe (p_ctx, eventexpr, filter, &ctl, flags);
 
 	free(eventexpr);
 	free(filter);
@@ -96,22 +102,28 @@ static int c_periodcallback(void)
 	return go_periodcallback();
 }
 
-static int c_tpext_addperiodcb(int sec)
+static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)
 {
-	tpext_addperiodcb(sec, c_periodcallback);
+	tpext_addperiodcb(p_ctx, sec, c_periodcallback);
 }
 
 
 //The actual event callback, will proxy the even to go
 static int c_pollevent(int fd, uint32_t events, void *ptr1)
 {
-	return go_pollevent(fd, (unsigned int)events);
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
+	return go_pollevent(ctx, fd, (unsigned int)events);
 }
 
 //Wrapper for FD poller
-static int c_tpext_addpollerfd(int fd, unsigned int events)
+static int c_tpext_addpollerfd(TPCONTEXT_T *p_ctx, int fd, unsigned int events)
 {
-	return tpext_addpollerfd(fd, events, NULL, c_pollevent);
+	return Otpext_addpollerfd(p_ctx, fd, events, NULL, c_pollevent);
 }
 
 
@@ -131,6 +143,7 @@ type TPSVCINFO struct {
 	Cltid  string
 	Appkey int64
 	Fname  string
+	Ctx    ATMICtx
 }
 
 //We need a list of functions and it's  parameter block
@@ -144,7 +157,7 @@ type TPSrvInitFunc func() int //TODO: Add parsed args after --
 type TPSrvUninitFunc func()
 type TPServiceFunction func(svc *TPSVCINFO)
 type TPPeriodCallback func() int
-type TPPollerFdCallback func(fd int, events uint32, ptr1 interface{}) int
+type TPPollerFdCallback func(ctx *ATMICtx, fd int, events uint32, ptr1 interface{}) int
 
 //Server init callbacks globals...
 var cb_initf TPSrvInitFunc
@@ -183,7 +196,7 @@ func go_tpsrvdone() {
 }
 
 //export go_cb_dispatch_call
-func go_cb_dispatch_call(p_svc *C.TPSVCINFO, name *C.char, fname *C.char, cltid *C.char) {
+func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fname *C.char, cltid *C.char) {
 
 	var svc TPSVCINFO
 
@@ -194,6 +207,7 @@ func go_cb_dispatch_call(p_svc *C.TPSVCINFO, name *C.char, fname *C.char, cltid 
 	svc.Name = C.GoString(name)
 	svc.Fname = C.GoString(fname)
 	svc.Cltid = C.GoString(cltid)
+	svc.Ctx = MakeATMICtx(ctx)
 
 	//Set the data buffer...
 	//TODO: Probably we want to cast it to some typed buffer...
@@ -209,8 +223,8 @@ func go_cb_dispatch_call(p_svc *C.TPSVCINFO, name *C.char, fname *C.char, cltid 
 }
 
 //Continue main thread processing (go back to server polling)
-func TpContinue() {
-	C.tpcontinue()
+func (ATMICtx *ac) TpContinue() {
+	C.Otpcontinue(&ac.c_ctx)
 }
 
 //We should pass here init & un-init functions...
@@ -218,7 +232,7 @@ func TpContinue() {
 //@param initf	callback to init function
 //@param uninitf	callback to un-init function
 //@return Enduro/X service exit code, ATMI Error
-func TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError {
+func (ATMICtx *ac) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError {
 	var err ATMIError
 	C.c_init()
 
@@ -239,7 +253,7 @@ func TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError {
 		argv[i] = C.CString(arg)
 	}
 
-	c_ret := C.run_serv(&argc, &argv[0]) // Run the Enduro/X server process
+	c_ret := C.run_serv(&ac.c_ctx, &argc, &argv[0]) // Run the Enduro/X server process
 
 	/* Generate error, if server failed */
 	if 0 != c_ret {
@@ -257,7 +271,7 @@ func TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError {
 //@param svcname		Service Name
 //@param funcname	Function Name
 //@return ATMI Error
-func TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIError {
+func (ATMICtx *ac) TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIError {
 	var err ATMIError
 
 	if nil == fptr {
@@ -267,10 +281,10 @@ func TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIEr
 	c_svcname := C.CString(svcname)
 	c_funcname := C.CString(funcname)
 
-	ret := C.__run_advertise(c_svcname, c_funcname)
+	ret := C.__run_advertise(&ac.c_ctx, c_svcname, c_funcname)
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	} else {
 		/* Add the function to the map */
 		funcmaps[funcname] = fptr
@@ -284,33 +298,33 @@ func TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIEr
 //@param rcode	Return code (used for custom purposes)
 //@param tb	ATMI buffer
 //@param flags	Flags
-func TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) {
+func (ATMICtx *ac) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
-	C.tpreturn(C.int(rval), C.long(rcode), data.C_ptr, data.C_len, C.long(flags))
+	C.Otpreturn(&ac.c_ctx, C.int(rval), C.long(rcode), data.C_ptr, data.C_len, C.long(flags))
 }
 
 //Forward the call to specified poller and return to Q poller
 //@param svc 	Service name to forward the call to
 //@param data	ATMI buffer
 //@param flags	Flags
-func TpForward(svc string, tb TypedBuffer, flags int64) {
+func (ATMICtx *ac) TpForward(svc string, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
-	C.go_tpforward(C.CString(svc), data.C_ptr, data.C_len, C.long(flags))
+	C.go_tpforward(&ac.c_ctx, C.CString(svc), data.C_ptr, data.C_len, C.long(flags))
 }
 
 //Unadvertise service dynamically
 //@param	svcname	Service Name
 //@return ATMI Error
-func TpUnadvertise(svcname string) ATMIError {
+func (ATMICtx *ac) TpUnadvertise(svcname string) ATMIError {
 	var err ATMIError
 	c_svcname := C.CString(svcname)
 
-	ret := C.tpunadvertise(c_svcname)
+	ret := C.Otpunadvertise(&ac.c_ctx, c_svcname)
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -320,7 +334,7 @@ func TpUnadvertise(svcname string) ATMIError {
 //@param	subscription	Subscription ID (retruned by TPSubscribe())
 //@param flags	Flags
 //@return Number of subscriptions deleted, ATMI Error
-func TpUnsubscribe(subscription int64, flags int64) (int, ATMIError) {
+func (ATMICtx *ac) TpUnsubscribe(subscription int64, flags int64) (int, ATMIError) {
 	var err ATMIError
 	ret := C.tpunsubscribe(C.long(subscription), C.long(flags))
 	if FAIL == ret {
@@ -336,7 +350,7 @@ func TpUnsubscribe(subscription int64, flags int64) (int, ATMIError) {
 //@param ctl Control struct
 //@param flags	Flags
 //@return Subscription id, ATMI Error
-func TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, flags int64) (int64, ATMIError) {
+func (ATMICtx *ac) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, flags int64) (int64, ATMIError) {
 	var err ATMIError
 	ret := C.go_tpsubscribe(C.CString(eventexpr), C.CString(filter),
 		C.long(ctl.flags), C.CString(ctl.name1), C.CString(ctl.name2), C.long(flags))
@@ -350,7 +364,7 @@ func TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, flags int64) (in
 
 //Get Server Call thread context data (free of *TPSRVCTXDATA must be done by user)
 //@return contect data, ATMI Error
-func TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
+func (ATMICtx *ac) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
 	var err ATMIError
 	var data *TPSRVCTXDATA
 	c_ptr := C.tpsrvgetctxdata()
@@ -367,7 +381,7 @@ func TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
 
 //Restore thread context data
 //@return ATMI Error
-func TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
+func (ATMICtx *ac) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
 	var err ATMIError
 	var ret C.int
 	if nil == data || nil == data.c_ptr {
@@ -388,7 +402,7 @@ out:
 
 //Free the server context data
 //@param data	Context data block
-func TpSrvFreeCtxData(data *TPSRVCTXDATA) {
+func (ATMICtx *ac) TpSrvFreeCtxData(data *TPSRVCTXDATA) {
 	if nil != data && nil != data.c_ptr {
 		C.free(unsafe.Pointer(data.c_ptr))
 	}
@@ -397,7 +411,7 @@ func TpSrvFreeCtxData(data *TPSRVCTXDATA) {
 //Remove the polling file descriptor
 //@param fd 		FD to poll on
 //@return ATMI Error
-func TpExtDelPollerfd(fd int) ATMIError {
+func (ATMICtx *ac) TpExtDelPollerfd(fd int) ATMIError {
 	var err ATMIError
 	ret := C.tpext_delpollerfd(C.int(fd))
 
@@ -410,7 +424,7 @@ func TpExtDelPollerfd(fd int) ATMIError {
 
 //Delet del periodic callback
 //@return ATMI Error
-func TpExtDelPeriodCB() ATMIError {
+func (ATMICtx *ac) TpExtDelPeriodCB() ATMIError {
 	var err ATMIError
 	ret := C.tpext_delperiodcb()
 
@@ -423,7 +437,7 @@ func TpExtDelPeriodCB() ATMIError {
 
 //Delete before-doing-poll callback
 //@return ATMI Error
-func TpExtDelB4PollCB() ATMIError {
+func (ATMICtx *ac) TpExtDelB4PollCB() ATMIError {
 	var err ATMIError
 	ret := C.tpext_delb4pollcb()
 
@@ -436,7 +450,7 @@ func TpExtDelB4PollCB() ATMIError {
 
 //Set periodic before poll callback func
 //@return ATMI Error
-func TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
+func (ATMICtx *ac) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 	var err ATMIError
 
 	if nil == cb {
@@ -456,10 +470,12 @@ func TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 }
 
 //export go_pollevent
-func go_pollevent(fd C.int, events C.uint) C.int {
+func go_pollevent(ctx C.TPCONTEXT_T, fd C.int, events C.uint) C.int {
+
+	ac := MakeATMICtx(ctx)
 
 	poller := funcpollers[int(fd)]
-	ret := poller.cb(int(fd), uint32(events), poller.ptr1)
+	ret := poller.cb(&ac, int(fd), uint32(events), poller.ptr1)
 
 	return C.int(ret)
 }
@@ -469,7 +485,7 @@ func go_pollevent(fd C.int, events C.uint) C.int {
 //@param ptr1	Custom data block to be passed to callback func
 //@param cb 	Callback func
 //@return ATMI Error
-func TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb TPPollerFdCallback) ATMIError {
+func (ATMICtx *ac) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb TPPollerFdCallback) ATMIError {
 	var err ATMIError
 
 	if nil == cb {
@@ -494,7 +510,6 @@ func TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb TPPollerFdCall
 
 //Return server id
 //@return server_id
-func TpGetSrvId() int {
-    return int(C.tpgetsrvid())
+func (ATMICtx *ac) TpGetSrvId() int {
+	return int(C.tpgetsrvid())
 }
-
