@@ -16,7 +16,7 @@ static int WrapBerror(void) {
 
 //Cast the data type
 static UBFH *GetU(char *data) {
-		return (UBFH *)data;
+	return (UBFH *)data;
 }
 
 

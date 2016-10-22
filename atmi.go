@@ -463,7 +463,7 @@ type ATMIBuf struct {
 	//We will need some API for length & buffer setting
 	//Probably we need a wrapper for lenght function
 	C_len C.long
-	//Have some context
+	//Have some context, just a reference to, for ATMI buffer operations
 	Ctx *ATMICtx
 }
 
@@ -495,10 +495,10 @@ type ATMIError interface {
 }
 
 //Generate ATMI error, read the codes
-func NewAtmiError() ATMIError {
+func (ATMICtx *ac) NewAtmiError() ATMIError {
 	var err atmiError
-	err.code = int(C.go_tperrno())
-	err.message = C.GoString(C.tpstrerror(C.go_tperrno()))
+	err.code = int(C.go_tperrno(&ac.c_ctx))
+	err.message = C.GoString(C.Otpstrerror(C.go_tperrno(&ac.c_ctx)))
 	return err
 }
 
@@ -654,7 +654,7 @@ func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx) {
 func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 	var err ATMIError
 
-	buf.C_ptr = C.tprealloc(buf.C_ptr, C.long(size))
+	buf.C_ptr = C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
 
 	if nil == buf.C_ptr {
 		err = buf.Ctx.NewAtmiError()

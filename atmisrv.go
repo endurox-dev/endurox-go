@@ -12,9 +12,9 @@ static char * malloc_string(int size) { return malloc(size); }
 
 extern int go_tpsrvinit();
 extern void go_tpsrvdone();
-extern void go_cb_dispatch_call(TPSVCINFO *p_svc, char *name, char *fname, char *cltid);
+extern void go_cb_dispatch_call(TPCONTEXT_T ctx, TPSVCINFO *p_svc, char *name, char *fname, char *cltid);
 extern int go_periodcallback();
-extern int go_pollevent(int fd, unsigned int events);
+extern int go_pollevent(TPCONTEXT_T ctx, int fd, unsigned int events);
 
 static int c_tpsrvinit(int argc, char **argv)
 {
@@ -104,7 +104,7 @@ static int c_periodcallback(void)
 
 static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)
 {
-	tpext_addperiodcb(p_ctx, sec, c_periodcallback);
+	Otpext_addperiodcb(p_ctx, sec, c_periodcallback);
 }
 
 
@@ -336,9 +336,9 @@ func (ATMICtx *ac) TpUnadvertise(svcname string) ATMIError {
 //@return Number of subscriptions deleted, ATMI Error
 func (ATMICtx *ac) TpUnsubscribe(subscription int64, flags int64) (int, ATMIError) {
 	var err ATMIError
-	ret := C.tpunsubscribe(C.long(subscription), C.long(flags))
+	ret := C.Otpunsubscribe(&ac.c_ctx, C.long(subscription), C.long(flags))
 	if FAIL == ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return int(ret), err
@@ -352,11 +352,11 @@ func (ATMICtx *ac) TpUnsubscribe(subscription int64, flags int64) (int, ATMIErro
 //@return Subscription id, ATMI Error
 func (ATMICtx *ac) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, flags int64) (int64, ATMIError) {
 	var err ATMIError
-	ret := C.go_tpsubscribe(C.CString(eventexpr), C.CString(filter),
+	ret := C.go_tpsubscribe(&ac.c_ctx, C.CString(eventexpr), C.CString(filter),
 		C.long(ctl.flags), C.CString(ctl.name1), C.CString(ctl.name2), C.long(flags))
 
 	if FAIL == ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return int64(ret), err
@@ -367,10 +367,10 @@ func (ATMICtx *ac) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, fl
 func (ATMICtx *ac) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
 	var err ATMIError
 	var data *TPSRVCTXDATA
-	c_ptr := C.tpsrvgetctxdata()
+	c_ptr := C.Otpsrvgetctxdata(&ac.c_ctx)
 
 	if nil == c_ptr {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	} else {
 		data = new(TPSRVCTXDATA)
 		data.c_ptr = c_ptr
@@ -390,10 +390,10 @@ func (ATMICtx *ac) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
 		goto out
 	}
 
-	ret = C.tpsrvsetctxdata(data.c_ptr, C.long(flags))
+	ret = C.Otpsrvsetctxdata(&ac.c_ctx, data.c_ptr, C.long(flags))
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 out:
@@ -413,10 +413,10 @@ func (ATMICtx *ac) TpSrvFreeCtxData(data *TPSRVCTXDATA) {
 //@return ATMI Error
 func (ATMICtx *ac) TpExtDelPollerfd(fd int) ATMIError {
 	var err ATMIError
-	ret := C.tpext_delpollerfd(C.int(fd))
+	ret := C.Otpext_delpollerfd(&ac.c_ctx, C.int(fd))
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -426,10 +426,10 @@ func (ATMICtx *ac) TpExtDelPollerfd(fd int) ATMIError {
 //@return ATMI Error
 func (ATMICtx *ac) TpExtDelPeriodCB() ATMIError {
 	var err ATMIError
-	ret := C.tpext_delperiodcb()
+	ret := C.Otpext_delperiodcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -439,10 +439,10 @@ func (ATMICtx *ac) TpExtDelPeriodCB() ATMIError {
 //@return ATMI Error
 func (ATMICtx *ac) TpExtDelB4PollCB() ATMIError {
 	var err ATMIError
-	ret := C.tpext_delb4pollcb()
+	ret := C.Otpext_delb4pollcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -460,10 +460,10 @@ func (ATMICtx *ac) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 	}
 
 	cb_priod = cb
-	ret := C.c_tpext_addperiodcb(C.int(secs))
+	ret := C.c_tpext_addperiodcb(&ac.c_ctx, C.int(secs))
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -494,10 +494,10 @@ func (ATMICtx *ac) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb 
 		return err /* <<<< RETURN! */
 	}
 
-	ret := C.c_tpext_addpollerfd(C.int(fd), C.uint(events))
+	ret := C.c_tpext_addpollerfd(&ac.c_ctx, C.int(fd), C.uint(events))
 
 	if SUCCEED != ret {
-		err = NewAtmiError()
+		err = ac.NewAtmiError()
 	} else {
 		var cbblock fdpollcallback
 		cbblock.cb = cb
@@ -511,5 +511,5 @@ func (ATMICtx *ac) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb 
 //Return server id
 //@return server_id
 func (ATMICtx *ac) TpGetSrvId() int {
-	return int(C.tpgetsrvid())
+	return int(C.Otpgetsrvid(&ac.c_ctx))
 }
