@@ -24,7 +24,7 @@ func (u *TypedJSON) GetBuf() *ATMIBuf {
 
 //Allocate new string buffer
 //@param s - source string
-func NewJSON(b []byte) (*TypedJSON, ATMIError) {
+func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError) {
 	var buf TypedJSON
 
 	c_val := C.CString(string(b))
@@ -32,11 +32,14 @@ func NewJSON(b []byte) (*TypedJSON, ATMIError) {
 
 	size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
 
-	if ptr, err := TpAlloc("JSON", "", size); nil != err {
+	if ptr, err := ac.TpAlloc("JSON", "", size); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
 		C.strcpy(buf.Buf.C_ptr, c_val)
+
+		buf.Buf.TpSetCtxt(ac)
+
 		return &buf, nil
 	}
 }
@@ -74,7 +77,7 @@ func (j *TypedJSON) SetJSONText(gs string) ATMIError {
 
 	new_size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
 
-	if cur_size, err := TpTypes(j.Buf, nil, nil); nil != err {
+	if cur_size, err := j.Buf.Ctx.TpTypes(j.Buf, nil, nil); nil != err {
 		return err
 	} else {
 		if cur_size >= new_size {

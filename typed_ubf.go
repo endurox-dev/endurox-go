@@ -7,11 +7,13 @@ package atmi
 #include <string.h>
 #include <stdlib.h>
 #include <ubf.h>
+#include <oubf.h>
+#include <oatmi.h>
 
 
 //Get the UBF Error code
-static int WrapBerror(void) {
-	return Berror;
+static int WrapBerror(TPCONTEXT_T *p_ctx) {
+	return OBerror(p_ctx);
 }
 
 //Cast the data type
@@ -164,10 +166,10 @@ type UBFError interface {
 }
 
 //Generate UBF error, read the codes
-func NewUBFError() UBFError {
+func (ATMICtx *ac) NewUBFError() UBFError {
 	var err ubfError
-	err.code = int(C.WrapBerror())
-	err.message = C.GoString(C.Bstrerror(C.WrapBerror()))
+	err.code = int(C.WrapBerror(&ac.c_ctx))
+	err.message = C.GoString(C.OBstrerror(&ac.c_ctx, C.WrapBerror(&ac.c_ctx)))
 	return err
 }
 
@@ -213,9 +215,9 @@ var exprfuncmap map[string]UBFExprFunc //callback mapping for UBF expression fun
 //@param occ 	Field occurance
 //@return 	FIeld len, UBF error
 func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError) {
-	ret := C.Blen(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid), C.BFLDOCC(occ))
+	ret := C.OBlen(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid), C.BFLDOCC(occ))
 	if FAIL == ret {
-		return FAIL, NewUBFError()
+		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 	return int(ret), nil
 }
@@ -225,9 +227,9 @@ func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError) {
 //@param occ 	Field occurance
 //@return 	UBF error
 func (u *TypedUBF) BDel(bfldid int, occ int) UBFError {
-	ret := C.Bdel(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid), C.BFLDOCC(occ))
+	ret := C.OBdel(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid), C.BFLDOCC(occ))
 	if FAIL == ret {
-		return NewUBFError()
+		return &u.Buf.Ctx.NewUBFError()
 	}
 	return nil
 }

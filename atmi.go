@@ -7,6 +7,7 @@ package atmi
 #include <string.h>
 #include <stdlib.h>
 #include <oatmi.h>
+#include <onerror.h>
 
 // Wrapper for TPNIT
 static int go_tpinit(void) {
@@ -495,10 +496,10 @@ type ATMIError interface {
 }
 
 //Generate ATMI error, read the codes
-func (ATMICtx *ac) NewAtmiError() ATMIError {
+func (ac *ATMICtx) NewAtmiError() ATMIError {
 	var err atmiError
 	err.code = int(C.go_tperrno(&ac.c_ctx))
-	err.message = C.GoString(C.Otpstrerror(C.go_tperrno(&ac.c_ctx)))
+	err.message = C.GoString(C.Otpstrerror(&ac.c_ctx, C.go_tperrno(&ac.c_ctx)))
 	return err
 }
 
@@ -546,10 +547,10 @@ type NSTDError interface {
 }
 
 //Generate NSTD error, read the codes
-func (ATMICtx *ac) NewNstdError() NSTDError {
+func (ac *ATMICtx) NewNstdError() NSTDError {
 	var err nstdError
 	err.code = int(C.go_Nerror(&ac.c_ctx))
-	err.message = C.GoString(C.Nstrerror(C.go_Nerror()))
+	err.message = C.GoString(C.ONstrerror(&ac.c_ctx, C.go_Nerror(&ac.c_ctx)))
 	return err
 }
 
@@ -596,8 +597,8 @@ func NewATMICtx() (ATMIError, *ATMICtx) {
 }
 
 //Free up the ATMI Context
-func (ATMICtx *ac) FreeATMICtx() {
-	C.tpnewctxt(ac.c_ctx)
+func (ac *ATMICtx) FreeATMICtx() {
+	C.tpfreectxt(ac.c_ctx)
 	ac.c_ctx = nil
 }
 
@@ -619,7 +620,7 @@ func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx {
 //@param	 b_subtype 	Buffer sub-type
 //@param	 size		Buffer size request
 //@return 			ATMI Buffer, atmiError
-func (ATMICtx *ac) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBuf, ATMIError) {
+func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBuf, ATMIError) {
 	var buf ATMIBuf
 	var err ATMIError
 
@@ -638,7 +639,7 @@ func (ATMICtx *ac) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_type))
 	C.free(unsafe.Pointer(c_subtype))
 
-	runtime.SetFinalizer(&buf, TpFree)
+	runtime.SetFinalizer(&buf, ac.TpFree)
 
 	return &buf, err
 }
@@ -665,7 +666,7 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 
 //Initialize client
 //@return		ATMI Error
-func (ATMICtx *ac) TpInit() ATMIError {
+func (ac *ATMICtx) TpInit() ATMIError {
 	var err ATMIError
 
 	if SUCCEED != C.go_tpinit() {
@@ -683,13 +684,13 @@ func (ATMICtx *ac) TpInit() ATMIError {
 // @param buf	ATMI buffer
 // @param flags 	Flags to be used
 // @return atmiError
-func (ATMICtx *ac) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
+func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
 	var err ATMIError
 	c_svc := C.CString(svc)
 
 	buf := tb.GetBuf()
 
-	ret := C.Otpcall(&ac.c_ctx, ac.c_svc, buf.C_ptr, buf.C_len, &buf.C_ptr, &buf.C_len, C.long(flags))
+	ret := C.Otpcall(&ac.c_ctx, c_svc, buf.C_ptr, buf.C_len, &buf.C_ptr, &buf.C_len, C.long(flags))
 
 	if SUCCEED != ret {
 		err = ac.NewAtmiError()
@@ -705,7 +706,7 @@ func (ATMICtx *ac) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 //@param buf		ATMI buffer
 //@param flags	Flags to be used for call (see flags section)
 //@return		Call Descriptor (cd), ATMI Error
-func (ATMICtx *ac) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
+func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
 	var err ATMIError
 	c_svc := C.CString(svc)
 
@@ -726,7 +727,7 @@ func (ATMICtx *ac) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIEr
 //@param cd	call
 //@param buf	ATMI buffer
 //@param flags call flags
-func (ATMICtx *ac) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIError) {
+func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIError) {
 	var err ATMIError
 	var c_cd C.int
 
@@ -746,7 +747,7 @@ func (ATMICtx *ac) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 //Cancel async call
 //@param cd		Call descriptor
 //@return ATMI error
-func (ATMICtx *ac) TpCancel(cd int) ATMIError {
+func (ac *ATMICtx) TpCancel(cd int) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpcancel(&ac.c_ctx, C.int(cd))
@@ -763,7 +764,7 @@ func (ATMICtx *ac) TpCancel(cd int) ATMIError {
 //@param data	ATMI buffers
 //@param flags	Flags
 //@return		call descriptor (cd), ATMI error
-func (ATMICtx *ac) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
+func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
 	var err ATMIError
 	c_svc := C.CString(svc)
 
@@ -783,7 +784,7 @@ func (ATMICtx *ac) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMI
 //Disconnect from conversation
 //@param cd		Call Descriptor
 //@return ATMI Error
-func (ATMICtx *ac) TpDiscon(cd int) ATMIError {
+func (ac *ATMICtx) TpDiscon(cd int) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpdiscon(&ac.c_ctx, C.int(cd))
@@ -800,14 +801,14 @@ func (ATMICtx *ac) TpDiscon(cd int) ATMIError {
 //@param	 data		ATMI buffer
 //@param revent		Return Event
 //@return			ATMI Error
-func (ATMICtx *ac) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
+func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
 	var err ATMIError
 
 	c_revent := C.long(*revent)
 
 	data := tb.GetBuf()
 
-	ret := C.tprecv(&ac.c_ctx, C.int(cd), &data.C_ptr, &data.C_len, C.long(flags), &c_revent)
+	ret := C.Otprecv(&ac.c_ctx, C.int(cd), &data.C_ptr, &data.C_len, C.long(flags), &c_revent)
 
 	if FAIL == ret {
 		err = ac.NewAtmiError()
@@ -823,7 +824,7 @@ func (ATMICtx *ac) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 //@param	 data		ATMI buffer
 //@param revent		Return Event
 //@return			ATMI Error
-func (ATMICtx *ac) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
+func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
 	var err ATMIError
 
 	c_revent := C.long(*revent)
@@ -843,14 +844,14 @@ func (ATMICtx *ac) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 
 //Free the ATMI buffer
 //@param buf		ATMI buffer
-func (ATMICtx *ac) TpFree(buf *ATMIBuf) {
+func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 	C.Otpfree(&ac.c_ctx, buf.C_ptr)
 	buf.C_ptr = nil
 }
 
 //Commit global transaction
 //@param	 flags		flags for abort operation
-func (ATMICtx *ac) TpCommit(flags int64) ATMIError {
+func (ac *ATMICtx) TpCommit(flags int64) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpcommit(&ac.c_ctx, C.long(flags))
@@ -865,7 +866,7 @@ func (ATMICtx *ac) TpCommit(flags int64) ATMIError {
 //Abort global transaction
 //@param	 flags		flags for abort operation (must be 0)
 //@return ATMI Error
-func (ATMICtx *ac) TpAbort(flags int64) ATMIError {
+func (ac *ATMICtx) TpAbort(flags int64) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpabort(&ac.c_ctx, C.long(flags))
@@ -879,7 +880,7 @@ func (ATMICtx *ac) TpAbort(flags int64) ATMIError {
 
 //Open XA Sub-system
 //@return ATMI Error
-func (ATMICtx *ac) TpOpen() ATMIError {
+func (ac *ATMICtx) TpOpen() ATMIError {
 	var err ATMIError
 
 	ret := C.Otpopen(&ac.c_ctx)
@@ -893,7 +894,7 @@ func (ATMICtx *ac) TpOpen() ATMIError {
 
 // Close XA Sub-system
 //@return ATMI Error
-func (ATMICtx *ac) TpClose() ATMIError {
+func (ac *ATMICtx) TpClose() ATMIError {
 	var err ATMIError
 
 	ret := C.Otpclose(&ac.c_ctx)
@@ -907,7 +908,7 @@ func (ATMICtx *ac) TpClose() ATMIError {
 
 //Check are we in globa transaction?
 //@return 	0 - not in global Tx, 1 - in global Tx
-func (ATMICtx *ac) TpGetLev() int {
+func (ac *ATMICtx) TpGetLev() int {
 
 	ret := C.Otpgetlev(&ac.c_ctx)
 
@@ -918,7 +919,7 @@ func (ATMICtx *ac) TpGetLev() int {
 //@param timeout		Transaction Timeout
 //@param flags		Transaction flags
 //@return	ATMI Error
-func (ATMICtx *ac) TpBegin(timeout uint64, flags int64) ATMIError {
+func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 
 	var err ATMIError
 
@@ -935,10 +936,10 @@ func (ATMICtx *ac) TpBegin(timeout uint64, flags int64) ATMIError {
 //@param tranid	Transaction Id reference
 //@param flags	Flags for suspend (must be 0)
 //@return 	ATMI Error
-func (ATMICtx *ac) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
+func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 	var err ATMIError
 
-	ret := C.Otpsuspend(&tranid.c_tptranid, C.long(flags))
+	ret := C.Otpsuspend(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
 
 	if SUCCEED != ret {
 		err = ac.NewAtmiError()
@@ -951,7 +952,7 @@ func (ATMICtx *ac) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 //@param tranid	Transaction Id reference
 //@param flags	Flags for tran resume (must be 0)
 //@return 	ATMI Error
-func (ATMICtx *ac) TpResume(tranid *TPTRANID, flags int64) ATMIError {
+func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpresume(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
@@ -965,7 +966,7 @@ func (ATMICtx *ac) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 
 //Get cluster node id
 //@return		Node Id
-func (ATMICtx *ac) TpGetnodeId() int64 {
+func (ac *ATMICtx) TpGetnodeId() int64 {
 	ret := C.Otpgetnodeid(&ac.c_ctx)
 	return int64(ret)
 }
@@ -975,12 +976,12 @@ func (ATMICtx *ac) TpGetnodeId() int64 {
 //@param data		ATMI buffer
 //@param flags		flags
 //@return		Number Of events posted, ATMI error
-func (ATMICtx *ac) TpPost(eventname string, tb TypedBuffer, len int64, flags int64) (int, ATMIError) {
+func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int64) (int, ATMIError) {
 	var err ATMIError
 	c_eventname := C.CString(eventname)
 
 	data := tb.GetBuf()
-	ret := C.tppost(&ac.c_ctx, c_eventname, data.C_ptr, data.C_len, C.long(flags))
+	ret := C.Otppost(&ac.c_ctx, c_eventname, data.C_ptr, data.C_len, C.long(flags))
 
 	if FAIL == ret {
 		err = ac.NewAtmiError()
@@ -995,7 +996,7 @@ func (ATMICtx *ac) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 //@param ptr 	Pointer to ATMI buffer
 //@param itype	ptr to string to return the buffer type  (can be nil)
 //@param subtype ptr to string to return sub-type (can be nil)
-func (ATMICtx *ac) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
+func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
 	var err ATMIError
 
 	/* we should allocat the fields there...  */
@@ -1033,7 +1034,7 @@ func (ATMICtx *ac) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 
 //Terminate the client
 //@return ATMI error
-func (ATMICtx *ac) TpTerm() ATMIError {
+func (ac *ATMICtx) TpTerm() ATMIError {
 	ret := C.Otpterm(&ac.c_ctx)
 	if SUCCEED != ret {
 		return ac.NewAtmiError()
@@ -1050,7 +1051,7 @@ func (ATMICtx *ac) TpTerm() ATMIError {
 //@param flags		ATMI call flags
 //@param is_enq		Is Enqueue? If not then dequeue
 //@return		ATMI error
-func (ATMICtx *ac) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64, is_enq bool) ATMIError {
+func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64, is_enq bool) ATMIError {
 	var err ATMIError
 
 	c_qspace := C.CString(qspace)
@@ -1208,7 +1209,7 @@ func (ATMICtx *ac) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 //@param tb		Typed buffer
 //@param flags		ATMI call flags
 //@return		ATMI error
-func (ATMICtx *ac) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64) ATMIError {
+func (ac *ATMICtx) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64) ATMIError {
 	return ac.tp_enq_deq(qspace, qname, ctl, tb, flags, true)
 }
 
@@ -1219,6 +1220,6 @@ func (ATMICtx *ac) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb TypedB
 //@param tb		Typed buffer
 //@param flags		ATMI call flags
 //@return		ATMI error
-func (ATMICtx *ac) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64) ATMIError {
+func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64) ATMIError {
 	return ac.tp_enq_deq(qspace, qname, ctl, tb, flags, false)
 }

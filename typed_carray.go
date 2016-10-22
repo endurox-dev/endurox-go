@@ -35,10 +35,10 @@ func cpyGo2C(c *C.char, b []byte) {
 
 //Allocate new string buffer
 //@param s - source string
-func NewCarray(b []byte) (*TypedCarray, ATMIError) {
+func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 	var buf TypedCarray
 
-	if ptr, err := TpAlloc("CARRAY", "", int64(len(b))); nil != err {
+	if ptr, err := ac.TpAlloc("CARRAY", "", int64(len(b))); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
@@ -46,6 +46,7 @@ func NewCarray(b []byte) (*TypedCarray, ATMIError) {
 		/* Copy off the bytes to C buf */
 		cpyGo2C(buf.Buf.C_ptr, b)
 		buf.Buf.C_len = C.long(len(b))
+		buf.Buf.TpSetCtxt(ac)
 
 		return &buf, nil
 	}
@@ -75,7 +76,7 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 
 	new_size := int64(len(b))
 
-	if cur_size, err := TpTypes(s.Buf, nil, nil); nil != err {
+	if cur_size, err := s.Buf.Ctx.TpTypes(s.Buf, nil, nil); nil != err {
 		return err
 	} else {
 		if cur_size >= new_size {

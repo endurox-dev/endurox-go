@@ -24,7 +24,7 @@ func (u *TypedString) GetBuf() *ATMIBuf {
 
 //Allocate new string buffer
 //@param s - source string
-func NewString(gs string) (*TypedString, ATMIError) {
+func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError) {
 	var buf TypedString
 
 	c_val := C.CString(gs)
@@ -32,11 +32,13 @@ func NewString(gs string) (*TypedString, ATMIError) {
 
 	size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
 
-	if ptr, err := TpAlloc("STRING", "", size); nil != err {
+	if ptr, err := ac.TpAlloc("STRING", "", size); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
 		C.strcpy(buf.Buf.C_ptr, c_val)
+		buf.Buf.TpSetCtxt(ac)
+
 		return &buf, nil
 	}
 }
@@ -64,7 +66,7 @@ func (s *TypedString) SetString(gs string) ATMIError {
 
 	new_size := int64(C.strlen(c_val) + 1) /* 1 for EOS. */
 
-	if cur_size, err := TpTypes(s.Buf, nil, nil); nil != err {
+	if cur_size, err := s.Buf.Ctx.TpTypes(s.Buf, nil, nil); nil != err {
 		return err
 	} else {
 		if cur_size >= new_size {

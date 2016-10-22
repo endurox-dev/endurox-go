@@ -3,10 +3,13 @@ package atmi
 /*
 #cgo LDFLAGS: -latmisrvinteg -latmi -lrt -lm -lubf -lnstd -ldl
 #include <ndebug.h>
+#include <ondebug.h>
 #include <xatmi.h>
+#include <oatmi.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ubf.h>
+#include <oubf.h>
 
 */
 import "C"
@@ -25,7 +28,7 @@ import (
 //@param ptr   Pointer to buffer for dump
 //@param dumplen   Length of the bytes to dump
 //@return 	atmiError (in case if invalid length we have for ptr and dumplen)
-func TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
+func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
 
 	c_comment := C.CString(comment)
 	defer C.free(unsafe.Pointer(c_comment))
@@ -46,7 +49,7 @@ func TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
 		*(*C.char)(unsafe.Pointer(uintptr(c_ptr) + uintptr(i))) = C.char(ptr[i])
 	}
 
-	C.tplogdump(C.int(lev), c_comment, c_ptr, C.int(dumplen))
+	C.Otplogdump(&ac.c_ctx, C.int(lev), c_comment, c_ptr, C.int(dumplen))
 
 	return nil
 }
@@ -59,7 +62,7 @@ func TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
 //@param ptr2   Pointer to buffer2 for compare
 //@param difflen   Length of the bytes to compare
 //@return 	atmiError (in case if invalid length we have for ptr1/ptr2 and difflen)
-func TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen int) ATMIError {
+func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen int) ATMIError {
 
 	c_comment := C.CString(comment)
 	defer C.free(unsafe.Pointer(c_comment))
@@ -95,7 +98,7 @@ func TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen in
 		*(*C.char)(unsafe.Pointer(uintptr(c_ptr2) + uintptr(i))) = C.char(ptr2[i])
 	}
 
-	C.tplogdumpdiff(C.int(lev), c_comment, c_ptr1, c_ptr2, C.int(difflen))
+	C.Otplogdumpdiff(&ac.c_ctx, C.int(lev), c_comment, c_ptr1, c_ptr2, C.int(difflen))
 
 	return nil
 }
@@ -104,7 +107,7 @@ func TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen in
 //@param lev	Logging level
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
-func TpLog(lev int, format string, a ...interface{}) {
+func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
 
 	c_msg := C.CString(msg)
@@ -116,7 +119,7 @@ func TpLog(lev int, format string, a ...interface{}) {
 //Return request logging file (if there is one currenlty in use)
 // (see tploggetreqfile(3) manpage)
 //@return Status (request logger open or not), full path to request file
-func TpLogGetReqFile() (bool, string) {
+func (ac *ATMICtx) TpLogGetReqFile() (bool, string) {
 
 	var status bool
 	var reqfile string
@@ -125,7 +128,7 @@ func TpLogGetReqFile() (bool, string) {
 	c_reqfile_ptr := (*C.char)(unsafe.Pointer(c_reqfile))
 	defer C.free(c_reqfile)
 
-	if SUCCEED != C.tploggetreqfile(c_reqfile_ptr, C.PATH_MAX) {
+	if SUCCEED != C.Otploggetreqfile(&ac.c_ctx, c_reqfile_ptr, C.PATH_MAX) {
 		status = false
 	} else {
 		status = true
@@ -141,7 +144,7 @@ func TpLogGetReqFile() (bool, string) {
 //@param debug_string optional Enduro/X debug string (see ndrxdebug.conf(5) manpage)
 //@param new_file optional (if not set - empty string) logging output file, overrides debug_string file tag
 //@return NSTDError - standard library error
-func TpLogConfig(logger int, lev int, debug_string string, module string, new_file string) NSTDError {
+func (ac *ATMICtx) TpLogConfig(logger int, lev int, debug_string string, module string, new_file string) NSTDError {
 
 	var err NSTDError
 	c_debug_string := C.CString(debug_string)
@@ -153,22 +156,22 @@ func TpLogConfig(logger int, lev int, debug_string string, module string, new_fi
 	c_new_file := C.CString(new_file)
 	defer C.free(unsafe.Pointer(c_new_file))
 
-	if SUCCEED != C.tplogconfig(C.int(logger), C.int(lev), c_debug_string,
+	if SUCCEED != C.Otplogconfig(&ac.c_ctx, C.int(logger), C.int(lev), c_debug_string,
 		c_module, c_new_file) {
-		err = NewNstdError()
+		err = ac.NewNstdError()
 	}
 
 	return err
 }
 
 //Close request logger (see tplogclosereqfile(3) manpage)
-func TpLogCloseReqFile() {
-	C.tplogclosereqfile()
+func (ac *ATMICtx) TpLogCloseReqFile() {
+	C.Otplogclosereqfile(&ac.c_ctx)
 }
 
 //Close request logger (see tplogclosethread(3) manpage)
-func TpLogCloseThread() {
-	C.tplogclosethread()
+func (ac *ATMICtx) TpLogCloseThread() {
+	C.Otplogclosethread(&ac.c_ctx)
 }
 
 //Set request logging file, direct version (see tplogsetreqfile_direct(3) manpage)
@@ -176,11 +179,11 @@ func TpLogCloseThread() {
 //If fails to open request logging file, it will
 //automatically fall-back to stderr.
 //@param filename	Set file name to perform logging to
-func TpLogSetReqFile_Direct(filename string) {
+func (ac *ATMICtx) TpLogSetReqFile_Direct(filename string) {
 	c_filename := C.CString(filename)
 	defer C.free(unsafe.Pointer(c_filename))
 
-	C.tplogsetreqfile_direct(c_filename)
+	C.Otplogsetreqfile_direct(&ac.c_ctx, c_filename)
 }
 
 //Set request file to log to (see tplogsetreqfile(3) manpage)
@@ -188,7 +191,7 @@ func TpLogSetReqFile_Direct(filename string) {
 //@param filename	field name to set (this goes to UBF buffer too, if set), optional
 //@param filesvc	XATMI service name to call for requesting the new request file name, optional
 //@return	ATMI error
-func TpLogSetReqFile(data TypedBuffer, filename string, filesvc string) ATMIError {
+func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc string) ATMIError {
 	var err ATMIError
 
 	c_filename := C.CString(filename)
@@ -199,8 +202,8 @@ func TpLogSetReqFile(data TypedBuffer, filename string, filesvc string) ATMIErro
 
 	buf := data.GetBuf()
 
-	if SUCCEED != C.tplogsetreqfile(&buf.C_ptr, c_filename, c_filesvc) {
-		err = NewAtmiError()
+	if SUCCEED != C.Otplogsetreqfile(&ac.c_ctx, &buf.C_ptr, c_filename, c_filesvc) {
+		err = ac.NewAtmiError()
 	}
 
 	return err
@@ -209,7 +212,7 @@ func TpLogSetReqFile(data TypedBuffer, filename string, filesvc string) ATMIErro
 //Get the request file name from UBF buffer (see tploggetbufreqfile(3) manpage)
 //@param data	XATMI buffer (must be UBF)
 //@return file name, ATMI error
-func TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
+func (ac *ATMICtx) TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
 	var err ATMIError
 	var reqfile string
 
@@ -219,8 +222,8 @@ func TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
 
 	buf := data.GetBuf()
 
-	if SUCCEED != C.tploggetbufreqfile(buf.C_ptr, c_reqfile_ptr, C.PATH_MAX) {
-		err = NewAtmiError()
+	if SUCCEED != C.Otploggetbufreqfile(&ac.c_ctx, buf.C_ptr, c_reqfile_ptr, C.PATH_MAX) {
+		err = ac.NewAtmiError()
 	} else {
 		reqfile = C.GoString(c_reqfile_ptr)
 	}
@@ -231,13 +234,13 @@ func TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
 //Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage)
 //@param data XATMI buffer, must be UBF type
 //@return ATMI error
-func TpLogDelBufReqFile(data TypedBuffer) ATMIError {
+func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError {
 	var err ATMIError
 
 	buf := data.GetBuf()
 
-	if SUCCEED != C.tplogdelbufreqfile(buf.C_ptr) {
-		err = NewAtmiError()
+	if SUCCEED != C.Otplogdelbufreqfile(&ac.c_ctx, buf.C_ptr) {
+		err = ac.NewAtmiError()
 	}
 
 	return err
