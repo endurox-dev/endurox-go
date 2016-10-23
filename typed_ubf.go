@@ -913,8 +913,8 @@ func (ac *ATMICtx) BFldNo(bfldid int) int {
 //@param bfldid field ID
 //@return UBF error
 func (u *TypedUBF) BDelAll(bfldid int) UBFError {
-	if ret := C.Bdelall(C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid)); SUCCEED != ret {
-		return NewUBFError()
+	if ret := C.OBdelall(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid)); SUCCEED != ret {
+		return u.Buf.Ctx.NewUBFError()
 	}
 	return nil
 }
@@ -943,8 +943,8 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 	//Set last field to BBADFLDID
 	*(*C.BFLDID)(unsafe.Pointer(uintptr(c_val) + uintptr(i*c_fldidsize))) = C.BFLDID(BBADFLDID)
 
-	if ret := C.Bdelete(C.GetU(u.Buf.C_ptr), (*C.BFLDID)(unsafe.Pointer(c_val))); ret != SUCCEED {
-		return NewUBFError()
+	if ret := C.Bdelete(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), (*C.BFLDID)(unsafe.Pointer(c_val))); ret != SUCCEED {
+		return u.Buf.Ctx.NewUBFError()
 	}
 
 	return nil
@@ -954,10 +954,10 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 //@param bfldid field ID
 //@return field type, UBF error
 func (u *TypedUBF) BType(bfldid int) (string, UBFError) {
-	ret := C.Btype(C.BFLDID(bfldid))
+	ret := C.OBtype(&u.Buf.Ctx.c_ctx, C.BFLDID(bfldid))
 
 	if nil == ret {
-		return "", NewUBFError()
+		return "", u.Buf.Ctx.NewUBFError()
 	}
 
 	return C.GoString(ret), nil
@@ -967,10 +967,10 @@ func (u *TypedUBF) BType(bfldid int) (string, UBFError) {
 //@param dest 	dest buffer
 //@param src		source buffer
 //@return UBF error
-func BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
+func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
 
-	if ret := C.Bupdate(C.GetU(dest.Buf.C_ptr), C.GetU(src.Buf.C_ptr)); ret != SUCCEED {
-		return NewUBFError()
+	if ret := C.OBupdate(&ac.c_ctx, C.GetU(dest.Buf.C_ptr), C.GetU(src.Buf.C_ptr)); ret != SUCCEED {
+		return ac.NewUBFError()
 	}
 	return nil
 }
@@ -979,9 +979,9 @@ func BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
 //@param dest 	dest buffer
 //@param src		source buffer
 //@return UBF error
-func BConcat(dest *TypedUBF, src *TypedUBF) UBFError {
-	if ret := C.Bconcat(C.GetU(dest.Buf.C_ptr), C.GetU(src.Buf.C_ptr)); ret != SUCCEED {
-		return NewUBFError()
+func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError {
+	if ret := C.OBconcat(&ac.c_ctx, C.GetU(dest.Buf.C_ptr), C.GetU(src.Buf.C_ptr)); ret != SUCCEED {
+		return ac.NewUBFError()
 	}
 	return nil
 }
@@ -989,8 +989,8 @@ func BConcat(dest *TypedUBF, src *TypedUBF) UBFError {
 //Print the buffer to stdout
 //@return UBF error
 func (u *TypedUBF) BPrint() UBFError {
-	if ret := C.Bprint(C.GetU(u.Buf.C_ptr)); ret != SUCCEED {
-		return NewUBFError()
+	if ret := C.Bprint(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr)); ret != SUCCEED {
+		return u.Buf.Ctx.NewUBFError()
 	}
 	return nil
 }
@@ -1002,7 +1002,7 @@ func (u *TypedUBF) TpLogPrintUBF(lev int, title string) {
 	c_title := C.CString(title)
 	defer C.free(unsafe.Pointer(c_title))
 
-	C.tplogprintubf(C.int(lev), c_title, C.GetU(u.Buf.C_ptr))
+	C.Otplogprintubf(&u.Buf.Ctx.c_ctx, C.int(lev), c_title, C.GetU(u.Buf.C_ptr))
 
 	return
 }
