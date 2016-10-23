@@ -71,9 +71,9 @@ static long c_expr_callback_proxy(UBFH *p_ub, char *funcname)
 	return go_expr_callback_proxy((char *)p_ub, funcname);
 }
 
-static int c_proxy_Bboolsetcbf(char *funcname)
+static int c_proxy_Bboolsetcbf(TPCONTEXT_T *p_ctx, char *funcname)
 {
-	return Bboolsetcbf(funcname, c_expr_callback_proxy);
+	return OBboolsetcbf(p_ctx, funcname, c_expr_callback_proxy);
 }
 
 */
@@ -411,7 +411,7 @@ func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (TypedUBF, ATMIError) {
 //@return interface to value,	 UBF error
 func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 	/* Determinte the type of the buffer */
-	switch BFldType(bfldid) {
+	switch u.Buf.Ctx.BFldType(bfldid) {
 	case BFLD_SHORT:
 		var c_val C.short
 		if ret := C.OBget(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
@@ -943,7 +943,7 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 	//Set last field to BBADFLDID
 	*(*C.BFLDID)(unsafe.Pointer(uintptr(c_val) + uintptr(i*c_fldidsize))) = C.BFLDID(BBADFLDID)
 
-	if ret := C.Bdelete(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), (*C.BFLDID)(unsafe.Pointer(c_val))); ret != SUCCEED {
+	if ret := C.OBdelete(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), (*C.BFLDID)(unsafe.Pointer(c_val))); ret != SUCCEED {
 		return u.Buf.Ctx.NewUBFError()
 	}
 
@@ -989,7 +989,7 @@ func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError {
 //Print the buffer to stdout
 //@return UBF error
 func (u *TypedUBF) BPrint() UBFError {
-	if ret := C.Bprint(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr)); ret != SUCCEED {
+	if ret := C.OBprint(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr)); ret != SUCCEED {
 		return u.Buf.Ctx.NewUBFError()
 	}
 	return nil
@@ -1032,8 +1032,8 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 
 	defer C.fclose(f)
 
-	if ret := C.Bfprint(C.GetU(u.Buf.C_ptr), f); ret != SUCCEED {
-		return "", NewUBFError()
+	if ret := C.OBfprint(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), f); ret != SUCCEED {
+		return "", u.Buf.Ctx.NewUBFError()
 	}
 
 	return C.GoString((*C.char)(c_val)), nil
@@ -1060,8 +1060,8 @@ func (u *TypedUBF) BExtRead(s string) UBFError {
 
 	defer C.fclose(f)
 
-	if ret := C.Bextread(C.GetU(u.Buf.C_ptr), f); ret != SUCCEED {
-		return NewUBFError()
+	if ret := C.OBextread(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), f); ret != SUCCEED {
+		return u.Buf.Ctx.NewUBFError()
 	}
 
 	return nil
@@ -1070,7 +1070,7 @@ func (u *TypedUBF) BExtRead(s string) UBFError {
 //Print the expression tree
 //@param tree 	Compiled expression tree
 //@return printed expresion string, ubf error
-func BBoolPr(tree *ExprTree) (string, UBFError) {
+func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError) {
 
 	c_val := C.calloc(ATMI_MSG_MAX_SIZE, 10)
 	c_len := C.size_t(ATMI_MSG_MAX_SIZE * 10)
@@ -1092,7 +1092,7 @@ func BBoolPr(tree *ExprTree) (string, UBFError) {
 
 	defer C.fclose(f)
 
-	C.Bboolpr(tree.c_ptr, f)
+	C.OBboolpr(&ac.c_ctx, tree.c_ptr, f)
 
 	return C.GoString((*C.char)(c_val)), nil
 }
@@ -1121,8 +1121,8 @@ func (u *TypedUBF) BWrite() ([]byte, UBFError) {
 
 	defer C.fclose(f)
 
-	if SUCCEED != C.Bwrite(C.GetU(u.Buf.C_ptr), f) {
-		return nil, NewUBFError()
+	if SUCCEED != C.OBwrite(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), f) {
+		return nil, u.Buf.Ctx.NewUBFError()
 	}
 
 	size := C.ftell(f)
@@ -1165,8 +1165,8 @@ func (u *TypedUBF) BRead(dump []byte) UBFError {
 
 	defer C.fclose(f)
 
-	if SUCCEED != C.Bread(C.GetU(u.Buf.C_ptr), f) {
-		return NewUBFError()
+	if SUCCEED != C.OBread(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), f) {
+		return u.Buf.Ctx.NewUBFError()
 	}
 
 	return nil
@@ -1175,7 +1175,7 @@ func (u *TypedUBF) BRead(dump []byte) UBFError {
 //Test C buffer for UBF format
 //@return TRUE - buffer is UBF, FALSE - not UBF
 func (u *TypedUBF) BIsUBF() bool {
-	c_ret := C.Bisubf(C.GetU(u.Buf.C_ptr))
+	c_ret := C.OBisubf(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr))
 	if 1 == c_ret {
 		return true
 	}
@@ -1197,7 +1197,7 @@ func go_expr_callback_proxy(buf *C.char, funcname *C.char) C.long {
 //@param funcname Name of the function to be used in expression
 //@param f callback to function
 //@return UBF error
-func BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
+func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
 	if nil == f || "" == funcname {
 		return NewCustomUBFError(BEINVAL, "func nil or func name empty!")
 	}
@@ -1206,8 +1206,8 @@ func BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
 
 	defer C.free(unsafe.Pointer(c_funcname))
 
-	if SUCCEED != C.c_proxy_Bboolsetcbf(c_funcname) {
-		return NewUBFError()
+	if SUCCEED != C.c_proxy_Bboolsetcbf(&ac.c_ctx, c_funcname) {
+		return ac.NewUBFError()
 	} else {
 		exprfuncmap[funcname] = f
 	}
@@ -1219,14 +1219,15 @@ func BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
 //NOTE: realloc or other ATMI ops you can do with TypedUBF.Buf
 //@param size - buffer size
 //@return Typed UBF, ATMI error
-func NewUBF(size int64) (*TypedUBF, ATMIError) {
+func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError) {
 
 	var buf TypedUBF
 
-	if ptr, err := TpAlloc("UBF", "", size); nil != err {
+	if ptr, err := ac.TpAlloc("UBF", "", size); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
+		buf.Buf.Ctx = ac
 		return &buf, nil
 	}
 }

@@ -291,7 +291,7 @@ func (u *TypedUBF) _marshal(is_marshal bool, v interface{}) UBFError {
 		p := typ.Field(i)
 		if !p.Anonymous {
 			if p.Tag.Get("ubf") != "" {
-				if fldid, _ := BFldId(p.Tag.Get("ubf")); fldid != BBADFLDID {
+				if fldid, _ := u.Buf.Ctx.BFldId(p.Tag.Get("ubf")); fldid != BBADFLDID {
 					if is_marshal {
 						if err := u.marshalValue(&p, &rvv, fldid); nil != err {
 							return err
