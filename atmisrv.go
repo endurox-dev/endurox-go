@@ -248,6 +248,7 @@ func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fn
 	//TODO: Probably we want to cast it to some typed buffer...
 	svc.Data.C_ptr = p_svc.data
 	svc.Data.C_len = p_svc.len
+	svc.Data.Ctx = svc.Ctx
 
 	//Finalizer not needed here - auto-buffer (will be automatically free by endurox)
 	//runtime.SetFinalizer(&svc.Data, nil)

@@ -639,7 +639,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_type))
 	C.free(unsafe.Pointer(c_subtype))
 
-	runtime.SetFinalizer(&buf, ac.TpFree)
+	runtime.SetFinalizer(&buf, TpFree)
 
 	return &buf, err
 }
@@ -846,6 +846,17 @@ func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 //@param buf		ATMI buffer
 func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 	C.Otpfree(&ac.c_ctx, buf.C_ptr)
+	buf.C_ptr = nil
+}
+
+//Free the ATMI buffer
+//Context less operation
+//@param buf		ATMI buffer
+func TpFree(buf *ATMIBuf) {
+	C.tpfree(buf.C_ptr)
+	//Kill any context is appeared.
+	// TODO: No, might want to do it C func so that scheduler do not interrupt us...
+	//C.tpsetctxt(nil, 0);
 	buf.C_ptr = nil
 }
 
