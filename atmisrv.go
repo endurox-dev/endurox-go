@@ -19,12 +19,33 @@ extern int go_pollevent(TPCONTEXT_T ctx, int fd, unsigned int events);
 
 static int c_tpsrvinit(int argc, char **argv)
 {
-	return go_tpsrvinit();
+	int ret;
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
+	ret = go_tpsrvinit(ctx);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
+
 }
 
 static void c_tpsrvdone(void)
 {
-	go_tpsrvdone();
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
+	go_tpsrvdone(ctx);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
+
 }
 
 //Initialzie the callbacks
@@ -50,7 +71,11 @@ static void _GO_SVC_ENTRY (TPSVCINFO *p_svc)
 
 	//Call the service entry
 	go_cb_dispatch_call(ctx, p_svc, p_svc->name, p_svc->fname, p_svc->cltid.clientdata);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
 }
+
 
 //Wrapper for advertise
 static int __run_advertise(TPCONTEXT_T *p_ctx, char *svcnm, char *fname)
@@ -66,6 +91,8 @@ static int __run_advertise(TPCONTEXT_T *p_ctx, char *svcnm, char *fname)
 static void go_tpforward (TPCONTEXT_T *p_ctx, char *svc, char *data, long len, long flags)
 {
 	char svcnm[XATMI_SERVICE_NAME_LENGTH+1];
+	//Pass the current context
+	TPCONTEXT_T ctx;
 
 	strncpy(svcnm, svc, XATMI_SERVICE_NAME_LENGTH+1);
 	svcnm[XATMI_SERVICE_NAME_LENGTH] = '\0';
@@ -112,13 +139,17 @@ static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)
 //The actual event callback, will proxy the even to go
 static int c_pollevent(int fd, uint32_t events, void *ptr1)
 {
+	int ret;
 	//Pass the current context
 	TPCONTEXT_T ctx;
 
 	//Get the context
 	tpgetctxt(&ctx, 0);
 
-	return go_pollevent(ctx, fd, (unsigned int)events);
+	ret = go_pollevent(ctx, fd, (unsigned int)events);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
 }
 
 //Wrapper for FD poller
