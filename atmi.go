@@ -669,6 +669,7 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 func (ac *ATMICtx) TpInit() ATMIError {
 	var err ATMIError
 
+	//TODO: Move to context!
 	if SUCCEED != C.go_tpinit() {
 		err = ac.NewAtmiError()
 	}
