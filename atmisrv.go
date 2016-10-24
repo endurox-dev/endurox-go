@@ -154,9 +154,9 @@ type fdpollcallback struct {
 }
 
 //Callback defintions:
-type TPSrvInitFunc func() int //TODO: Add parsed args after --
-type TPSrvUninitFunc func()
-type TPServiceFunction func(svc *TPSVCINFO)
+type TPSrvInitFunc func(ctx *ATMICtx) int //TODO: Add parsed args after --
+type TPSrvUninitFunc func(ctx *ATMICtx)
+type TPServiceFunction func(ctx *ATMICtx, svc *TPSVCINFO)
 type TPPeriodCallback func() int
 type TPPollerFdCallback func(ctx *ATMICtx, fd int, events uint32, ptr1 interface{}) int
 
@@ -170,14 +170,15 @@ var funcmaps map[string]TPServiceFunction
 var funcpollers map[int]fdpollcallback
 
 //export go_tpsrvinit
-func go_tpsrvinit() C.int {
+func go_tpsrvinit(ctx C.TPCONTEXT_T) C.int {
 
 	var ret int
-
 	ret = FAIL
 
+	ac := MakeATMICtx(ctx)
+
 	if nil != cb_initf {
-		ret = cb_initf()
+		ret = cb_initf(ac)
 	}
 
 	return C.int(ret)
@@ -189,10 +190,11 @@ func go_periodcallback() C.int {
 }
 
 //export go_tpsrvdone
-func go_tpsrvdone() {
+func go_tpsrvdone(ctx C.TPCONTEXT_T) {
 
+	ac := MakeATMICtx(ctx)
 	if nil != cb_uninitf {
-		cb_uninitf()
+		cb_uninitf(ac)
 	}
 }
 
@@ -201,6 +203,7 @@ func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fn
 
 	var svc TPSVCINFO
 
+	ac := MakeATMICtx(ctx)
 	//Conver the svc info
 	svc.Cd = int(p_svc.cd)
 	svc.Flags = int64(p_svc.flags)
@@ -219,8 +222,7 @@ func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fn
 	//runtime.SetFinalizer(&svc.Data, nil)
 
 	//Dispatch the call to target function...
-	funcmaps[svc.Fname](&svc)
-
+	funcmaps[svc.Fname](ac, &svc)
 }
 
 //Continue main thread processing (go back to server polling)

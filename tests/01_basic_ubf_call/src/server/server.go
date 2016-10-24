@@ -3,6 +3,7 @@ package main
 import (
 	"atmi"
 	"fmt"
+	"os"
 	"ubftab"
 )
 
@@ -12,52 +13,52 @@ const (
 )
 
 //TESTSVC service
-func TESTSVC(svc *atmi.TPSVCINFO) {
+func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	ret := SUCCEED
 
 	//Get UBF Handler
-	ub, _ := atmi.CastToUBF(&svc.Data)
+	ub, _ := ac.CastToUBF(&svc.Data)
 
 	//Print the buffer to stdout
-        fmt.Println("Incoming request:")
+	fmt.Println("Incoming request:")
 	ub.BPrint()
 
-        //Resize buffer, to have some more space
-        if err :=ub.TpRealloc(1024); err!=nil {
+	//Resize buffer, to have some more space
+	if err := ub.TpRealloc(1024); err != nil {
 		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
-        }
+		ret = FAIL
+		goto out
+	}
 
 	//Set some field
 	if err := ub.BChg(ubftab.T_STRING_FLD, 0, "Hello World from Enduro/X service"); err != nil {
 		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
+		ret = FAIL
+		goto out
 	}
 	//Set second occurance too of the T_STRING_FLD field
-	if err:=ub.BChg(ubftab.T_STRING_FLD, 1, "This is line2"); err!=nil {
+	if err := ub.BChg(ubftab.T_STRING_FLD, 1, "This is line2"); err != nil {
 		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
-                ret = FAIL
-                goto out
-        }
+		ret = FAIL
+		goto out
+	}
 
 out:
-        //Return to the caller
-        if SUCCEED==ret {
-        	atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
-        } else {
-        	atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
-        }
+	//Return to the caller
+	if SUCCEED == ret {
+		ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+	} else {
+		ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+	}
 	return
 }
 
 //Server init
-func Init() int {
+func Init(ac *atmi.ATMICtx) int {
 
 	//Advertize TESTSVC
-	if err := atmi.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
+	if err := ac.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
 		fmt.Println(err)
 		return atmi.FAIL
 	}
@@ -66,14 +67,20 @@ func Init() int {
 }
 
 //Server shutdown
-func Uninit() {
+func Uninit(ac *atmi.ATMICtx) {
 	fmt.Println("Server shutting down...")
 }
 
 //Executable main entry point
 func main() {
+	//Have some context
+	err, ac := atmi.NewATMICtx()
 
-	//Run as server
-	atmi.TpRun(Init, Uninit)
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		os.Exit(atmi.FAIL)
+	} else {
+		//Run as server
+		ac.TpRun(Init, Uninit)
+	}
 }
-
