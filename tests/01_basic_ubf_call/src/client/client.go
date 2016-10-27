@@ -3,9 +3,9 @@ package main
 import (
 	"atmi"
 	"fmt"
-	"log"
-	http "net/http"
-	_ "net/http/pprof"
+	//"log"
+	//http "net/http"
+	//_ "net/http/pprof"
 	"os"
 	"runtime"
 	"ubftab"
@@ -22,11 +22,11 @@ func main() {
 	ret := SUCCEED
 
 	// Run profiler
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 
 		err, ac := atmi.NewATMICtx()
 
@@ -58,7 +58,8 @@ func main() {
 		}
 
 		//Print the output buffer
-		buf.BPrint()
+		//buf.BPrint()
+                buf.TpLogPrintUBF(atmi.LOG_DEBUG, "Got response")
 		ac.TpTerm()
 		ac.FreeATMICtx()
 		runtime.GC()

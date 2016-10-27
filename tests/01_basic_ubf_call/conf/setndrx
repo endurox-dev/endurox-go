@@ -75,5 +75,5 @@ export NDRX_CONFIG=`pwd`/ndrxconfig.xml
 export NDRX_DEBUG_CONF=`pwd`/debug.conf
 # UBFTAB
 export FLDTBLDIR=`pwd`/../src/ubftab
-export FIELDTBLS=test.fd
+export FIELDTBLS=test.fd,Exfields
 

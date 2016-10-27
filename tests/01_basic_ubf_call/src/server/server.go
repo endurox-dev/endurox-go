@@ -21,8 +21,8 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	ub, _ := ac.CastToUBF(&svc.Data)
 
 	//Print the buffer to stdout
-	fmt.Println("Incoming request:")
-	ub.BPrint()
+	//fmt.Println("Incoming request:")
+	ub.TpLogPrintUBF(atmi.LOG_DEBUG, "Incoming request:")
 
 	//Resize buffer, to have some more space
 	if err := ub.TpRealloc(1024); err != nil {
