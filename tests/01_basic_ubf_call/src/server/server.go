@@ -26,20 +26,20 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	//Resize buffer, to have some more space
 	if err := ub.TpRealloc(1024); err != nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
+		fmt.Printf("TpRealloc() Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 
 	//Set some field
 	if err := ub.BChg(ubftab.T_STRING_FLD, 0, "Hello World from Enduro/X service"); err != nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
+		fmt.Printf("Bchg() Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 	//Set second occurance too of the T_STRING_FLD field
 	if err := ub.BChg(ubftab.T_STRING_FLD, 1, "This is line2"); err != nil {
-		fmt.Printf("Got error: %d:[%s]\n", err.Code(), err.Message())
+		fmt.Printf("Bchg() 2 Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
