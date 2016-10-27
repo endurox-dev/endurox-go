@@ -26,7 +26,7 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 100; i++ {
 
 		err, ac := atmi.NewATMICtx()
 

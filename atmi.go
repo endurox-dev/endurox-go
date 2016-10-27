@@ -221,6 +221,20 @@ static int go_tpdequeue (TPCONTEXT_T *p_ctx,  char *qspace, char *qname, char **
 	return ret;
 }
 
+//We need a tpfree version with NULL context
+//So if we run in NULL context, then we must kill the new context appeared
+//after the function call... (if any...)
+//NOTE that tpfree will allocate auto-context if none currently present...
+void go_tpfree(char *ptr)
+{
+
+    // Allocate new context + set it...
+    TPCONTEXT_T c = tpnewctxt(0, 1);
+	tpfree(ptr);
+    tpfreectxt(c);
+
+}
+
 */
 import "C"
 import "unsafe"
@@ -588,7 +602,7 @@ func (e nstdError) Message() string {
 //@return ATMI Error, Pointer to ATMI Context object
 func NewATMICtx() (ATMIError, *ATMICtx) {
 	var ret ATMICtx
-	ret.c_ctx = C.tpnewctxt()
+	ret.c_ctx = C.tpnewctxt(0,0)
 	if nil == ret.c_ctx {
 		return NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
 			"new context - see ULOG for details"), nil
@@ -854,10 +868,10 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 //Context less operation
 //@param buf		ATMI buffer
 func TpFree(buf *ATMIBuf) {
-	C.tpfree(buf.C_ptr)
+
 	//Kill any context is appeared.
-	// TODO: No, might want to do it C func so that scheduler do not interrupt us...
-	//C.tpsetctxt(nil, 0);
+	C.go_tpfree(buf.C_ptr)
+	
 	buf.C_ptr = nil
 }
 
