@@ -221,6 +221,23 @@ static int go_tpdequeue (TPCONTEXT_T *p_ctx,  char *qspace, char *qname, char **
 	return ret;
 }
 
+//We need a tpfree version with NULL context
+//So if we run in NULL context, then we must kill the new context appeared
+//after the function call... (if any...)
+//NOTE that tpfree will allocate auto-context if none currently present...
+void go_tpfree(char *ptr)
+{
+
+
+	tpfree(ptr);
+
+	//Kill any new context appeared...
+	ndrx_nstd_tls_free(ndrx_nstd_tls_get());
+	ndrx_ubf_tls_free(ndrx_ubf_tls_get());
+	ndrx_atmi_tls_free(ndrx_atmi_tls_get(0));
+
+}
+
 */
 import "C"
 import "unsafe"
@@ -854,10 +871,10 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 //Context less operation
 //@param buf		ATMI buffer
 func TpFree(buf *ATMIBuf) {
-	C.tpfree(buf.C_ptr)
+
 	//Kill any context is appeared.
-	// TODO: No, might want to do it C func so that scheduler do not interrupt us...
-	//C.tpsetctxt(nil, 0);
+	C.go_tpfree(buf.C_ptr)
+	
 	buf.C_ptr = nil
 }
 
