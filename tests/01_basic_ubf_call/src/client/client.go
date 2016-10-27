@@ -17,7 +17,7 @@ func main() {
 
 	ret := SUCCEED
 
-	for i := 0; i < 1000000000; i++ {
+	for i := 0; i < 100; i++ {
 
 		err, ac := atmi.NewATMICtx()
 

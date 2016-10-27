@@ -228,13 +228,10 @@ static int go_tpdequeue (TPCONTEXT_T *p_ctx,  char *qspace, char *qname, char **
 void go_tpfree(char *ptr)
 {
 
-
+    // Allocate new context + set it...
+    TPCONTEXT_T c = tpnewctxt(0, 1);
 	tpfree(ptr);
-
-	//Kill any new context appeared...
-	ndrx_nstd_tls_free(ndrx_nstd_tls_get());
-	ndrx_ubf_tls_free(ndrx_ubf_tls_get());
-	ndrx_atmi_tls_free(ndrx_atmi_tls_get(0));
+    tpfreectxt(c);
 
 }
 
@@ -605,7 +602,7 @@ func (e nstdError) Message() string {
 //@return ATMI Error, Pointer to ATMI Context object
 func NewATMICtx() (ATMIError, *ATMICtx) {
 	var ret ATMICtx
-	ret.c_ctx = C.tpnewctxt()
+	ret.c_ctx = C.tpnewctxt(0,0)
 	if nil == ret.c_ctx {
 		return NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
 			"new context - see ULOG for details"), nil
