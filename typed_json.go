@@ -45,7 +45,7 @@ func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError) {
 }
 
 //Get the JSON Handler from ATMI Buffer
-func CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError) {
+func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError) {
 	var buf TypedJSON
 
 	buf.Buf = abuf

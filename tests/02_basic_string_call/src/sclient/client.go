@@ -3,39 +3,52 @@ package main
 import (
 	"atmi"
 	"fmt"
-        "os"
+	"os"
 )
 
 const (
-        SUCCEED = 0
-        FAIL = -1
+	SUCCEED = 0
+	FAIL    = -1
 )
 
 //Binary main entry
 func main() {
 
-        ret:=SUCCEED
+	ret := SUCCEED
+	var ac *atmi.ATMICtx
+	var err atmi.ATMIError
+	//Return to the caller (kind of destructor..)
+	defer func() {
+		if nil != ac {
+			ac.TpTerm()
+			ac.FreeATMICtx() // Kill the context
+		}
+		os.Exit(ret)
+	}()
 
-        buf, err := atmi.NewString("Hello World")
+	ac, err = atmi.NewATMICtx()
 
-        if err != nil {
-                fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message());
-                ret = FAIL
-                goto out
-        }
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		ret = FAIL
+		return
+	}
 
-        //Call the server
-        if _, err:=atmi.TpCall("TESTSVC", buf, 0); nil!=err {
-                fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message());
-                ret = FAIL
-                goto out
-        }
-        
-        //Print the output buffer
-        fmt.Printf("Got response: [%s]\n", buf.GetString())
-        
-out:
-        //Close the ATMI session
-        atmi.TpTerm()
-        os.Exit(ret)
+	buf, err := ac.NewString("Hello World")
+
+	if err != nil {
+		ac.TpLogError("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		return
+	}
+
+	//Call the server
+	if _, err := ac.TpCall("TESTSVC", buf, 0); nil != err {
+		ac.TpLogError("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		return
+	}
+
+	//Print the output buffer
+	fmt.Printf("Got response: [%s]\n", buf.GetString())
 }

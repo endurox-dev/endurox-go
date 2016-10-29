@@ -10,8 +10,8 @@ package atmi
 #include <onerror.h>
 
 // Wrapper for TPNIT
-static int go_tpinit(void) {
-	return tpinit(NULL);
+static int go_tpinit(TPCONTEXT_T *p_ctxt) {
+	return Otpinit(p_ctxt, NULL);
 }
 
 //ATMI library error code
@@ -600,14 +600,14 @@ func (e nstdError) Message() string {
 
 //Allocate new ATMI context
 //@return ATMI Error, Pointer to ATMI Context object
-func NewATMICtx() (ATMIError, *ATMICtx) {
+func NewATMICtx() (*ATMICtx, ATMIError) {
 	var ret ATMICtx
-	ret.c_ctx = C.tpnewctxt(0,0)
+	ret.c_ctx = C.tpnewctxt(0, 0)
 	if nil == ret.c_ctx {
-		return NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
-			"new context - see ULOG for details"), nil
+		return nil, NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
+			"new context - see ULOG for details")
 	}
-	return nil, &ret
+	return &ret, nil
 }
 
 //Free up the ATMI Context
@@ -653,7 +653,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_type))
 	C.free(unsafe.Pointer(c_subtype))
 
-	runtime.SetFinalizer(&buf, TpFree)
+	runtime.SetFinalizer(&buf, tpfree)
 
 	return &buf, err
 }
@@ -683,8 +683,7 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 func (ac *ATMICtx) TpInit() ATMIError {
 	var err ATMIError
 
-	//TODO: Move to context!
-	if SUCCEED != C.go_tpinit() {
+	if SUCCEED != C.go_tpinit(&ac.c_ctx) {
 		err = ac.NewAtmiError()
 	}
 
@@ -864,14 +863,14 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 	buf.C_ptr = nil
 }
 
-//Free the ATMI buffer
+//Free the ATMI buffer (internal version, for finalizer)
 //Context less operation
 //@param buf		ATMI buffer
-func TpFree(buf *ATMIBuf) {
+func tpfree(buf *ATMIBuf) {
 
 	//Kill any context is appeared.
 	C.go_tpfree(buf.C_ptr)
-	
+
 	buf.C_ptr = nil
 }
 

@@ -74,7 +74,7 @@ func Uninit(ac *atmi.ATMICtx) {
 //Executable main entry point
 func main() {
 	//Have some context
-	err, ac := atmi.NewATMICtx()
+	ac, err := atmi.NewATMICtx()
 
 	if nil != err {
 		fmt.Errorf("Failed to allocate cotnext!", err)

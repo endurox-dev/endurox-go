@@ -53,7 +53,7 @@ func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 }
 
 //Get the String Handler
-func CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError) {
+func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError) {
 	var buf TypedCarray
 	buf.Buf = abuf
 	return buf, nil

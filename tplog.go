@@ -116,6 +116,54 @@ func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 	C.tplog(C.int(lev), c_msg)
 }
 
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Debug level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
+	ac.TpLog(LOG_DEBUG, format, a)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Info level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
+	ac.TpLog(LOG_INFO, format, a)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Warning level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
+	ac.TpLog(LOG_WARN, format, a)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Error level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
+	ac.TpLog(LOG_ERROR, format, a)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Fatal/Always level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
+	ac.TpLog(LOG_ALWAYS, format, a)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//Fatal/Always level wrapper
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLogFatal(format string, a ...interface{}) {
+	ac.TpLog(LOG_ALWAYS, format, a)
+}
+
 //Return request logging file (if there is one currenlty in use)
 // (see tploggetreqfile(3) manpage)
 //@return Status (request logger open or not), full path to request file

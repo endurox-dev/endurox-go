@@ -44,7 +44,7 @@ func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError) {
 }
 
 //Get the String Handler from ATMI Buffer
-func CastToString(abuf *ATMIBuf) (TypedString, ATMIError) {
+func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (TypedString, ATMIError) {
 	var buf TypedString
 
 	buf.Buf = abuf

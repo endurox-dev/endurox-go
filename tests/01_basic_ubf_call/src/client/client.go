@@ -28,7 +28,7 @@ func main() {
 
 	for i := 0; i < 10000; i++ {
 
-		err, ac := atmi.NewATMICtx()
+		ac, err := atmi.NewATMICtx()
 
 		if nil != err {
 			fmt.Errorf("Failed to allocate cotnext!", err)
