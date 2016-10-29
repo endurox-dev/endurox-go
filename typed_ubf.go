@@ -9,6 +9,7 @@ package atmi
 #include <ubf.h>
 #include <oubf.h>
 #include <oatmi.h>
+#include <sys_unix.h>
 
 
 //Get the UBF Error code
