@@ -1,7 +1,7 @@
 package atmi
 
 /*
-#cgo LDFLAGS: -latmi -lrt -lm -lubf -lnstd -ldl
+#cgo pkg-config: atmisrvinteg
 
 #include <ndebug.h>
 #include <string.h>
