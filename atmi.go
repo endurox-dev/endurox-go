@@ -607,11 +607,22 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 		return nil, NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
 			"new context - see ULOG for details")
 	}
+
+	runtime.SetFinalizer(&ret, freeATMICtx)
+
 	return &ret, nil
 }
 
 //Free up the ATMI Context
 func (ac *ATMICtx) FreeATMICtx() {
+	ac.TpTerm() //This extra, but let it be
+	C.tpfreectxt(ac.c_ctx)
+	ac.c_ctx = nil
+}
+
+//Kill the ATMI context (internal version for finalizer)
+func freeATMICtx(ac *ATMICtx) {
+	ac.TpTerm() //This extra, but let it be
 	C.tpfreectxt(ac.c_ctx)
 	ac.c_ctx = nil
 }
