@@ -596,6 +596,8 @@ func (e nstdError) Message() string {
 
 ///////////////////////////////////////////////////////////////////////////////////
 // API Section
+// TODO: Think about persistent association with thread. So that
+//       in XA case it would be simpler to manipulate with DB + XATMI...
 ///////////////////////////////////////////////////////////////////////////////////
 
 //Allocate new ATMI context
@@ -618,6 +620,29 @@ func (ac *ATMICtx) FreeATMICtx() {
 	ac.TpTerm() //This extra, but let it be
 	C.tpfreectxt(ac.c_ctx)
 	ac.c_ctx = nil
+}
+
+//Associate current OS thread with context
+//This might be needed for global transaction processing
+//Which uses underlaying OS threads for transaction association
+func (ac *ATMICtx) AssocThreadWithCtx() ATMIError {
+
+	if ret := C.tpsetctxt(ac.c_ctx, 0); SUCCEED != ret {
+		return ac.NewAtmiError()
+	}
+
+	return nil
+}
+
+//Disassocate current os thread from context
+//This might be needed for global transaction processing
+//Which uses underlaying OS threads for transaction association
+func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError {
+
+	if ret := C.tpgetctxt(&ac.c_ctx, 0); SUCCEED != ret {
+		return ac.NewAtmiError()
+	}
+	return nil
 }
 
 //Kill the ATMI context (internal version for finalizer)
