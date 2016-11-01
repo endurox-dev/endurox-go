@@ -22,8 +22,12 @@ var M_db *sql.DB
 func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	//Run in single thread (this will include further connection to db)
-
 	runtime.LockOSThread()
+
+	////////////////////////////////////////////////////////////////////////
+	//DB must run in global transaction...
+	////////////////////////////////////////////////////////////////////////
+	ac.AssocThreadWithCtx()
 
 	ret := SUCCEED
 
@@ -44,11 +48,6 @@ func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		goto out
 	}
 
-	////////////////////////////////////////////////////////////////////////
-	//DB must run in global transaction...
-	////////////////////////////////////////////////////////////////////////
-	ac.AssocThreadWithCtx()
-
 	// Get the next customer id
 	if rows, err := M_db.Query("select nvl(max(CUSTOMER_ID),0)+1  from customers"); err != nil {
 		fmt.Println("Query error: ", err)
@@ -62,11 +61,6 @@ func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 			fmt.Printf("Got new ID: [%d]", id)
 		}
 	}
-
-	////////////////////////////////////////////////////////////////////////
-	//Switch Back to object mode
-	////////////////////////////////////////////////////////////////////////
-	ac.DisassocThreadFromCtx()
 
 	//Return ID back to caller.
 	if err := ub.BChg(ubftab.T_CUSTOMER_ID, 0, id); err != nil {
@@ -90,11 +84,6 @@ func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		goto out
 	}
 
-	////////////////////////////////////////////////////////////////////////
-	//DB must run in global transaction...
-	////////////////////////////////////////////////////////////////////////
-	ac.AssocThreadWithCtx()
-
 	//Now insert the record
 	if _, err := M_db.Exec("INSERT INTO customers (customer_id, customer_name, city) " +
 		" VALUES (" + id + ", '" + cust_name + "', '" + city + "')"); err != nil {
@@ -103,12 +92,13 @@ func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		goto out
 	}
 
+out:
 	////////////////////////////////////////////////////////////////////////
 	// Disassoc thread from Ctx
 	////////////////////////////////////////////////////////////////////////
-	ac.AssocThreadWithCtx()
+	ac.DisassocThreadFromCtx()
+	// Might want to unlock the thread.
 
-out:
 	//Return to the caller
 	if SUCCEED == ret {
 		ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
