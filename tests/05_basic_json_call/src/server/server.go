@@ -3,6 +3,7 @@ package main
 import (
 	"atmi"
 	"fmt"
+	"os"
 	"ubftab"
 )
 
@@ -12,12 +13,12 @@ const (
 )
 
 //TESTSVC service
-func TESTSVC(svc *atmi.TPSVCINFO) {
+func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	ret := SUCCEED
 
 	//Get UBF Handler
-	ub, _ := atmi.CastToUBF(&svc.Data)
+	ub, _ := ac.CastToUBF(&svc.Data)
 
 	//Print the buffer to stdout
 	fmt.Println("Incoming request:")
@@ -26,9 +27,9 @@ func TESTSVC(svc *atmi.TPSVCINFO) {
 	//Return to the caller
 	defer func() {
 		if SUCCEED == ret {
-			atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+			ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
 		} else {
-			atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+			ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
 		}
 	}()
 
@@ -64,10 +65,10 @@ func TESTSVC(svc *atmi.TPSVCINFO) {
 }
 
 //Server init
-func Init() int {
+func Init(ac *atmi.ATMICtx) int {
 
 	//Advertize TESTSVC
-	if err := atmi.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
+	if err := ac.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
 		fmt.Println(err)
 		return atmi.FAIL
 	}
@@ -76,13 +77,22 @@ func Init() int {
 }
 
 //Server shutdown
-func Uninit() {
+func Uninit(ac *atmi.ATMICtx) {
 	fmt.Println("Server shutting down...")
 }
 
 //Executable main entry point
 func main() {
+	//Have some context
+	ac, err := atmi.NewATMICtx()
 
-	//Run as server
-	atmi.TpRun(Init, Uninit)
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		os.Exit(atmi.FAIL)
+	} else {
+		//Run as server
+		ac.TpRun(Init, Uninit)
+		ac.FreeATMICtx()
+	}
+
 }

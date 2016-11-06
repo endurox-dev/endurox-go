@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 const (
@@ -28,47 +29,64 @@ func main() {
 
 	ret := SUCCEED
 
-	m := Message{65, 100, 1294706395881547000, 66.77, 11111111222.77, "Hello Wolrd", []byte{0, 1, 2, 3}}
+	defer func() {
+		os.Exit(ret)
+	}()
+	//Have some loop for memory leak checks...
+	for i := 0; i < 10000; i++ {
+		var ac *atmi.ATMICtx
+		var err atmi.ATMIError
+		//Allocate context
+		ac, err = atmi.NewATMICtx()
+		if nil != err {
+			fmt.Errorf("Failed to allocate cotnext!", err)
+			ret = FAIL
+			return
+		}
 
-	b, _ := json.Marshal(m)
+		m := Message{65, 100, 1294706395881547000, 66.77, 11111111222.77, "Hello Wolrd", []byte{0, 1, 2, 3}}
 
-	bb := []byte{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+		b, _ := json.Marshal(m)
 
-	fmt.Printf("Got JSON [%s]\n", string(b))
+		bb := []byte{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
 
-	buf, err := atmi.NewJSON(b)
+		fmt.Printf("Got JSON [%s]\n", string(b))
 
-	if err != nil {
-		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-		ret = FAIL
-		goto out
+		buf, err := ac.NewJSON(b)
+
+		if err != nil {
+			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			return
+		}
+
+		//Call the server
+		if _, err := ac.TpCall("TESTSVC", buf, 0); nil != err {
+			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			return
+		}
+
+		json.Unmarshal(buf.GetJSON(), &m)
+
+		if m.T_STRING_FLD != "Hello World from Enduro/X service" {
+			fmt.Printf("Invalid message recieved: [%s]\n", m.T_STRING_FLD)
+			ret = FAIL
+			goto out
+		}
+
+		if 0 != bytes.Compare(bb, m.T_CARRAY_FLD) {
+			fmt.Printf("Invalid c array received...")
+			ret = FAIL
+			return
+		}
+
+		fmt.Println(m)
+		//Close the ATMI session
+		runtime.GC()
 	}
-
-	//Call the server
-	if _, err := atmi.TpCall("TESTSVC", buf, 0); nil != err {
-		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-		ret = FAIL
-		goto out
-	}
-
-	json.Unmarshal(buf.GetJSON(), &m)
-
-	if m.T_STRING_FLD != "Hello World from Enduro/X service" {
-		fmt.Printf("Invalid message recieved: [%s]\n", m.T_STRING_FLD)
-		ret = FAIL
-		goto out
-	}
-
-	if 0 != bytes.Compare(bb, m.T_CARRAY_FLD) {
-		fmt.Printf("Invalid c array received...")
-		ret = FAIL
-		goto out
-	}
-
-	fmt.Println(m)
 
 out:
-	//Close the ATMI session
-	atmi.TpTerm()
+
 	os.Exit(ret)
 }
