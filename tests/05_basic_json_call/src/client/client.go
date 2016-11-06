@@ -1,5 +1,8 @@
 package main
 
+// #include <signal.h>
+import "C"
+
 import (
 	"atmi"
 	"bytes"
@@ -7,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 )
 
 const (
@@ -24,16 +28,20 @@ type Message struct {
 	T_CARRAY_FLD []byte
 }
 
+var M_ret chan int
+var M_wg sync.WaitGroup
+
 //Binary main entry
-func main() {
+func async_main() {
 
 	ret := SUCCEED
 
 	defer func() {
-		os.Exit(ret)
+		M_wg.Done()
+		M_ret <- ret
 	}()
 	//Have some loop for memory leak checks...
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		var ac *atmi.ATMICtx
 		var err atmi.ATMIError
 		//Allocate context
@@ -89,4 +97,29 @@ func main() {
 out:
 
 	os.Exit(ret)
+}
+
+func main() {
+
+	// you can also add these one at
+	// a time if you need to
+	M_ret = make(chan int, 10)
+	M_wg.Add(10)
+        // Have some core dumps...
+        C.signal(11, nil);
+
+	for i := 0; i < 10; i++ {
+		go async_main()
+	}
+
+	M_wg.Wait()
+
+	for ret := range M_ret {
+		fmt.Println(ret)
+		if ret == FAIL {
+			os.Exit(FAIL)
+		}
+	}
+
+	os.Exit(SUCCEED)
 }
