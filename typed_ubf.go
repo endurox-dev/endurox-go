@@ -77,6 +77,16 @@ static int c_proxy_Bboolsetcbf(TPCONTEXT_T *p_ctx, char *funcname)
 	return OBboolsetcbf(p_ctx, funcname, c_expr_callback_proxy);
 }
 
+//Will run the Btreefree in temp context
+static void go_Btreefree(char *ptr)
+{
+
+    // Allocate new context + set it...
+    TPCONTEXT_T c = tpnewctxt(0, 1);
+    Btreefree(ptr);
+    tpfreectxt(c);
+}
+
 */
 import "C"
 import "fmt"
@@ -782,7 +792,9 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 	tree.c_ptr = c_ptr
 
 	//Free up the data once GCed
-	runtime.SetFinalizer(&tree, ac.BTreeFree)
+	//Well we might have issue here, the ATMI Context might be already
+	//Deallocated, thus we need to have temp context free op.
+	runtime.SetFinalizer(&tree, btreeFree)
 
 	return &tree, nil
 }
@@ -790,6 +802,11 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 //Free the expression buffer
 func (ac *ATMICtx) BTreeFree(tree *ExprTree) {
 	C.OBtreefree(&ac.c_ctx, tree.c_ptr)
+}
+
+//Internal version (uses temp context)
+func btreeFree(tree *ExprTree) {
+	C.go_Btreefree(tree.c_ptr)
 }
 
 //Test the expresion tree to current UBF buffer
