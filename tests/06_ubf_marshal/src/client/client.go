@@ -9,9 +9,10 @@ import (
 	"atmi"
 	"bytes"
 	"fmt"
-	"os"
+	"sync"
 	"runtime"
 	"ubftab"
+	"os"
 )
 
 const (
@@ -43,8 +44,11 @@ type TestStruct struct {
 	CarrayTest [][]byte `ubf:"T_CARRAY_FLD"`
 }
 
+var M_ret chan int
+var M_wg sync.WaitGroup
+
 //Binary main entry
-func main() {
+func async_main() {
 
         C.signal(11, nil);
 
@@ -52,8 +56,9 @@ func main() {
 
 	//Close the ATMI session at exit.
 	defer func() {
-		os.Exit(ret)
-	}()
+                M_wg.Done()
+                M_ret <- ret
+        }()
 
 	//Have some loop for memory leak checks...
 	for i := 0; i < 100; i++ {
@@ -372,4 +377,36 @@ func main() {
 
 		runtime.GC()
 	}
+
+}
+
+func main() {
+
+        // you can also add these one at
+        // a time if you need to
+        M_ret = make(chan int, 10)
+        M_wg.Add(10)
+        // Have some core dumps...
+        C.signal(11, nil);
+
+        for i := 0; i < 10; i++ {
+                go async_main()
+        }
+
+        M_wg.Wait()
+
+	i:=0
+        for ret := range M_ret {
+                fmt.Println(ret)
+		i++
+                if ret == FAIL {
+                        os.Exit(-1)
+                }
+		//For some reason the for loop does not terminate by it self..
+		if i>= 10 {
+			break
+		}
+        }
+
+        os.Exit(0)
 }

@@ -801,12 +801,17 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 
 //Free the expression buffer
 func (ac *ATMICtx) BTreeFree(tree *ExprTree) {
+	//Unset the finalizer
 	C.OBtreefree(&ac.c_ctx, tree.c_ptr)
+	tree.c_ptr = nil
 }
 
 //Internal version (uses temp context)
 func btreeFree(tree *ExprTree) {
-	C.go_Btreefree(tree.c_ptr)
+	if nil!=tree.c_ptr {
+		C.go_Btreefree(tree.c_ptr)
+		tree.c_ptr = nil
+	}
 }
 
 //Test the expresion tree to current UBF buffer

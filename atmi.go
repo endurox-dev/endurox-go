@@ -903,11 +903,12 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 //Context less operation
 //@param buf		ATMI buffer
 func tpfree(buf *ATMIBuf) {
-
 	//Kill any context is appeared.
-	C.go_tpfree(buf.C_ptr)
-
-	buf.C_ptr = nil
+	//Protect us from garbadge collector
+	if buf.C_ptr != nil {
+		C.go_tpfree(buf.C_ptr)
+		buf.C_ptr = nil
+	}
 }
 
 //Commit global transaction

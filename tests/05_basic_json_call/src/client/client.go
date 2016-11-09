@@ -80,7 +80,7 @@ func async_main() {
 		if m.T_STRING_FLD != "Hello World from Enduro/X service" {
 			fmt.Printf("Invalid message recieved: [%s]\n", m.T_STRING_FLD)
 			ret = FAIL
-			goto out
+                        return
 		}
 
 		if 0 != bytes.Compare(bb, m.T_CARRAY_FLD) {
@@ -94,9 +94,6 @@ func async_main() {
 		runtime.GC()
 	}
 
-out:
-
-	os.Exit(ret)
 }
 
 func main() {
@@ -114,11 +111,17 @@ func main() {
 
 	M_wg.Wait()
 
+        i:=0
 	for ret := range M_ret {
 		fmt.Println(ret)
 		if ret == FAIL {
 			os.Exit(FAIL)
 		}
+                i++
+                //For some reason the for loop does not terminate by it self..
+                if i>= 10 {
+                        break
+                }
 	}
 
 	os.Exit(SUCCEED)
