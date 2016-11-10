@@ -3,6 +3,7 @@ package main
 import (
 	"atmi"
 	"fmt"
+	"os"
 	"runtime"
 	"ubftab"
 )
@@ -15,41 +16,41 @@ const (
 var M_counter = 0
 
 //Set the request file
-func GETLOGFILE(svc *atmi.TPSVCINFO) {
+func GETLOGFILE(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	runtime.LockOSThread()
 	ret := SUCCEED
 
 	//Get UBF Handler
-	ub, _ := atmi.CastToUBF(&svc.Data)
+	ub, _ := ac.CastToUBF(&svc.Data)
 
 	//Return to the caller
 	defer func() {
 
-		atmi.TpLogCloseReqFile()
+		ac.TpLogCloseReqFile()
 		if SUCCEED == ret {
-			atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+			ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
 		} else {
-			atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+			ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
 		}
 	}()
 
 	M_counter++
-	atmi.TpLog(atmi.LOG_DEBUG, "Current counter = %d", M_counter)
+	ac.TpLog(atmi.LOG_DEBUG, "Current counter = %d", M_counter)
 
-	atmi.TpLogSetReqFile(&svc.Data, fmt.Sprintf("/tmp/08_request%d.log", M_counter), "")
+	ac.TpLogSetReqFile(&svc.Data, fmt.Sprintf("/tmp/08_request%d.log", M_counter), "")
 
-	atmi.TpLog(atmi.LOG_WARN, "Hello from GETLOGFILE!")
+	ac.TpLog(atmi.LOG_WARN, "Hello from GETLOGFILE!")
 
 }
 
 //TESTSVC service
-func TESTSVC(svc *atmi.TPSVCINFO) {
+func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	ret := SUCCEED
 
 	//Get UBF Handler
-	ub, _ := atmi.CastToUBF(&svc.Data)
+	ub, _ := ac.CastToUBF(&svc.Data)
 
-	atmi.TpLogSetReqFile(&svc.Data, "", "")
+	ac.TpLogSetReqFile(&svc.Data, "", "")
 	//Print the buffer to stdout
 
 	ub.TpLogPrintUBF(atmi.LOG_ERROR, "Got call")
@@ -57,59 +58,55 @@ func TESTSVC(svc *atmi.TPSVCINFO) {
 	//Resize buffer, to have some more space
 	size, _ := ub.BSizeof()
 	if err := ub.TpRealloc(size + 1024); err != nil {
-		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ac.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 
 	//Set some field
 	if err := ub.BAdd(ubftab.T_STRING_FLD, "Hello World from Enduro/X service"); err != nil {
-		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ac.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 	//Set second occurance too of the T_STRING_FLD field
 	if err := ub.BAdd(ubftab.T_STRING_FLD, "This is line2"); err != nil {
-		atmi.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
+		ac.TpLog(atmi.LOG_ERROR, "Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 
 out:
-	atmi.TpLog(atmi.LOG_ERROR, "Returning... %d", ret)
+	ac.TpLog(atmi.LOG_ERROR, "Returning... %d", ret)
 
-	atmi.TpLogCloseReqFile()
+	ac.TpLogCloseReqFile()
 
-	atmi.TpLog(atmi.LOG_DEBUG, "bank to main")
+	ac.TpLog(atmi.LOG_DEBUG, "bank to main")
 
 	//Return to the caller
 	if SUCCEED == ret {
-		atmi.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+		ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
 	} else {
-		atmi.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+		ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
 	}
 	return
 }
 
 //Server init
-func Init() int {
-
-	//This will affect the main thread & dispatcher
-	//Thus above services will be locked to thread
-	runtime.LockOSThread()
+func Init(ac *atmi.ATMICtx) int {
 
 	//Configure logger
-	atmi.TpLogConfig(atmi.LOG_FACILITY_NDRX|atmi.LOG_FACILITY_UBF|atmi.LOG_FACILITY_TP,
+	ac.TpLogConfig(atmi.LOG_FACILITY_NDRX|atmi.LOG_FACILITY_UBF|atmi.LOG_FACILITY_TP,
 		-1, "file=/tmp/08_server.log ndrx=5 ubf=0 tp=5", "SRV", "")
 
 	//Advertize TESTSVC
-	if err := atmi.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
-		atmi.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
+	if err := ac.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
+		ac.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
 		return atmi.FAIL
 	}
 
-	if err := atmi.TpAdvertise("GETLOGFILE", "GETLOGFILE", GETLOGFILE); err != nil {
-		atmi.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
+	if err := ac.TpAdvertise("GETLOGFILE", "GETLOGFILE", GETLOGFILE); err != nil {
+		ac.TpLog(atmi.LOG_ERROR, fmt.Sprint(err))
 		return atmi.FAIL
 	}
 
@@ -117,13 +114,21 @@ func Init() int {
 }
 
 //Server shutdown
-func Uninit() {
+func Uninit(ac *atmi.ATMICtx) {
 	fmt.Println("Server shutting down...")
 }
 
 //Executable main entry point
 func main() {
+	//Have some context
+	ac, err := atmi.NewATMICtx()
 
-	//Run as server
-	atmi.TpRun(Init, Uninit)
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		os.Exit(atmi.FAIL)
+	} else {
+		//Run as server
+		ac.TpRun(Init, Uninit)
+		ac.FreeATMICtx()
+	}
 }

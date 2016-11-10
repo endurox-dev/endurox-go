@@ -1,5 +1,10 @@
 package main
 
+/*
+#include <signal.h>
+*/
+import "C"
+
 import (
 	"atmi"
 	"fmt"
@@ -19,6 +24,9 @@ func main() {
 
 	ret := SUCCEED
 	defer func() { os.Exit(ret) }()
+
+        // Have some core dumps...
+        C.signal(11, nil);
 
 	//Have some loop for memory leak checks...
 	for i := 0; i < 1000; i++ {

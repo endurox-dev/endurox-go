@@ -647,9 +647,12 @@ func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError {
 
 //Kill the ATMI context (internal version for finalizer)
 func freeATMICtx(ac *ATMICtx) {
-	ac.TpTerm() //This extra, but let it be
-	C.tpfreectxt(ac.c_ctx)
-	ac.c_ctx = nil
+	if nil != ac.c_ctx {
+		ac.TpTerm() //This extra, but let it be
+		C.tpfreectxt(ac.c_ctx)
+
+		ac.c_ctx = nil
+	}
 }
 
 //Make context object from C pointer

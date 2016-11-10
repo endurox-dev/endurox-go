@@ -1,0 +1,39 @@
+The book of the Enduro/X for Golang
+===================================
+Madars Vitolins
+v1.0, 2016-11:
+	Initial draft
+:doctype: book
+
+== Introduction
+
+>>TODO <<
+
+== API Model
+
+>>TODO <<
+
+== API Calls
+
+>>TODO <<
+
+== Conclusions
+
+>>TODO <<
+
+:numbered!:
+
+[bibliography]
+Additional documentation 
+------------------------
+This section lists additional related documents.
+
+[bibliography]
+.Resources
+- [[[EX_DEVGUIDE]]] EnduroX Internal Develper Guide.
+
+
+////////////////////////////////////////////////////////////////
+The index is normally left completely empty, it's contents being
+generated automatically by the DocBook toolchain.
+////////////////////////////////////////////////////////////////
