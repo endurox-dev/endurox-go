@@ -618,8 +618,7 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 //Free up the ATMI Context
 func (ac *ATMICtx) FreeATMICtx() {
 	ac.TpTerm() //This extra, but let it be
-	C.tpfreectxt(ac.c_ctx)
-	ac.c_ctx = nil
+	C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
 }
 
 //Associate current OS thread with context
@@ -648,10 +647,8 @@ func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError {
 //Kill the ATMI context (internal version for finalizer)
 func freeATMICtx(ac *ATMICtx) {
 	if nil != ac.c_ctx {
-		ac.TpTerm() //This extra, but let it be
-		C.tpfreectxt(ac.c_ctx)
-
-		ac.c_ctx = nil
+		//ac.TpTerm() //This extra, but let it be - not needed, free will do.
+		C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
 	}
 }
 

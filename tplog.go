@@ -113,7 +113,7 @@ func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 	c_msg := C.CString(msg)
 	defer C.free(unsafe.Pointer(c_msg))
 
-	C.tplog(C.int(lev), c_msg)
+	C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)

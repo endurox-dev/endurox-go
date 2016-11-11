@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"time"
+//	"time"
 	"ubftab"
 )
 
@@ -30,11 +30,11 @@ func testGo1() {
 	ac.TpLogConfig(atmi.LOG_FACILITY_TP_THREAD,
 		-1, "file=/tmp/08_th1.log ndrx=5 ubf=5 tp=5", "TH1", "")
 
-	time.Sleep(1000 * time.Millisecond)
+	//time.Sleep(1000 * time.Millisecond)
 
 	ac.TpLog(atmi.LOG_ALWAYS, "Hello from TH1")
 
-	time.Sleep(1000 * time.Millisecond)
+	//time.Sleep(1000 * time.Millisecond)
 
 }
 
@@ -50,11 +50,11 @@ func testGo2() {
 	ac.TpLogConfig(atmi.LOG_FACILITY_TP_THREAD,
 		-1, "file=/tmp/08_th2.log ndrx=5 ubf=5 tp=5", "TH2", "")
 
-	time.Sleep(1000 * time.Millisecond)
+	//time.Sleep(1000 * time.Millisecond)
 
 	ac.TpLog(atmi.LOG_ALWAYS, "Hello from TH2")
 
-	time.Sleep(1000 * time.Millisecond)
+	//time.Sleep(1000 * time.Millisecond)
 
 }
 
@@ -70,7 +70,7 @@ func main() {
 	// Have some core dumps...
 	C.signal(11, nil)
 
-	for i := 0; i < 1000000000; i++ {
+	for i := 0; i < 100; i++ {
 		var ac *atmi.ATMICtx
 		var err atmi.ATMIError
 		//bytes := []byte{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}

@@ -18,7 +18,7 @@ client
 
 RET=$?
 
-if [ "X$RET" != "X0"]; then
+if [ "X$RET" != "X0" ]; then
         echo "Invalid exit code $RET"
         exit $RET
 fi
@@ -52,9 +52,9 @@ if [[ "X$OUT" == "X" ]]; then
 fi
 
 # Test reqeust logging
-OUT=`grep 'HELLO FROM CLIENT 94 abc' /tmp/08_request95.log`
+OUT=`grep 'HELLO FROM CLIENT' /tmp/08_request95.log`
 if [[ "X$OUT" == "X" ]]; then
-        echo "TESTERROR: [HELLO FROM CLIENT 94 abc] not found in /tmp/08_request95.log"
+        echo "TESTERROR: [HELLO FROM CLIENT] not found in /tmp/08_request95.log"
         exit 1
 fi
 
