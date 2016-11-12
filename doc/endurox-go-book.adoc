@@ -41,7 +41,7 @@ The Enduro/X API object oriented where the main Enduro/X objects are held into G
 structures. List of methods are binded to the structures. Here is the main model
 of the Go API:
 
-
+![API Model](images/class_diagram.png?raw=true "Class diagram")
 
 
 == Enduro/X Go features
