@@ -14,12 +14,40 @@ is in the heart of the Enduro/X. Other functionality that comes in the package
 is application server, which boots up the processes, monitors them (restarts is
 they become dead), detects stalled services.
 
-The processes in Enduro/X 
+The processes in Enduro/X are split into to categories:
+
+1. Client processes
+
+2. Server processes
+
+The client processes might be a stand alone process (executables running in system)
+or it can be controlled by Enduro/X's Client Process Monitor (cpmsrv). Which gives
+administrator nice interface for configuring/starting/stopping the clients.
+
+The server processes are ones that are started by Enduro/X local daemon process
+called 'ndrxd'. The server process have inside a thread which conforms the XATMI
+server process workflow. At the startup the init function is called. Then threads
+goes into waiting on message dispatches (waits on Posix queues). 
+
+Once the application server is going for shutdown or administrator is about to
+shutdown single server, then XATMI server process is notified of this action
+and server process can gracefully do the de-init and shutdown. The uninit callback
+is send to server process while doing shutdown.
 
 
 == API Model
 
->>TODO <<
+The Enduro/X API object oriented where the main Enduro/X objects are held into Go
+structures. List of methods are binded to the structures. Here is the main model
+of the Go API:
+
+
+
+
+== Enduro/X Go features
+
+This section list the features which are supported by Go module.
+
 
 == API Calls, common (client/server)
 
