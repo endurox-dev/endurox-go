@@ -68,6 +68,14 @@ export NDRX_DMNLEV=5
 export NDRX_LOG=/tmp/ndrx.log
 export NDRX_LEV=5
 
+
+# load the config if have one from tests
+
+if [ -f ~/ndrx_home ]; then
+. ~/ndrx_home
+fi
+
+
 # Correct the path so that ndrx can find ndrxd
 export PATH=$PATH:`pwd`/../bin
 
