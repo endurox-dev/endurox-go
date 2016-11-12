@@ -44,6 +44,7 @@ of the Go API:
 image:images/class_diagram.png[caption="Figure 1: ", title="API Model", alt="enduro/x Golang API model"]
 
 
+
 == Enduro/X Go features
 
 This section list the features which are supported by Go module.
@@ -58,6 +59,10 @@ This section list the features which are supported by Go module.
 >>TODO <<
 
 == Multi-threading and workload sharing between threads
+
+>>TODO <<
+
+== Distributed transaction processing
 
 >>TODO <<
 
