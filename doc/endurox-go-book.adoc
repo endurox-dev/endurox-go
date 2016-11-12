@@ -7,13 +7,29 @@ v1.0, 2016-11:
 
 == Introduction
 
->>TODO <<
+This module is set of objects that are binded to Enduro/X C based framework. 
+Enduro/X by it self is middleware that uses operating system kernel queues for 
+doing high performance inter-process communication. The middleware functionality 
+is in the heart of the Enduro/X. Other functionality that comes in the package
+is application server, which boots up the processes, monitors them (restarts is
+they become dead), detects stalled services.
+
+The processes in Enduro/X 
+
 
 == API Model
 
 >>TODO <<
 
-== API Calls
+== API Calls, common (client/server)
+
+>>TODO <<
+
+== API Calls, server only
+
+>>TODO <<
+
+== Multi-threading and workload sharing between threads
 
 >>TODO <<
 
