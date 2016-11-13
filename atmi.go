@@ -1214,7 +1214,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 
 	if C.strlen(c_ctl_cltid_tmp) > NDRX_MAX_ID_SIZE {
 		return NewCustomAtmiError(TPEINVAL,
-			fmt.Sprintf("Invalid client id len, max: %d", TPEINVAL))
+			fmt.Sprintf("Invalid client id len, max: %d", NDRX_MAX_ID_SIZE))
 	}
 	C.strcpy(c_ctl_cltid_ptr, c_ctl_cltid_tmp)
 
