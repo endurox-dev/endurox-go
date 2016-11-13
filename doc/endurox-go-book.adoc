@@ -75,6 +75,32 @@ be downloaded here: https://github.com/endurox-dev/go-oci8
 
 == API Calls, common (client/server)
 
+Section lists API functions in following levels:
+
+- ATMI package (global functions)
+
+- ATMI Context functions
+
+- ATMI Error functions
+
+- UBF functions
+
+=== ATMI Package functions
+
+[cols="h,5a"]
+|===
+| Function
+| NewCustomAtmiError
+| Description
+| Function create custom ATMI error object, the error values can be specified by users
+
+| Param in
+| 
+
+| Response Body
+| include::{snippetDir}/race.json.adoc[]
+|===
+
 >>TODO <<
 
 == API Calls, server only
