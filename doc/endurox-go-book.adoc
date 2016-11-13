@@ -90,15 +90,12 @@ Section lists API functions in following levels:
 [cols="h,5a"]
 |===
 | Function
-| NewCustomAtmiError
+| func NewCustomAtmiError(code int, msg string) ATMIError
 | Description
-| Function create custom ATMI error object, the error values can be specified by users
+| Function creates new ATMI error object, by given *code* and given strings message in
+*msg* paramters.
 
-| Param in
-| 
-
-| Response Body
-| include::{snippetDir}/race.json.adoc[]
+Function returns ATMIError interface object
 |===
 
 >>TODO <<
