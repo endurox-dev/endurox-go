@@ -96,6 +96,9 @@ Section lists API functions in following levels:
 *msg* paramters.
 
 Function returns ATMIError interface object
+
+| Exampl
+| err:=NewCustomAtmiError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
 |===
 
 >>TODO <<
