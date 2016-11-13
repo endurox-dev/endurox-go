@@ -51,7 +51,7 @@ $(info $$GRPAHS is [${GRPAHS}])
 # Build the charts (have to put the images locally so that we see them in 
 #
 $(GRPAHS): $(SOURCES_GRPAHS)
-	dia --size=600x --filter=png -e ./images/$(patsubst %.dia,%,$<).png -t png $<
+	dia --size=1200x --filter=png -e ./images/$(patsubst %.dia,%,$<).png -t png $<
 	cp ./images/$(patsubst %.dia,%,$<).png ./out/images
 
 #
