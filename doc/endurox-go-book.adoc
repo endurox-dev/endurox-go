@@ -44,11 +44,34 @@ of the Go API:
 image:images/class_diagram.png[caption="Figure 1: ", title="API Model", alt="enduro/x Golang API model"]
 
 
-
 == Enduro/X Go features
 
 This section list the features which are supported by Go module.
 
+- XATMI Server process
+
+- XATMI Client process
+
+- Distributed transaction processing (currently with patched go-oci8, which can 
+be downloaded here: https://github.com/endurox-dev/go-oci8
+
+- Debug logging infrastructure 
+
+- Persistent queues
+
+- Buffers: UBF, JSON, String, Binary array (carray)
+
+- Load balancing
+
+- High availability
+
+== Constants
+
+>> Describe the grouped list of constants provided by Enduro/X ASG <<
+
+== Structures
+
+>> Describe structures provided by ASG <<
 
 == API Calls, common (client/server)
 
