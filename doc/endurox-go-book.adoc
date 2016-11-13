@@ -95,7 +95,7 @@ Section lists API functions in following levels:
 | func NewCustomAtmiError(*code* int, *msg* string) ATMIError
 | Description
 | Function creates new ATMI error object, by given *code* and given strings message in
-*msg* paramters.
+*msg* paramters. Error code in *code* must be ones that are from *atmi* package, starting with TPE\*
 
 Function returns ATMIError interface object.
 
