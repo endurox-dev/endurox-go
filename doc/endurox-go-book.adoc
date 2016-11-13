@@ -92,14 +92,14 @@ Section lists API functions in following levels:
 [cols="h,5a"]
 |===
 | Function
-| func NewCustomAtmiError(code int, msg string) ATMIError
+| func NewCustomAtmiError(*code* int, *msg* string) ATMIError
 | Description
 | Function creates new ATMI error object, by given *code* and given strings message in
 *msg* paramters.
 
 Function returns ATMIError interface object.
 
-| Exampl
+| Example
 | err:=NewCustomAtmiError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
 |===
 
