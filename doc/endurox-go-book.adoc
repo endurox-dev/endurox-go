@@ -100,10 +100,48 @@ Section lists API functions in following levels:
 Function returns ATMIError interface object.
 
 | Example
-| err:=NewCustomAtmiError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
+| err:=atmi.NewCustomAtmiError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
 |===
 
+==== NewATMICtx()
 
+[cols="h,5a"]
+|===
+| Function
+| func NewATMICtx() (*ATMICtx, ATMIError)
+| Description
+| Allocate new ATMI Context. First return argument will point to newly allocated ATMI Context, if
+it is set to *nil*, then ATMIError will indicate the error occurred.
+| Example
+| err, ctx:=atmi.NewATMICtx()
+|===
+
+==== MakeATMICtx()
+
+[cols="h,5a"]
+|===
+| Function
+| func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx
+| Description
+| Make new ASG Context object from given C context. This function is usable in case
+if *c_ctx* was allocated by C runtime. It is recommended to use *NewATMICtx()* in case
+if new context is needed.
+| Example
+| ctx:=atmi.NewATMICtx(C.tpnewctxt(0, 0))
+|===
+
+==== NewCustomUBFError()
+
+[cols="h,5a"]
+|===
+| Function
+| func NewCustomUBFError(code int, msg string) UBFError
+| Description
+| Generate a new custom UBF error. The *code* must be from atmi package, see bellow UBFError
+error list.
+| Example
+| err:=atmi.NewCustomUBFError(atmi.BSYNTAX, "Syntax error")
+|===
 
 >>TODO <<
 
