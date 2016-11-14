@@ -67,7 +67,7 @@ func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int) A
 
 	/* Check the buffer sizes (both must be equal or larger then len) */
 	if l1 < dumplen {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("ptr len is %d but must be >= %d (len param)",
 				l1, dumplen))
 	}
@@ -102,13 +102,13 @@ func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []by
 
 	/* Check the buffer sizes (both must be equal or larger then len) */
 	if l1 < difflen {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("ptr1 len is %d but must be >= %d (len param)",
 				l1, difflen))
 	}
 
 	if l2 < difflen {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("ptr2 len is %d but must be >= %d (len param)",
 				l2, difflen))
 	}
@@ -282,7 +282,7 @@ func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc st
 	buf := data.GetBuf()
 
 	if SUCCEED != C.Otplogsetreqfile(&ac.c_ctx, &buf.C_ptr, c_filename, c_filesvc) {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -302,7 +302,7 @@ func (ac *ATMICtx) TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
 	buf := data.GetBuf()
 
 	if SUCCEED != C.Otploggetbufreqfile(&ac.c_ctx, buf.C_ptr, c_reqfile_ptr, C.PATH_MAX) {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		reqfile = C.GoString(c_reqfile_ptr)
 	}
@@ -319,7 +319,7 @@ func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError {
 	buf := data.GetBuf()
 
 	if SUCCEED != C.Otplogdelbufreqfile(&ac.c_ctx, buf.C_ptr) {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err

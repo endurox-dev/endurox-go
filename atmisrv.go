@@ -314,7 +314,7 @@ func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError
 
 	if nil == initf {
 		/* invalid params.. */
-		err = NewCustomAtmiError(TPEINVAL, "init function cannot be null!")
+		err = NewCustomATMIError(TPEINVAL, "init function cannot be null!")
 	}
 	cb_initf = initf
 	cb_uninitf = uninitf
@@ -329,7 +329,7 @@ func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError
 
 	/* Generate error, if server failed */
 	if 0 != c_ret {
-		err = NewCustomAtmiError(TPESYSTEM, "ATMI Server failed")
+		err = NewCustomATMIError(TPESYSTEM, "ATMI Server failed")
 	}
 
 	for _, arg := range argv {
@@ -347,7 +347,7 @@ func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFu
 	var err ATMIError
 
 	if nil == fptr {
-		return NewCustomAtmiError(TPEINVAL, "Service function must not be nil!")
+		return NewCustomATMIError(TPEINVAL, "Service function must not be nil!")
 	}
 
 	c_svcname := C.CString(svcname)
@@ -356,7 +356,7 @@ func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFu
 	ret := C.__run_advertise(&ac.c_ctx, c_svcname, c_funcname)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		/* Add the function to the map */
 		funcmaps[funcname] = fptr
@@ -396,7 +396,7 @@ func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError {
 	ret := C.Otpunadvertise(&ac.c_ctx, c_svcname)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -410,7 +410,7 @@ func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int, ATMIErro
 	var err ATMIError
 	ret := C.Otpunsubscribe(&ac.c_ctx, C.long(subscription), C.long(flags))
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return int(ret), err
@@ -428,7 +428,7 @@ func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, fl
 		C.long(ctl.flags), C.CString(ctl.name1), C.CString(ctl.name2), C.long(flags))
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return int64(ret), err
@@ -442,7 +442,7 @@ func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
 	c_ptr := C.Otpsrvgetctxdata(&ac.c_ctx)
 
 	if nil == c_ptr {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		data = new(TPSRVCTXDATA)
 		data.c_ptr = c_ptr
@@ -458,14 +458,14 @@ func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
 	var ret C.int
 	if nil == data || nil == data.c_ptr {
 		/* Set Error */
-		err = NewCustomAtmiError(TPEINVAL, "Tpsrvsetctxdata - data is nil, but mandatory!")
+		err = NewCustomATMIError(TPEINVAL, "Tpsrvsetctxdata - data is nil, but mandatory!")
 		goto out
 	}
 
 	ret = C.Otpsrvsetctxdata(&ac.c_ctx, data.c_ptr, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 out:
@@ -488,7 +488,7 @@ func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError {
 	ret := C.Otpext_delpollerfd(&ac.c_ctx, C.int(fd))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -501,7 +501,7 @@ func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError {
 	ret := C.Otpext_delperiodcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -514,7 +514,7 @@ func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError {
 	ret := C.Otpext_delb4pollcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -527,7 +527,7 @@ func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 
 	if nil == cb {
 		/* Set Error */
-		err = NewCustomAtmiError(TPEINVAL, "Tpext_addperiodcb - cb is nil, but mandatory!")
+		err = NewCustomATMIError(TPEINVAL, "Tpext_addperiodcb - cb is nil, but mandatory!")
 		return err /* <<<< RETURN! */
 	}
 
@@ -535,7 +535,7 @@ func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 	ret := C.c_tpext_addperiodcb(&ac.c_ctx, C.int(secs))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -562,14 +562,14 @@ func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb 
 
 	if nil == cb {
 		/* Set Error */
-		err = NewCustomAtmiError(TPEINVAL, "Tpext_addpollerfd - cb is nil, but mandatory!")
+		err = NewCustomATMIError(TPEINVAL, "Tpext_addpollerfd - cb is nil, but mandatory!")
 		return err /* <<<< RETURN! */
 	}
 
 	ret := C.c_tpext_addpollerfd(&ac.c_ctx, C.int(fd), C.uint(events))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		var cbblock fdpollcallback
 		cbblock.cb = cb

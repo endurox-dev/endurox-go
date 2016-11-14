@@ -87,12 +87,12 @@ Section lists API functions in following levels:
 
 === ATMI Package functions
 
-==== NewCustomAtmiError()
+==== NewCustomATMIError()
 
 [cols="h,5a"]
 |===
 | Function
-| func NewCustomAtmiError(*code* int, *msg* string) ATMIError
+| func NewCustomATMIError(*code* int, *msg* string) ATMIError
 | Description
 | Function creates new ATMI error object, by given *code* and given strings message in
 *msg* paramters. Error code in *code* must be ones that are from *atmi* package, starting with TPE. See the ATMI error constants chapter.
@@ -100,7 +100,7 @@ Section lists API functions in following levels:
 Function returns ATMIError interface object.
 
 | Example
-| err:=atmi.NewCustomAtmiError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
+| err:=atmi.NewCustomATMIError(atmi.TPEINVAL, fmt.Sprintf("Invalid client id len, max 10"))
 |===
 
 ==== NewATMICtx()

@@ -541,7 +541,7 @@ type ATMIError interface {
 }
 
 //Generate ATMI error, read the codes
-func (ac *ATMICtx) NewAtmiError() ATMIError {
+func (ac *ATMICtx) NewATMIError() ATMIError {
 	var err atmiError
 	err.code = int(C.go_tperrno(&ac.c_ctx))
 	err.message = C.GoString(C.Otpstrerror(&ac.c_ctx, C.go_tperrno(&ac.c_ctx)))
@@ -552,7 +552,7 @@ func (ac *ATMICtx) NewAtmiError() ATMIError {
 //@param err		Error buffer to build
 //@param code	Error code to setup
 //@param msg		Error message
-func NewCustomAtmiError(code int, msg string) ATMIError {
+func NewCustomATMIError(code int, msg string) ATMIError {
 	var err atmiError
 	err.code = code
 	err.message = msg
@@ -637,7 +637,7 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 	var ret ATMICtx
 	ret.c_ctx = C.tpnewctxt(0, 0)
 	if nil == ret.c_ctx {
-		return nil, NewCustomAtmiError(TPESYSTEM, "Failed to allocate "+
+		return nil, NewCustomATMIError(TPESYSTEM, "Failed to allocate "+
 			"new context - see ULOG for details")
 	}
 
@@ -658,7 +658,7 @@ func (ac *ATMICtx) FreeATMICtx() {
 func (ac *ATMICtx) AssocThreadWithCtx() ATMIError {
 
 	if ret := C.tpsetctxt(ac.c_ctx, 0); SUCCEED != ret {
-		return ac.NewAtmiError()
+		return ac.NewATMIError()
 	}
 
 	return nil
@@ -670,7 +670,7 @@ func (ac *ATMICtx) AssocThreadWithCtx() ATMIError {
 func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError {
 
 	if ret := C.tpgetctxt(&ac.c_ctx, 0); SUCCEED != ret {
-		return ac.NewAtmiError()
+		return ac.NewATMIError()
 	}
 	return nil
 }
@@ -714,7 +714,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 
 	//Check the error
 	if nil == buf.C_ptr {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	C.free(unsafe.Pointer(c_type))
@@ -739,7 +739,7 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 	buf.C_ptr = C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
 
 	if nil == buf.C_ptr {
-		err = buf.Ctx.NewAtmiError()
+		err = buf.Ctx.NewATMIError()
 	}
 
 	return err
@@ -751,7 +751,7 @@ func (ac *ATMICtx) TpInit() ATMIError {
 	var err ATMIError
 
 	if SUCCEED != C.go_tpinit(&ac.c_ctx) {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -774,7 +774,7 @@ func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 	ret := C.Otpcall(&ac.c_ctx, c_svc, buf.C_ptr, buf.C_len, &buf.C_ptr, &buf.C_len, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	C.free(unsafe.Pointer(c_svc))
@@ -796,7 +796,7 @@ func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIEr
 	ret := C.Otpacall(&ac.c_ctx, c_svc, buf.C_ptr, buf.C_len, C.long(flags))
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	C.free(unsafe.Pointer(c_svc))
@@ -817,7 +817,7 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 	ret := C.Otpgetrply(&ac.c_ctx, &c_cd, &buf.C_ptr, &buf.C_len, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		*cd = int(c_cd)
 	}
@@ -834,7 +834,7 @@ func (ac *ATMICtx) TpCancel(cd int) ATMIError {
 	ret := C.Otpcancel(&ac.c_ctx, C.int(cd))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -854,7 +854,7 @@ func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMI
 	ret := C.Otpconnect(&ac.c_ctx, c_svc, data.C_ptr, data.C_len, C.long(flags))
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	C.free(unsafe.Pointer(c_svc))
@@ -871,7 +871,7 @@ func (ac *ATMICtx) TpDiscon(cd int) ATMIError {
 	ret := C.Otpdiscon(&ac.c_ctx, C.int(cd))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -892,7 +892,7 @@ func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 	ret := C.Otprecv(&ac.c_ctx, C.int(cd), &data.C_ptr, &data.C_len, C.long(flags), &c_revent)
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	*revent = int64(c_revent)
@@ -915,7 +915,7 @@ func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 	ret := C.Otpsend(&ac.c_ctx, C.int(cd), data.C_ptr, data.C_len, C.long(flags), &c_revent)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	*revent = int64(c_revent)
@@ -950,7 +950,7 @@ func (ac *ATMICtx) TpCommit(flags int64) ATMIError {
 	ret := C.Otpcommit(&ac.c_ctx, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -965,7 +965,7 @@ func (ac *ATMICtx) TpAbort(flags int64) ATMIError {
 	ret := C.Otpabort(&ac.c_ctx, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -979,7 +979,7 @@ func (ac *ATMICtx) TpOpen() ATMIError {
 	ret := C.Otpopen(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -993,7 +993,7 @@ func (ac *ATMICtx) TpClose() ATMIError {
 	ret := C.Otpclose(&ac.c_ctx)
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -1019,7 +1019,7 @@ func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 	ret := C.Otpbegin(&ac.c_ctx, C.ulong(timeout), C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -1035,7 +1035,7 @@ func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 	ret := C.Otpsuspend(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -1051,7 +1051,7 @@ func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 	ret := C.Otpresume(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
 
 	if SUCCEED != ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
@@ -1077,7 +1077,7 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 	ret := C.Otppost(&ac.c_ctx, c_eventname, data.C_ptr, data.C_len, C.long(flags))
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	C.free(unsafe.Pointer(c_eventname))
@@ -1103,7 +1103,7 @@ func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 	ret := C.Otptypes(&ac.c_ctx, ptr.C_ptr, c_type, c_subtype)
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	} else {
 		if nil != itype && nil != c_type {
 			*itype = C.GoString(c_type)
@@ -1130,7 +1130,7 @@ func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 func (ac *ATMICtx) TpTerm() ATMIError {
 	ret := C.Otpterm(&ac.c_ctx)
 	if SUCCEED != ret {
-		return ac.NewAtmiError()
+		return ac.NewATMIError()
 	}
 
 	return nil
@@ -1185,7 +1185,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	defer C.free(unsafe.Pointer(c_ctl_replyqueue))
 
 	if C.strlen(c_ctl_replyqueue_tmp) > TMQNAMELEN {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("Invalid reply queue len, max: %d", TMQNAMELEN))
 	}
 	C.strcpy(c_ctl_replyqueue_ptr, c_ctl_replyqueue_tmp)
@@ -1200,7 +1200,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	defer C.free(unsafe.Pointer(c_ctl_failurequeue))
 
 	if C.strlen(c_ctl_failurequeue_tmp) > TMQNAMELEN {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("Invalid failure queue len, max: %d", TMQNAMELEN))
 	}
 	C.strcpy(c_ctl_failurequeue_ptr, c_ctl_failurequeue_tmp)
@@ -1213,7 +1213,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	defer C.free(unsafe.Pointer(c_ctl_cltid))
 
 	if C.strlen(c_ctl_cltid_tmp) > NDRX_MAX_ID_SIZE {
-		return NewCustomAtmiError(TPEINVAL,
+		return NewCustomATMIError(TPEINVAL,
 			fmt.Sprintf("Invalid client id len, max: %d", NDRX_MAX_ID_SIZE))
 	}
 	C.strcpy(c_ctl_cltid_ptr, c_ctl_cltid_tmp)
@@ -1289,7 +1289,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	ctl.exp_time = int64(c_ctl_exp_time)
 
 	if FAIL == ret {
-		err = ac.NewAtmiError()
+		err = ac.NewATMIError()
 	}
 
 	return err
