@@ -17,8 +17,7 @@ via middleware which supports three kind of buffers for request/response data:
 
 == Documentation
 
-<<doc/endurox-go-book.adoc,The API document for Go Language can be found here>>
-link:endurox-go-book.adoc[]
+link:doc/endurox-go-book.adoc[The Enduro-GO API Document]
 
 Enduro/X documentation is located here: http://www.endurox.org/dokuwiki
 
