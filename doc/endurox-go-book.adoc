@@ -2791,22 +2791,236 @@ UBF.
 [[gen_doc-stop]]
 
 == Typical server process
->>TODO <<
+This section gives an example of typical Enduro/X XATMI server written in Google
+Go language. This sample will advertise two services which will make a string buffer
+uppercase (the service name will be TOUPPER) and another service which make a string
+lower case (service name TOLOWER).
+
+--------------------------------------------------------------------------------
+package main
+
+import (
+	"atmi"
+	"fmt"
+	"os"
+)
+
+const (
+	SUCCEED = 0
+	FAIL    = -1
+)
+
+func TOUPPER(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
+
+	ret := SUCCEED
+
+	//Get Typed String Handler
+	s, _ := ac.CastToString(&svc.Data)
+
+	// Change the buffer
+	s.SetString(strings.ToUpper(s.GetString()))
+	
+	// Send back the response
+	ac.TpReturn(atmi.TPSUCCESS, 0, &s, 0)
+	
+	return
+}
+
+func TOLOWER(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
+
+	ret := SUCCEED
+
+	//Get Typed String Handler
+	s, _ := ac.CastToString(&svc.Data)
+
+	// Change the buffer
+	s.SetString(strings.ToLower(s.GetString()))
+	
+	// Send back the response
+	ac.TpReturn(atmi.TPSUCCESS, 0, &s, 0)
+	
+	return
+}
+
+
+//Server init
+func Init(ac *atmi.ATMICtx) int {
+
+	//Advertize TOUPPER
+	if err := ac.TpAdvertise("TOUPPER", "TOUPPER", TOUPPER); err != nil {
+		fmt.Println(err)
+		return atmi.FAIL
+	}
+	
+	//Advertize TOLOWER
+	if err := ac.TpAdvertise("TOLOWER", "TOLOWER", TOLOWER); err != nil {
+		fmt.Println(err)
+		return atmi.FAIL
+	}
+
+	return atmi.SUCCEED
+}
+
+//Server shutdown
+func Uninit(ac *atmi.ATMICtx) {
+	fmt.Println("Server shutting down...")
+}
+
+//Executable main entry point
+func main() {
+	//Have some context
+	ac, err := atmi.NewATMICtx()
+
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		os.Exit(atmi.FAIL)
+	} else {
+		//Run as server
+		ac.TpRun(Init, Uninit)
+		
+		//Kill the ATMI context
+		ac.FreeATMICtx()
+	}
+}
+--------------------------------------------------------------------------------
+
+Note that for simplicity some error handling for service functions are missing.
 
 == Typical client process
->>TODO <<
+This section will give us an example how would client process look for above example,
+we will invoke both service to TOUPPER and TOLOWER.
 
-== Multi-threading and workload sharing between threads
+--------------------------------------------------------------------------------
+package main
 
->>TODO <<
+import (
+	"atmi"
+	"fmt"
+	"os"
+)
+
+const (
+	SUCCEED = 0
+	FAIL    = -1
+)
+
+//Binary main entry
+func main() {
+
+	ret := SUCCEED
+	var ac *atmi.ATMICtx
+	var err atmi.ATMIError
+	//Return to the caller (kind of destructor..)
+	defer func() {
+		if nil != ac {
+			ac.TpTerm()
+			ac.FreeATMICtx() // Kill the context
+		}
+		os.Exit(ret)
+	}()
+
+	ac, err = atmi.NewATMICtx()
+
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		ret = FAIL
+		return
+	}
+
+	buf, err := ac.NewString("hello world")
+
+	if err != nil {
+		ac.TpLogError("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		return
+	}
+
+	//Call the server
+	if _, err := ac.TpCall("TOUPPER", buf, 0); nil != err {
+		ac.TpLogError("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		return
+	}
+
+	//Will print "HELLO WORLD"
+	fmt.Printf("Got response: [%s]\n", buf.GetString())
+	
+	//Now call to lower with same buffer
+	
+	if _, err := ac.TpCall("TOLOWER", buf, 0); nil != err {
+		ac.TpLogError("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		return
+	}
+
+	//Will print "hello world"
+	fmt.Printf("Got response: [%s]\n", buf.GetString())
+	
+	return
+}
+--------------------------------------------------------------------------------
+
 
 == Distributed transaction processing
 
->>TODO <<
+Distributed transaction currently is supported only for Oracle OCI8 driver which is
+binded to Go, the package is available here: https://github.com/endurox-dev/go-oci8
+
+One note must be told, that distributed transaction work according to XA API standard
+which sets that transaction is associated with current operating system thread.
+
+Enduro/X acknowledges this fact and provides API call for associating ATMI Context
+object with current thread. As Golang Goroutines can be user-space re-scheduled,
+thus before associating ATMI Context with OS Thread, you need to *runtime.LockOSThread()* and
+then *ac.AssocThreadWithCtx()*.
+
+For example:
+
+
+--------------------------------------------------------------------------------
+func MKCUST(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
+
+        runtime.LockOSThread()
+        ac.AssocThreadWithCtx()
+        
+        // Do the DB works in global transaction
+        
+        ac.DisassocThreadFromCtx()
+        runtime.UnlockOSThread()
+        
+        ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+        
+        return
+}
+--------------------------------------------------------------------------------
+
+
 
 == Conclusions
 
->>TODO <<
+For more tails you may see the tests folder which contains following tests:
+
+- *01_basic_ubf_call* - Sample client/server app with UBF buffer.
+
+- *02_basic_string_call* - Sample client/server app with String buffer.
+
+- *03_basic_carray_call* - Sample client/server app with binary byte buffer.
+
+- *04_distributed_transaction* - Sample client/server app with Oracle DB distributed transaction.
+
+- *05_basic_json_call* - Sample client/server app with JSON buffer.
+
+- *06_ubf_marshal* - Client process doing Marshal/Unmarshal of UBF buffer to structure.
+
+- *07_basic_durable_queue* - Works with durable queue.
+
+- *08_logging* - User logging tests.
+
+
+For more details read on: http://www.endurox.org/dokuwiki
+The base Enduro/X documentation is valid, as Enduro/X ASG is wrapping in the C
+libraries.
+
 
 :numbered!:
 
@@ -2817,7 +3031,7 @@ This section lists additional related documents.
 
 [bibliography]
 .Resources
-- [[[EX_DEVGUIDE]]] EnduroX Internal Develper Guide.
+- [[[EX_DEVGUIDE]]] Enduro/X Internal Developer Guide.
 
 
 ////////////////////////////////////////////////////////////////
