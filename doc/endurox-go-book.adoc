@@ -486,6 +486,7 @@ This section lists the exported (public) structures provided by Endurox-Go modul
 |TPSVCINFO
 |XATMI service call descriptor, provided to called service as parameters.
 (see bellow for more information)
+|===
 
 === Event control structure - TPEVCTL
 
