@@ -5,6 +5,7 @@ use Text::Wrap;
 
 #
 # @(#) Read all files and group the functions by objects
+# This should be run before generating a doc 
 #
 
 my $M_doc = 'endurox-go-book.adoc';
@@ -70,7 +71,7 @@ NEXT:	while (<$fh>) {
 		
 			my $func = "";
 			my $struct = "atmi";
-			my $return = "void";
+			my $return = "N/A";
 			my $def = "";
 			
 			if ($line=~/^func.*[^\{]\s*$/)
@@ -115,10 +116,10 @@ NEXT:	while (<$fh>) {
 				print "3: [$line]\n";
 				($struct, $func) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*{/);
 			}
-			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*\([0-9A-Za-z_]*\)\s*{/)
+			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*\(.*\)\s*{/)
 			{
 				# func NewATMICtx() (*ATMICtx, ATMIError) {
-				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
+				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*\((.*)\)\s*{/);
 				print "4: [$line]\n";
 			}
 			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*[A-Za-z0-9_\*]*\s*{/)
@@ -194,6 +195,7 @@ NEXT:	while (<$fh>) {
 				$server_block="XATMI client and server";
 			}
 			
+			
 			if ($retdescr eq "")
 			{
 				$final_block = <<"END_MESSAGE";
@@ -226,6 +228,7 @@ END_MESSAGE
 
 END_MESSAGE
 			}
+			
 			$final_block = wrap('', '', $final_block);
 			
 			print "***************GENERATED DOC ****************\n";
@@ -277,8 +280,12 @@ END_MESSAGE
 				$prefix = "08";
 			}
 		
+			my $hash_key = "$prefix\.$struct\.$func";
+			
+			print "hash key: [$hash_key]\n";
+			
 			# Link to the key
-			$M_func{"$prefix\.$struct\.$func"} = $final_block;
+			$M_func{$hash_key} = $final_block;
 		}
 		else
 		{
@@ -378,7 +385,10 @@ if (-e $M_doc)
 	my $data = read_file($M_doc);
 	#$data =~ s/Copyright Start-Up/Copyright Large Corporation/g;
 	
-	$data =~ s/(\[\[gen_doc-start\]\]\n)(.+?)(\[\[gen_doc-stop\]\]\n)/$1$output$2/s;
+	$output = "[[gen_doc-start]]\n".$output."[[gen_doc-stop]]\n";
+	
+	
+	$data =~ s/(\[\[gen_doc-start\]\])(.*)(\[\[gen_doc-stop\]\])/$output/s;
 	
 	write_file($M_doc, $data);
 	exit;

@@ -33,6 +33,8 @@ SOURCEDIR:=.
 DOCOUT:=./out/
 IMG:=./images/
 
+
+MODSOURCES := $(shell ls -1 ../*.go);
 SOURCES := $(shell find -name '*.adoc' -printf "%f\n")
 HTML := $(addprefix $(DOCOUT), $(patsubst %.adoc, %.html, $(SOURCES)))
 
@@ -41,11 +43,19 @@ SOURCES_GRPAHS :=$(shell find -name '*.dia' -printf "%f\n")
 GRPAHS  := $(addprefix $(IMG), $(patsubst %.dia, %.png, $(SOURCES_GRPAHS)))
 #GRPAHS  := $(patsubst %.dia, %.png, $(SOURCES_GRPAHS))
 
-all: $(GRPAHS) $(HTML)
+all: endurox-go-book.adoc $(GRPAHS) $(HTML) 
 
 $(info $$HTML is [${HTML}])
 
 $(info $$GRPAHS is [${GRPAHS}])
+
+$(info $$MODSOURCES is [${MODSOURCES}])
+
+#
+# Generate the book from javadoc comments
+#
+endurox-go-book.adoc: $(MODSOURCES)
+	./docupdate.pl ../*
 
 #
 # Build the charts (have to put the images locally so that we see them in 
