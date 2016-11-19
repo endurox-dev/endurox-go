@@ -66,8 +66,45 @@ be downloaded here: https://github.com/endurox-dev/go-oci8
 - High availability
 
 == Constants
+This chapter describes constants used by Enduro/X module. This includes error codes
+and flags.
 
->> Describe the grouped list of constants provided by Enduro/X ASG <<
+=== ATMI Error codes
+This chapter lists the error codes returned by ATMI calls.
+
+*TPMINVAL* (0) - No error.
+
+*TPEABORT* (1) - Transaction was marked for abort.
+
+*TPEBADDESC* (2) - 
+
+TPEBLOCK      = 3
+TPEINVAL      = 4
+TPELIMIT      = 5
+TPENOENT      = 6
+TPEOS         = 7
+TPEPERM       = 8
+TPEPROTO      = 9
+TPESVCERR     = 10
+TPESVCFAIL    = 11
+TPESYSTEM     = 12
+TPETIME       = 13
+TPETRAN       = 14
+TPGOTSIG      = 15
+TPERMERR      = 16
+TPEITYPE      = 17
+TPEOTYPE      = 18
+TPERELEASE    = 19
+TPEHAZARD     = 20
+TPEHEURISTIC  = 21
+TPEEVENT      = 22
+TPEMATCH      = 23
+TPEDIAGNOSTIC = 24
+TPEMIB        = 25
+TPINITFAIL    = 30
+
+*TPMAXVAL*(31) - Maximum error code.
+	
 
 == Structures
 
@@ -87,6 +124,8 @@ Section lists API functions in following levels:
 
 [[gen_doc-start]]
 === ATMI Package functions
+Enduro/X package functions. ATMI Context is initiated by this package.
+
 ==== atmi.MakeATMICtx()
 [cols="h,5a"]
 |===
@@ -157,6 +196,9 @@ Section lists API functions in following levels:
 |===
 
 === Enduro/X Standard Error Object / NSTDError interface
+Enduro/X standard error object interfaced with NSTDError interface. Error is returned
+by libnstd library. Which are Enduro/X base library. Currently it is used for logging.
+
 ==== nstdError.Code()
 [cols="h,5a"]
 |===
@@ -191,6 +233,9 @@ Section lists API functions in following levels:
 |===
 
 === ATMI Error object / ATMIError interface
+ATMI Error object, used for ATMI context functions. Error codes are described in
+seperate chapter in this document.
+
 ==== atmiError.Code()
 [cols="h,5a"]
 |===
@@ -225,6 +270,9 @@ Section lists API functions in following levels:
 |===
 
 === Abstract IPC buffer - ATMIUbf
+ATMI buffer is base class for String, JSON, UBF (key/value with value arrays) 
+and binary buffer.
+
 ==== ATMIBuf.GetBuf()
 [cols="h,5a"]
 |===
@@ -262,7 +310,10 @@ Section lists API functions in following levels:
 |===
 
 === ATMI Context
-This concentrates most of the ATMI Enduro/X functionality. And is able to run multiple contexts in Go routines
+ATMI Context is uses as main object for accessing Enduro/X functionality. The
+object is allocated by package function *atmi.NewATMICtx()*. ATMI Context API is
+used for client and server API.
+
 ==== ATMICtx.AssocThreadWithCtx()
 [cols="h,5a"]
 |===
@@ -1518,6 +1569,9 @@ ATMIError)
 |===
 
 === String IPC buffer format
+String buffer. Can be used to string plain text strings between services. The string
+buffer cannot contain binary zero (0x00) byte.
+
 ==== TypedString.GetBuf()
 [cols="h,5a"]
 |===
@@ -1566,6 +1620,11 @@ ATMIError)
 |===
 
 === JSON IPC buffer format
+JSON buffer. Used to send JSON text between services. Basically it is string buffer,
+but with special mark that it is JSON Text. This mark is special, as Enduro/X can
+automatically convert JSON to UBF and vice versa. The format for JSON is one level
+with UBF field names and values. Values can be arrays.
+
 ==== TypedJSON.GetBuf()
 [cols="h,5a"]
 |===
@@ -1625,6 +1684,8 @@ ATMIError)
 |===
 
 === Binary buffer IPC buffer format
+Typed Carray, basically is byte array buffer.
+
 ==== TypedCarray.GetBuf()
 [cols="h,5a"]
 |===
@@ -1694,6 +1755,9 @@ ATMIError)
 |===
 
 === UBF Key/value IPC buffer format
+Unified Buffer Format (UBF) is key/value buffer with compiled IDs. Each key
+can contain the array of elements (occurrences).
+
 ==== TypedUBF.BAdd()
 [cols="h,5a"]
 |===
@@ -2217,7 +2281,6 @@ UBF.
 |===
 
 [[gen_doc-stop]]
-
 
 == Multi-threading and workload sharing between threads
 

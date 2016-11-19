@@ -315,52 +315,141 @@ foreach my $name (sort { $M_func{$a} <=> $M_func{$b} or $a cmp $b } keys %M_func
 	{
 		$topic = "atmi";
 		$output = $output."=== ATMI Package functions\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+Enduro/X package functions. ATMI Context is initiated by this package.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...nstdError\./ && $topic ne "nstdError")
 	{
 		$topic = "nstdError";
 		$output = $output."=== Enduro/X Standard Error Object / NSTDError interface\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+Enduro/X standard error object interfaced with NSTDError interface. Error is returned
+by libnstd library. Which are Enduro/X base library. Currently it is used for logging.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...TypedJSON\./ && $topic ne "TypedJSON")
 	{
 		$topic = "TypedJSON";
 		$output = $output."=== JSON IPC buffer format\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+JSON buffer. Used to send JSON text between services. Basically it is string buffer,
+but with special mark that it is JSON Text. This mark is special, as Enduro/X can
+automatically convert JSON to UBF and vice versa. The format for JSON is one level
+with UBF field names and values. Values can be arrays.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...TypedString\./ && $topic ne "TypedString")
 	{
 		$topic = "TypedString";
 		$output = $output."=== String IPC buffer format\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+String buffer. Can be used to string plain text strings between services. The string
+buffer cannot contain binary zero (0x00) byte.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...TypedUBF\./ && $topic ne "TypedUBF")
 	{
 		$topic = "TypedUBF";
 		$output = $output."=== UBF Key/value IPC buffer format\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+Unified Buffer Format (UBF) is key/value buffer with compiled IDs. Each key
+can contain the array of elements (occurrences).
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...TypedCarray\./ && $topic ne "TypedCarray")
 	{
 		$topic = "TypedCarray";
 		$output = $output."=== Binary buffer IPC buffer format\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+Typed Carray, basically is byte array buffer.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...ATMIBuf\./ && $topic ne "ATMIBuf")
 	{
 		$topic = "ATMIBuf";
 		$output = $output."=== Abstract IPC buffer - ATMIUbf\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+ATMI buffer is base class for String, JSON, UBF (key/value with value arrays) 
+and binary buffer.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...ATMICtx\./ && $topic ne "ATMICtx")
 	{
 		$topic = "ATMICtx";
 		$output = $output."=== ATMI Context\n";
-		$output = $output."This concentrates most of the ATMI Enduro/X functionality. And is able to run multiple contexts in Go routines\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+ATMI Context is uses as main object for accessing Enduro/X functionality. The
+object is allocated by package function *atmi.NewATMICtx()*. ATMI Context API is
+used for client and server API.
+
+END_MESSAGE
+		$output = $output.$msg;
+
 	}
 	elsif ($name=~/^...atmiError\./ && $topic ne "atmiError")
 	{
 		$topic = "atmiError";
 		$output = $output."=== ATMI Error object / ATMIError interface\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+ATMI Error object, used for ATMI context functions. Error codes are described in
+seperate chapter in this document.
+
+END_MESSAGE
+		$output = $output.$msg;
 	}
 	elsif ($name=~/^...ubfError\./ && $topic ne "ubfError")
 	{
 		$topic = "ubfError";
 		$output = $output."=== BUF Error object/ UBFError interface\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+UBF Error object, used by UBF buffer functions.
+
+END_MESSAGE
 	}
 	
 	
@@ -385,8 +474,7 @@ if (-e $M_doc)
 	my $data = read_file($M_doc);
 	#$data =~ s/Copyright Start-Up/Copyright Large Corporation/g;
 	
-	$output = "[[gen_doc-start]]\n".$output."[[gen_doc-stop]]\n";
-	
+	$output = "[[gen_doc-start]]\n".$output."[[gen_doc-stop]]";
 	
 	$data =~ s/(\[\[gen_doc-start\]\])(.*)(\[\[gen_doc-stop\]\])/$output/s;
 	

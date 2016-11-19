@@ -34,7 +34,7 @@ DOCOUT:=./out/
 IMG:=./images/
 
 
-MODSOURCES := $(shell ls -1 ../*.go);
+DOCSOURCES := $(shell ls -1 ../*.go ./docupdate.pl);
 SOURCES := $(shell find -name '*.adoc' -printf "%f\n")
 HTML := $(addprefix $(DOCOUT), $(patsubst %.adoc, %.html, $(SOURCES)))
 
@@ -49,12 +49,12 @@ $(info $$HTML is [${HTML}])
 
 $(info $$GRPAHS is [${GRPAHS}])
 
-$(info $$MODSOURCES is [${MODSOURCES}])
+$(info $$DOCSOURCES is [${DOCSOURCES}])
 
 #
 # Generate the book from javadoc comments
 #
-endurox-go-book.adoc: $(MODSOURCES)
+endurox-go-book.adoc: $(DOCSOURCES)
 	./docupdate.pl ../*
 
 #
