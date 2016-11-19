@@ -70,7 +70,7 @@ NEXT:	while (<$fh>) {
 		
 			my $func = "";
 			my $struct = "atmi";
-			my $return = "";
+			my $return = "void";
 			my $def = "";
 			
 			if ($line=~/^func.*[^\{]\s*$/)
@@ -109,16 +109,35 @@ NEXT:	while (<$fh>) {
 				print "2: [$line]\n";
 				($struct, $func, $return) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
 			}
+			elsif ($line =~/^func\s*\(.*\)\s*[A-Za-z0-9_]*\(.*\)\s*{/)
+			{
+				# func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) {
+				print "3: [$line]\n";
+				($struct, $func) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*{/);
+			}
 			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*\([0-9A-Za-z_]*\)\s*{/)
 			{
 				# func NewATMICtx() (*ATMICtx, ATMIError) {
-				print "3: [$line]\n";
-			}
-			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*[A-Za-z0-9_\*]*s*{/)
-			{
-				# func NewATMICtx() ATMIError {
+				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
 				print "4: [$line]\n";
 			}
+			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*[A-Za-z0-9_\*]*\s*{/)
+			{
+				# func NewATMICtx() ATMIError {
+				
+				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
+				
+				print "5: [$line]\n";
+			}
+			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*{/)
+			{
+				# func NewATMICtx() {
+				
+				($func) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*{/);
+				
+				print "6: [$line]\n";
+			}
+			
 			
 			print "func: [$func]\n";
 			print "struct: [$struct]\n";
@@ -213,8 +232,53 @@ END_MESSAGE
 			print "$final_block\n";
 			print "*********************************************\n";
 			
+			########################################################
+			# set the order
+			########################################################
+			$prefix = "99";
+			if ($struct=~/^atmi$/)
+			{
+				$prefix = "00";
+			}
+			elsif ($struct=~/^nstdError$/)
+			{
+				$prefix = "01";
+			}
+			elsif ($struct=~/^TypedJSON$/)
+			{
+				$prefix = "06";
+			}
+			elsif ($struct=~/^TypedString$/)
+			{
+				$prefix = "05";
+			}
+			elsif ($struct=~/^TypedUBF$/)
+			{
+				$prefix = "09";
+			}
+			elsif ($struct=~/^TypedCarray$/)
+			{
+				$prefix = "07";
+			}
+			elsif ($struct=~/^ATMIBuf$/)
+			{
+				$prefix = "03";
+			}
+			elsif ($struct=~/^ATMICtx$/)
+			{
+				$prefix = "04";
+			}
+			elsif ($struct=~/^atmiError$/)
+			{
+				$prefix = "02";
+			}
+			elsif ($struct=~/^ubfError$/)
+			{
+				$prefix = "08";
+			}
+		
 			# Link to the key
-			$M_func{"$struct\.$func"} = $final_block;
+			$M_func{"$prefix\.$struct\.$func"} = $final_block;
 		}
 		else
 		{
@@ -240,64 +304,63 @@ foreach my $name (sort { $M_func{$a} <=> $M_func{$b} or $a cmp $b } keys %M_func
 
 	printf "SORTED: %-8s %s\n", $name, $M_func{$name};
 
-	if ($name=~/^atmi\./ && $topic ne "atmi")
+	if ($name=~/^...atmi\./ && $topic ne "atmi")
 	{
 		$topic = "atmi";
 		$output = $output."=== ATMI Package functions\n";
 	}
-	elsif ($name=~/^nstdError\./ && $topic ne "nstdError")
+	elsif ($name=~/^...nstdError\./ && $topic ne "nstdError")
 	{
 		$topic = "nstdError";
 		$output = $output."=== Enduro/X Standard Error Object / NSTDError interface\n";
 	}
-	elsif ($name=~/^TypedJSON\./ && $topic ne "TypedJSON")
+	elsif ($name=~/^...TypedJSON\./ && $topic ne "TypedJSON")
 	{
 		$topic = "TypedJSON";
 		$output = $output."=== JSON IPC buffer format\n";
 	}
-	elsif ($name=~/^TypedString\./ && $topic ne "TypedString")
+	elsif ($name=~/^...TypedString\./ && $topic ne "TypedString")
 	{
 		$topic = "TypedString";
 		$output = $output."=== String IPC buffer format\n";
 	}
-	elsif ($name=~/^TypedUBF\./ && $topic ne "TypedUBF")
+	elsif ($name=~/^...TypedUBF\./ && $topic ne "TypedUBF")
 	{
 		$topic = "TypedUBF";
 		$output = $output."=== UBF Key/value IPC buffer format\n";
 	}
-	elsif ($name=~/^TypedCarray\./ && $topic ne "TypedCarray")
+	elsif ($name=~/^...TypedCarray\./ && $topic ne "TypedCarray")
 	{
 		$topic = "TypedCarray";
 		$output = $output."=== Binary buffer IPC buffer format\n";
 	}
-	elsif ($name=~/^ATMIBuf\./ && $topic ne "ATMIBuf")
+	elsif ($name=~/^...ATMIBuf\./ && $topic ne "ATMIBuf")
 	{
 		$topic = "ATMIBuf";
 		$output = $output."=== Abstract IPC buffer - ATMIUbf\n";
 	}
-	elsif ($name=~/^ATMICtx\./ && $topic ne "ATMICtx")
+	elsif ($name=~/^...ATMICtx\./ && $topic ne "ATMICtx")
 	{
 		$topic = "ATMICtx";
 		$output = $output."=== ATMI Context\n";
 		$output = $output."This concentrates most of the ATMI Enduro/X functionality. And is able to run multiple contexts in Go routines\n";
 	}
-	elsif ($name=~/^atmiError\./ && $topic ne "atmiError")
+	elsif ($name=~/^...atmiError\./ && $topic ne "atmiError")
 	{
 		$topic = "atmiError";
 		$output = $output."=== ATMI Error object / ATMIError interface\n";
 	}
-	elsif ($name=~/^ubfError\./ && $topic ne "ubfError")
+	elsif ($name=~/^...ubfError\./ && $topic ne "ubfError")
 	{
 		$topic = "ubfError";
 		$output = $output."=== BUF Error object/ UBFError interface\n";
 	}
 	
 	
-	# Have title for function
+	# Strip the leading func name
+	my ($funcname) = ($name =~ /^...(.*)/);
 	
-	#my ($funcname) = ($name =~ /^.*\.(.*)/);
-	
-	$output = $output."==== $name()\n";
+	$output = $output."==== $funcname()\n";
 	
 	
 	$output = $output.$M_func{$name}."\n";
