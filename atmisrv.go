@@ -1,9 +1,10 @@
 package atmi
-/* 
+
+/*
 ** XATMI main package, server API
 **
 ** @file atmisrv.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +12,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -29,7 +30,7 @@ package atmi
 ** A commercial use license is available from ATR Baltic, SIA
 ** contact@atrbaltic.com
 ** -----------------------------------------------------------------------------
-*/
+ */
 
 /*
 #cgo pkg-config: atmisrvinteg

@@ -69,46 +69,373 @@ be downloaded here: https://github.com/endurox-dev/go-oci8
 This chapter describes constants used by Enduro/X module. This includes error codes
 and flags.
 
-=== ATMI Error codes
+
+=== ATMI Context method binary OR'able flags
+
+*TPNOBLOCK* (0x00000001) - Do not block the operation (don't wait for reply or 
+resource availability).
+
+*TPSIGRSTRT* (0x00000002) - Restart the the system call if interrupted.
+
+*TPNOREPLY* (0x00000004) - Make asynchronous call, do not wait for reply. 
+
+*TPNOTRAN* (0x00000008) - Do not run in transaction mode.
+
+*TPTRAN* (0x00000010) - Reserved for future use.
+
+*TPNOTIME* (0x00000020) - Do not interrupt the call by timeout condition.
+
+*TPGETANY* (0x00000080) - Get any call reply.
+
+*TPNOCHANGE* (0x00000100) - Do not change buffer format. If reply on tpcall()
+receives other buffer format than specified in call and this flag is set, then
+error will be generated.
+
+*TPCONV* (0x00000400) - Reserved for future use.
+
+*TPSENDONLY* (0x00000800) - Enter in sending mode during conversational IPC.
+
+*TPRECVONLY* (0x00001000) - Enter in receiving mode during conversational IPC.
+
+*TPTRANSUSPEND* (0x00040000) - Suspend current transaction.
+
+
+=== ATMI buffer size
+Current Enduro/X version support maximum buffer size of 64KB. The constant is
+defined for that:
+
+*ATMI_MSG_MAX_SIZE* (65536) - Max ATMI message size.
+
+This is subject of change in future. It might that dynamic number (configurable)
+will be available.
+
+=== ATMI Error codes (returned by ATMIError interface)
+
 This chapter lists the error codes returned by ATMI calls.
 
 *TPMINVAL* (0) - No error.
 
 *TPEABORT* (1) - Transaction was marked for abort.
 
-*TPEBADDESC* (2) - 
+*TPEBADDESC* (2) - Bad call descriptor.
 
-TPEBLOCK      = 3
-TPEINVAL      = 4
-TPELIMIT      = 5
-TPENOENT      = 6
-TPEOS         = 7
-TPEPERM       = 8
-TPEPROTO      = 9
-TPESVCERR     = 10
-TPESVCFAIL    = 11
-TPESYSTEM     = 12
-TPETIME       = 13
-TPETRAN       = 14
-TPGOTSIG      = 15
-TPERMERR      = 16
-TPEITYPE      = 17
-TPEOTYPE      = 18
-TPERELEASE    = 19
-TPEHAZARD     = 20
-TPEHEURISTIC  = 21
-TPEEVENT      = 22
-TPEMATCH      = 23
-TPEDIAGNOSTIC = 24
-TPEMIB        = 25
-TPINITFAIL    = 30
+*TPEBLOCK* (3) - Reserved for future use.
 
-*TPMAXVAL*(31) - Maximum error code.
+*TPEINVAL* (4) - Invalid value passed to function.
+
+*TPELIMIT* (5) - System limits exceeded (max queues or call descriptors open).
+
+*TPENOENT* (6) - No Entry (XATMI service or other resources).
+
+*TPEOS* (7) - Operating system error occurred.
+
+*TPEPERM* (8) - Reserved for future use.
+
+*TPEPROTO* (9) - Protocol error. Invocation of XATMI functions in invalid order.
+
+*TPESVCERR* (10) - Server error. XATMI server died during processing.
+
+*TPESVCFAIL* (11) - Application level error at service.
+
+*TPESYSTEM* (12) - System error.
+
+*TPETIME* (13) - Time-out condition.
+
+*TPETRAN* (14) - Transaction error.
+
+*TPGOTSIG* (15) - Reserved for future use.
+
+*TPERMERR* (16) - Resource manager error (used for distributed transactions processing)
+
+*TPEITYPE* (17) - Reserved for future use. 
+
+*TPEOTYPE* (18) - Invalid output type.
+
+*TPERELEASE* (19) - Reserved for future use. 
+
+*TPEHAZARD* (20) - Hazardous condition occurred. Transaction is partially 
+committed and/or abort.
+
+*TPEHEURISTIC* (21) - Heuristic condition occurred. Transaction is partially 
+committed and/or abort.
+
+*TPEEVENT* (22) - Event notification received for conversational IPC session.
+
+*TPEMATCH* (23) - Did not match given identifier.
+
+*TPEDIAGNOSTIC* (24) - Additional information is returned in diagnostics field 
+(used by persistent queues API).
+
+*TPEMIB* (25) - Reserved for future use. 
+
+*TPINITFAIL* (30) - Reserved for future use. 
+
+*TPMAXVAL* (31) - Maximum error code.
+
+
+=== Return values for tpcall()/tpreturn()
+
+Values for rval in tpreturn:
+
+
+*TPFAIL* (0x0001) - Application level error occurred, returns tpcall() gives *TPESVCFAIL*
+as error.
+
+*TPSUCCESS* (0x0002) - Service succeeded.
+
+
+
+=== Flags Persistent queue functions, used for TPQCTL.flags
+
+*TPNOFLAGS* (0x00000) - No flags used.
+
+*TPQCORRID* (0x00001) - Set/get correlation id (on set TPQCTL.corrid must
+be specified.
+
+*TPQFAILUREQ* (0x00002) - Set/get failure queue. On set TPQCTL.failurequeue must
+be specified.
+
+*TPQBEFOREMSGID* (0x00004) - RFU, enqueue before message id.
+
+*TPQGETBYMSGIDOLD* (0x00008) - RFU, deprecated.
+
+*TPQMSGID* (0x00010) - Get msgid of enqueued/dequeued message.
+
+*TPQPRIORITY* (0x00020) - Set/get message priority.
+
+*TPQTOP* (0x00040) - RFU, enqueue at queue top.
+
+*TPQWAIT* (0x00080) - RFU, wait for dequeuing.
+
+*TPQREPLYQ* (0x00100) - Set/get reply queue.
+
+*TPQTIME_ABS* (0x00200) - RFU, set absolute time.
+
+*TPQTIME_REL* (0x00400) - RFU, set absolute time.
+
+*TPQGETBYCORRIDOLD* (0x00800) - RFU.
+
+*TPQPEEK* (0x01000) - Peek the message from queue. Do not dequeue it permanently.
+
+*TPQDELIVERYQOS* (0x02000) - RFU, delivery quality of service.
+
+*TPQREPLYQOS* (0x04000) -  RFU, reply message quality of service.
+
+*TPQEXPTIME_ABS* (0x08000) -  RFU, absolute expiration time.
+
+*TPQEXPTIME_REL* (0x10000) -  RFU, relative expiration time.
+
+*TPQEXPTIME_NONE* (0x20000) -  RFU, never expire.
+
+*TPQGETBYMSGID* (0x40008) -  Dequeue by msgid.
+
+*TPQGETBYCORRID* (0x80800) - Dequeue by corrid.
+
+*TPQASYNC* (0x100000) - Async complete. Complete the disk based transaction asynchronously.
+
+
+=== Other persistent queue sub-system constants
+
+*TMMSGIDLEN* (32) - Message id (number of bytes). All bytes significant.
+
+*TMCORRIDLEN* (32) - Correlator id (number of bytes). All bytes significant.
+
+*TMQNAMELEN* (15) - Max queue name length.
+
+*NDRX_MAX_ID_SIZE* (96) - Client ID length
 	
+
+=== Diagnostic codes for persistent queues
+
+For persistent queue sub-system which are used by TpEnqueue(3) and TpDequeue(3)
+there are special control structure used named *TPQCTL* it contains field 
+*TPQCTL.diagnostic* which return diagnostic code. This field is filled in case if
+*ATMIError.Code()* is set to TPEDIAGNOSTIC. Note that additional error message is
+provided into *TPQCTL.diagmsg*
+
+*QMEINVAL* (-1) - Invalid value passed to function.
+
+*QMEBADRMID* (-2) - RFU.
+
+*QMENOTOPEN* (-3) - RFU.
+
+*QMETRAN* (-4) - RFU.
+
+*QMEBADMSGID* (-5) - RFU.
+
+*QMESYSTEM* (-6) - System error occurred. More info in logs.
+
+*QMEOS* (-7) - Operating system error occurred. More info in logs.
+
+*QMEABORTED* (-8) - RFU.
+
+*QMENOTA* (-8) - RFU.
+
+*QMEPROTO* (-9) - RFU.
+
+*QMEBADQUEUE* (-10) - RFU.
+
+*QMENOMSG* (-11) - No message found.
+
+*QMEINUSE* (-12) - RFU.
+
+*QMENOSPACE* (-13) - RFU.
+
+*QMERELEASE* (-14) - RFU.
+
+*QMEINVHANDLE* (-15) - RFU.
+
+*QMESHARE* (-16) - RFU.
+
+
+=== Enduro/X standard library error codes
+List of error codes that can be returned by NSTDError interface:
+
+*NEINVALINI* (1) - Invalid INI file
+
+*NEMALLOC* (2) - Malloc failed 
+
+*NEUNIX* (3) - Unix error occurred
+
+*NEINVAL* (4) - Invalid value passed to function
+
+*NESYSTEM* (5) - System failure
+
+*NEMANDATORY* (6) - Mandatory field is missing
+
+*NEFORMAT* (7) - Format error 
+
+
+=== Unified Buffer Format (UBF) library error codes
+
+These error codes are returned by UBFError interface:
+
+*BMINVAL* (0) - No error.
+
+*BERFU0* (1) - Reserved for future use.
+
+*BALIGNERR* (2) - Invalid UBF buffer.
+
+*BNOTFLD* (3) - Buffer not fielded/invalid UBF buffer.
+
+*BNOSPACE* (4) - No space in buffer left.
+
+*BNOTPRES* (5) - Field not present.
+
+*BBADFLD* (6) - Bad field id.
+
+*BTYPERR* (7) - Invalid field type.
+
+*BEUNIX* (8) - Unix error.
+
+*BBADNAME* (9) - Bad field name.
+
+*BMALLOC* (10) - Malloc failed.
+
+*BSYNTAX* (11) - Syntax error for boolean expression.
+
+*BFTOPEN* (12) - Failed to open field table (ubftab).
+
+*BFTSYNTAX* (13) - Field table (ubftab) syntax error.
+
+*BEINVAL* (14) - Invalid value passed to function.
+
+*BERFU1* (15) - Reserved for future use.
+
+*BERFU2* (16) - Reserved for future use.
+
+*BERFU3* (17) - Reserved for future use.
+
+*BERFU4* (18) - Reserved for future use.
+
+*BERFU5* (19) - Reserved for future use.
+
+*BERFU6* (20) - Reserved for future use.
+
+*BERFU7* (21) - Reserved for future use.
+
+*BERFU8* (22) - Reserved for future use.
+
+*BMAXVAL* (22) - Maximum error code;
+
+
+=== UBF field types
+
+This chapter lists field types (C level) used by UBF:
+
+*BFLD_MIN* (0) - Minimum field type
+
+*BFLD_SHORT* (0) - C Short type
+
+*BFLD_LONG* (1) -C Long type
+
+*BFLD_CHAR* (2) - C Chart type (single byte)
+
+*BFLD_FLOAT* (3) - C Float type
+
+*BFLD_DOUBLE* (4) - C Double type
+
+*BFLD_STRING* (5) - String type
+
+*BFLD_CARRAY* (6) - Byte array type
+
+*BFLD_MAX* (6) - Maximum field type
+
+
+=== UBF reserved field IDs
+
+*BBADFLDID* (0) - Bad field id, used as terminator Bproj() and other calls.
+
+*BFIRSTFLDID* (0) - First field id, used indicator for Bnext() to iterate through
+the buffer.
+
+=== Log levels
+Enduro/X provides logging API (see ATMICtx.TpLog() and related functions).
+Following debug levels are supported:
+
+*LOG_ALWAYS* (1) - Fatal error. Logs always.
+
+*LOG_ERROR* (2) - Error message.
+
+*LOG_WARN* (3) - Warning message.
+
+*LOG_INFO* (4) - informational message.
+
+*LOG_DEBUG* (5) - Debug message.
+
+*LOG_DUMP* (6) - Very detailed debug with full dumps.
+
+
+=== Log Facilities
+
+Enduro/X logging can be configured for different logging sources which includes
+Enduro/X debugging it self (provides separation for base ATMI (*NDRX*), Unified 
+Buffer Format (*UBF*) functions). The user logging are configured under the *TP* facility.
+
+User logging can be associated in following levels:
+
+- Per process;
+
+- Per thread (for Go it is Context).
+
+- Per request (associate with Context, i.e. if thread logging enabled, then it can be
+promoted to request logging by *ATMICtx.TpLogSetReqFile()*).
+
+*LOG_FACILITY_NDRX* (0x00001) - Settings for ATMI logging.
+
+*LOG_FACILITY_UBF* (0x00002) - Settings for UBF logging.
+
+*LOG_FACILITY_TP* (0x00004) - Settings for TP logging.
+
+*LOG_FACILITY_TP_THREAD* (0x00008) - Settings for TP, thread based logging.
+
+*LOG_FACILITY_TP_REQUEST* (0x00010) - Request logging, thread based.
+
 
 == Structures
 
->> Describe structures provided by ASG <<
+This section lists the exported (public) structures provided by Endurox-Go module.
+
 
 == API
 
@@ -2281,6 +2608,12 @@ UBF.
 |===
 
 [[gen_doc-stop]]
+
+== Typical server process
+>>TODO <<
+
+== Typical client process
+>>TODO <<
 
 == Multi-threading and workload sharing between threads
 

@@ -1,9 +1,10 @@
 package atmi
-/* 
+
+/*
 ** XATMI main package
 **
 ** @file atmi.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +12,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -29,7 +30,7 @@ package atmi
 ** A commercial use license is available from ATR Baltic, SIA
 ** contact@atrbaltic.com
 ** -----------------------------------------------------------------------------
-*/
+ */
 
 /*
 #cgo pkg-config: atmisrvinteg
@@ -382,23 +383,23 @@ const (
  * Values for TQPCTL.diagnostic
  */
 const (
-	MEINVAL     = -1
-	MEBADRMID   = -2
-	MENOTOPEN   = -3
-	METRAN      = -4
-	MEBADMSGID  = -5
-	MESYSTEM    = -6
-	MEOS        = -7
-	MEABORTED   = -8
-	MENOTA      = -8 /* QMEABORTED */
-	MEPROTO     = -9
-	MEBADQUEUE  = -10
-	MENOMSG     = -11
-	MEINUSE     = -12
-	MENOSPACE   = -13
-	MERELEASE   = -14
-	MEINVHANDLE = -15
-	MESHARE     = -16
+	QMEINVAL     = -1
+	QMEBADRMID   = -2
+	QMENOTOPEN   = -3
+	QMETRAN      = -4
+	QMEBADMSGID  = -5
+	QMESYSTEM    = -6
+	QMEOS        = -7
+	QMEABORTED   = -8
+	QMENOTA      = -8 /* QMEABORTED */
+	QMEPROTO     = -9
+	QMEBADQUEUE  = -10
+	QMENOMSG     = -11
+	QMEINUSE     = -12
+	QMENOSPACE   = -13
+	QMERELEASE   = -14
+	QMEINVHANDLE = -15
+	QMESHARE     = -16
 )
 
 /*
