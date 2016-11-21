@@ -273,9 +273,6 @@ import "unsafe"
 import "fmt"
 import "runtime"
 
-//TODO: Think about runtime.SetFinalizer - might be usable for ATMI buffer free
-//      and for UBF expression dealloc
-
 /*
  * SUCCEED/FAIL flags
  */
@@ -600,7 +597,8 @@ func (ac *ATMICtx) NewNstdError() NSTDError {
 	return err
 }
 
-//Build a custom error
+//Build a custom error. Can be used at Go level sources
+//To simulate standard error
 //@param err		Error buffer to build
 //@param code	Error code to setup
 //@param msg		Error message
@@ -616,12 +614,12 @@ func (e nstdError) Error() string {
 	return fmt.Sprintf("%d: %s", e.code, e.message)
 }
 
-//code getter
+//Error code getter
 func (e nstdError) Code() int {
 	return e.code
 }
 
-//message getter
+//Error message getter
 func (e nstdError) Message() string {
 	return e.message
 }
@@ -632,7 +630,8 @@ func (e nstdError) Message() string {
 //       in XA case it would be simpler to manipulate with DB + XATMI...
 ///////////////////////////////////////////////////////////////////////////////////
 
-//Allocate new ATMI context
+//Allocate new ATMI context. This is the context with most of the XATMI operations
+//are made. Single go routine can have multiple contexts at the same time.
 //@return ATMI Error, Pointer to ATMI Context object
 func NewATMICtx() (*ATMICtx, ATMIError) {
 	var ret ATMICtx
@@ -648,6 +647,8 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 }
 
 //Free up the ATMI Context
+//Internally this will call the TpTerm too to termiante any XATMI client
+//session in progress.
 func (ac *ATMICtx) FreeATMICtx() {
 	ac.TpTerm() //This extra, but let it be
 	C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
@@ -684,7 +685,9 @@ func freeATMICtx(ac *ATMICtx) {
 	}
 }
 
-//Make context object from C pointer
+//Make context object from C pointer. Function can be used in case
+//If doing any direct XATMI operations and you have a C context handler.
+//Which can be promoted to Go level ATMI Context.
 //@param c_ctx Context ATMI object
 //@return ATMI Context Object
 func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx {
