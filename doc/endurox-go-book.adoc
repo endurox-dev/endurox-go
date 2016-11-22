@@ -454,7 +454,7 @@ This section lists the exported (public) structures provided by Endurox-Go modul
 |Event control structure (see bellow for more information)
 
 |TPQCTL
-| Queue control structure (see bellow for more information)
+|Queue control structure (see bellow for more information)
 
 |ATMIBuf
 |ATMI buffer object (abstract one)
@@ -637,70 +637,75 @@ Enduro/X package functions. ATMI Context is initiated by this package.
 ==== atmi.MakeATMICtx()
 [cols="h,5a"]
 |===
-| Function
-| func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx
-| Description
-| Make context object from C pointer. 
+|Function
+|func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx
+|Description
+|Make context object from C pointer. Function can be used in case If doing any
+direct XATMI operations and you have a C context handler. Which can be promoted
+to Go level ATMI Context.. 
 *c_ctx* Context ATMI object. 
-| Returns
-| ATMI Context Object
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Context Object
+|Applies
+|XATMI client and server
 |===
 
 ==== atmi.NewATMICtx()
 [cols="h,5a"]
 |===
-| Function
-| func NewATMICtx() (*ATMICtx, ATMIError)
-| Description
-| Allocate new ATMI context. 
-| Returns
-| ATMI Error, Pointer to ATMI Context object
-| Applies
-| XATMI client and server
+|Function
+|func NewATMICtx() (*ATMICtx, ATMIError)
+|Description
+|Allocate new ATMI context. This is the context with most of the XATMI
+operations are made. Single go routine can have multiple contexts at the same
+time.. 
+|Returns
+|ATMI Error, Pointer to ATMI Context object
+|Applies
+|XATMI client and server
 |===
 
 ==== atmi.NewCustomATMIError()
 [cols="h,5a"]
 |===
-| Function
-| func NewCustomATMIError(code int, msg string) ATMIError
-| Description
-| Build a custom error. 
+|Function
+|func NewCustomATMIError(code int, msg string) ATMIError
+|Description
+|Build a custom error. 
 *err* Error buffer to build. 
 *code* Error code to setup. 
 *msg* Error message. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== atmi.NewCustomNstdError()
 [cols="h,5a"]
 |===
-| Function
-| func NewCustomNstdError(code int, msg string) NSTDError
-| Description
-| Build a custom error. 
+|Function
+|func NewCustomNstdError(code int, msg string) NSTDError
+|Description
+|Build a custom error. Can be used at Go level sources To simulate standard
+error. 
 *err* Error buffer to build. 
 *code* Error code to setup. 
 *msg* Error message. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== atmi.NewCustomUBFError()
 [cols="h,5a"]
 |===
-| Function
-| func NewCustomUBFError(code int, msg string) UBFError
-| Description
-| Build a custom error. 
+|Function
+|func NewCustomUBFError(code int, msg string) UBFError
+|Description
+|Build a custom error. 
 *err* Error buffer to build. 
 *code* Error code to setup. 
 *msg* Error message. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 === Enduro/X Standard Error Object / NSTDError interface
@@ -710,34 +715,34 @@ by libnstd library. Which are Enduro/X base library. Currently it is used for lo
 ==== nstdError.Code()
 [cols="h,5a"]
 |===
-| Function
-| func (e nstdError) Code() int
-| Description
-| code getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e nstdError) Code() int
+|Description
+|Error code getter. 
+|Applies
+|XATMI client and server
 |===
 
 ==== nstdError.Error()
 [cols="h,5a"]
 |===
-| Function
-| func (e nstdError) Error() string
-| Description
-| Standard error interface. 
-| Applies
-| XATMI client and server
+|Function
+|func (e nstdError) Error() string
+|Description
+|Standard error interface. 
+|Applies
+|XATMI client and server
 |===
 
 ==== nstdError.Message()
 [cols="h,5a"]
 |===
-| Function
-| func (e nstdError) Message() string
-| Description
-| message getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e nstdError) Message() string
+|Description
+|Error message getter. 
+|Applies
+|XATMI client and server
 |===
 
 === ATMI Error object / ATMIError interface
@@ -747,34 +752,34 @@ seperate chapter in this document.
 ==== atmiError.Code()
 [cols="h,5a"]
 |===
-| Function
-| func (e atmiError) Code() int
-| Description
-| code getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e atmiError) Code() int
+|Description
+|code getter. 
+|Applies
+|XATMI client and server
 |===
 
 ==== atmiError.Error()
 [cols="h,5a"]
 |===
-| Function
-| func (e atmiError) Error() string
-| Description
-| Standard error interface. 
-| Applies
-| XATMI client and server
+|Function
+|func (e atmiError) Error() string
+|Description
+|Standard error interface. 
+|Applies
+|XATMI client and server
 |===
 
 ==== atmiError.Message()
 [cols="h,5a"]
 |===
-| Function
-| func (e atmiError) Message() string
-| Description
-| message getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e atmiError) Message() string
+|Description
+|message getter. 
+|Applies
+|XATMI client and server
 |===
 
 === Abstract IPC buffer - ATMIUbf
@@ -784,37 +789,37 @@ and binary buffer.
 ==== ATMIBuf.GetBuf()
 [cols="h,5a"]
 |===
-| Function
-| func (u *ATMIBuf) GetBuf() *ATMIBuf
-| Description
-| Have inteface to base ATMI buffer. 
-| Applies
-| XATMI client and server
+|Function
+|func (u *ATMIBuf) GetBuf() *ATMIBuf
+|Description
+|Have inteface to base ATMI buffer. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMIBuf.TpRealloc()
 [cols="h,5a"]
 |===
-| Function
-| func (buf *ATMIBuf) TpRealloc(size int64) ATMIError
-| Description
-| Reallocate the buffer. 
+|Function
+|func (buf *ATMIBuf) TpRealloc(size int64) ATMIError
+|Description
+|Reallocate the buffer. 
 *buf* ATMI buffer. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMIBuf.TpSetCtxt()
 [cols="h,5a"]
 |===
-| Function
-| func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx)
-| Description
-| Change the context of the buffers (needed for error handling). 
-| Applies
-| XATMI client and server
+|Function
+|func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx)
+|Description
+|Change the context of the buffers (needed for error handling). 
+|Applies
+|XATMI client and server
 |===
 
 === ATMI Context
@@ -825,1255 +830,1256 @@ used for client and server API.
 ==== ATMICtx.AssocThreadWithCtx()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) AssocThreadWithCtx() ATMIError
-| Description
-| Associate current OS thread with context This might be needed for global
+|Function
+|func (ac *ATMICtx) AssocThreadWithCtx() ATMIError
+|Description
+|Associate current OS thread with context This might be needed for global
 transaction processing Which uses underlaying OS threads for transaction
 association. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BBoolCo()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError)
-| Description
-| Compile boolean expression TODO: might want auto finalizer with Btreefree!. 
+|Function
+|func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError)
+|Description
+|Compile boolean expression TODO: might want auto finalizer with Btreefree!. 
 *expr* Expression string. 
-| Returns
-| Expression tree (ptr or nil on error), UBF error
-| Applies
-| XATMI client and server
+|Returns
+|Expression tree (ptr or nil on error), UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BBoolPr()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError)
-| Description
-| Print the expression tree. 
+|Function
+|func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError)
+|Description
+|Print the expression tree. 
 *tree* Compiled expression tree. 
-| Returns
-| printed expresion string, ubf error
-| Applies
-| XATMI client and server
+|Returns
+|printed expresion string, ubf error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BBoolSetCBF()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError
-| Description
-| Set custom callback function for UBF buffer expression evaluator. 
+|Function
+|func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError
+|Description
+|Set custom callback function for UBF buffer expression evaluator. 
 *funcname* Name of the function to be used in expression. 
 *f* callback to function. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BConcat()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError
-| Description
-| Contact the buffers. 
+|Function
+|func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError
+|Description
+|Contact the buffers. 
 *dest* dest buffer. 
 *src* source buffer. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BCpy()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError
-| Description
-| Copy buffer. 
+|Function
+|func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError
+|Description
+|Copy buffer. 
 *dest* Destination UBF buffer. 
 *src* Source UBF buffer. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BFldId()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BFldId(fldnm string) (int, UBFError)
-| Description
-| Return field ID. 
+|Function
+|func (ac *ATMICtx) BFldId(fldnm string) (int, UBFError)
+|Description
+|Return field ID. 
 *fldnm* Field name. 
-| Returns
-| Field ID, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|Field ID, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BFldNo()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BFldNo(bfldid int) int
-| Description
-| Return field number. 
+|Function
+|func (ac *ATMICtx) BFldNo(bfldid int) int
+|Description
+|Return field number. 
 *bfldid* field id. 
-| Returns
-| field number
-| Applies
-| XATMI client and server
+|Returns
+|field number
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BFldType()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BFldType(bfldid int) int
-| Description
-| Return the field type. 
+|Function
+|func (ac *ATMICtx) BFldType(bfldid int) int
+|Description
+|Return the field type. 
 *bfldid* field id. 
-| Returns
-| field type
-| Applies
-| XATMI client and server
+|Returns
+|field type
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BFname()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BFname(bfldid int) (string, UBFError)
-| Description
-| Get field name. 
+|Function
+|func (ac *ATMICtx) BFname(bfldid int) (string, UBFError)
+|Description
+|Get field name. 
 *bfldid* Field ID. 
-| Returns
-| Field name (or "" if error), UBF error
-| Applies
-| XATMI client and server
+|Returns
+|Field name (or "" if error), UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BInit()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BInit(u *TypedUBF, ulen int) UBFError
-| Description
-| Initialize/re-initialize UBF buffer. 
+|Function
+|func (ac *ATMICtx) BInit(u *TypedUBF, ulen int) UBFError
+|Description
+|Initialize/re-initialize UBF buffer. 
 *u* UBF buffer. 
 *ulen* lenght of the buffer. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BMkFldId()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BMkFldId(fldtype int, bfldid int) (int, UBFError)
-| Description
-| Generate Field ID. 
+|Function
+|func (ac *ATMICtx) BMkFldId(fldtype int, bfldid int) (int, UBFError)
+|Description
+|Generate Field ID. 
 *fldtype* Field type (see BFLD_SHORT cost list). 
 *bfldid* field number. 
-| Returns
-| field id or 0 if error, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|field id or 0 if error, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BProjCpy()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int)
+|Function
+|func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int)
 UBFError
-| Description
-| Make a project copy of the fields (leave only those in array). 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Description
+|Make a project copy of the fields (leave only those in array). 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BTreeFree()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BTreeFree(tree *ExprTree)
-| Description
-| Free the expression buffer. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) BTreeFree(tree *ExprTree)
+|Description
+|Free the expression buffer. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.BUpdate()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError
-| Description
-| Update dest buffer with source buffer data. 
+|Function
+|func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError
+|Description
+|Update dest buffer with source buffer data. 
 *dest* dest buffer. 
 *src* source buffer. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.CastToCarray()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError)
-| Description
-| Get the String Handler. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError)
+|Description
+|Get the String Handler. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.CastToJSON()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError)
-| Description
-| Get the JSON Handler from ATMI Buffer. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError)
+|Description
+|Get the JSON Handler from ATMI Buffer. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.CastToString()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (TypedString, ATMIError)
-| Description
-| Get the String Handler from ATMI Buffer. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (TypedString, ATMIError)
+|Description
+|Get the String Handler from ATMI Buffer. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.CastToUBF()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (TypedUBF, ATMIError)
-| Description
-| Get the UBF Handler. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (TypedUBF, ATMIError)
+|Description
+|Get the UBF Handler. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.DisassocThreadFromCtx()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError
-| Description
-| Disassocate current os thread from context This might be needed for global
+|Function
+|func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError
+|Description
+|Disassocate current os thread from context This might be needed for global
 transaction processing Which uses underlaying OS threads for transaction
 association. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.FreeATMICtx()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) FreeATMICtx()
-| Description
-| Free up the ATMI Context. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) FreeATMICtx()
+|Description
+|Free up the ATMI Context Internally this will call the TpTerm too to termiante
+any XATMI client session in progress.. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewATMIError()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewATMIError() ATMIError
-| Description
-| Generate ATMI error, read the codes. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) NewATMIError() ATMIError
+|Description
+|Generate ATMI error, read the codes. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewCarray()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError)
-| Description
-| Allocate new string buffer. 
+|Function
+|func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError)
+|Description
+|Allocate new string buffer. 
 *s* - source string. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewJSON()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError)
-| Description
-| Allocate new string buffer. 
+|Function
+|func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError)
+|Description
+|Allocate new string buffer. 
 *s* - source string. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewNstdError()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewNstdError() NSTDError
-| Description
-| Generate NSTD error, read the codes. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) NewNstdError() NSTDError
+|Description
+|Generate NSTD error, read the codes. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewString()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError)
-| Description
-| Allocate new string buffer. 
+|Function
+|func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError)
+|Description
+|Allocate new string buffer. 
 *s* - source string. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewUBF()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError)
-| Description
-| Allocate the new UBF buffer NOTE: realloc or other ATMI ops you can do with
+|Function
+|func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError)
+|Description
+|Allocate the new UBF buffer NOTE: realloc or other ATMI ops you can do with
 TypedUBF.Buf. 
 *size* - buffer size. 
-| Returns
-| Typed UBF, ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|Typed UBF, ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.NewUBFError()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) NewUBFError() UBFError
-| Description
-| Generate UBF error, read the codes. 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) NewUBFError() UBFError
+|Description
+|Generate UBF error, read the codes. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpACall()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int,
+|Function
+|func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int,
 ATMIError)
-| Description
-| TP Async call. 
+|Description
+|TP Async call. 
 *svc* Service Name to call. 
 *buf* ATMI buffer. 
 *flags* Flags to be used for call (see flags section). 
-| Returns
-| Call Descriptor (cd), ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|Call Descriptor (cd), ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpAbort()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpAbort(flags int64) ATMIError
-| Description
-| Abort global transaction. 
+|Function
+|func (ac *ATMICtx) TpAbort(flags int64) ATMIError
+|Description
+|Abort global transaction. 
 *flags* flags for abort operation (must be 0). 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpAdvertise()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr
+|Function
+|func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr
 TPServiceFunction) ATMIError
-| Description
-| Advertise service. 
+|Description
+|Advertise service. 
 *svcname* Service Name. 
 *funcname* Function Name. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpAlloc()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64)
+|Function
+|func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64)
 (*ATMIBuf, ATMIError)
-| Description
-| Allocate buffer Accepts the standard ATMI values We should add error handling
+|Description
+|Allocate buffer Accepts the standard ATMI values We should add error handling
 here. 
 *b_type* Buffer type. 
 *b_subtype* Buffer sub-type. 
 *size* Buffer size request. 
-| Returns
-| ATMI Buffer, atmiError
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Buffer, atmiError
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpBegin()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError
-| Description
-| Begin transaction. 
+|Function
+|func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError
+|Description
+|Begin transaction. 
 *timeout* Transaction Timeout. 
 *flags* Transaction flags. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpCall()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int,
+|Function
+|func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int,
 ATMIError)
-| Description
-| Do the service call, assume using the same buffer  for return value.	This
+|Description
+|Do the service call, assume using the same buffer  for return value.  This
 works for self describing buffers. Otherwise we need a buffer size in 
 ATMIBuf.. 
 *svc* service name. 
 *buf* ATMI buffer. 
 *flags* Flags to be used. 
-| Returns
-| atmiError
-| Applies
-| XATMI client and server
+|Returns
+|atmiError
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpCancel()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpCancel(cd int) ATMIError
-| Description
-| Cancel async call. 
+|Function
+|func (ac *ATMICtx) TpCancel(cd int) ATMIError
+|Description
+|Cancel async call. 
 *cd* Call descriptor. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpClose()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpClose() ATMIError
-| Description
-| Close XA Sub-system. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpClose() ATMIError
+|Description
+|Close XA Sub-system. 
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpCommit()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpCommit(flags int64) ATMIError
-| Description
-| Commit global transaction. 
+|Function
+|func (ac *ATMICtx) TpCommit(flags int64) ATMIError
+|Description
+|Commit global transaction. 
 *flags* flags for abort operation. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpConnect()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int,
+|Function
+|func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int,
 ATMIError)
-| Description
-| Connect to service in conversational mode. 
+|Description
+|Connect to service in conversational mode. 
 *svc* Service name. 
 *data* ATMI buffers. 
 *flags* Flags. 
-| Returns
-| call descriptor (cd), ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|call descriptor (cd), ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpContinue()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpContinue()
-| Description
-| Continue main thread processing (go back to server polling). 
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpContinue()
+|Description
+|Continue main thread processing (go back to server polling). 
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpDequeue()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb
+|Function
+|func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb
 TypedBuffer, flags int64) ATMIError
-| Description
-| Dequeue message from Q. 
+|Description
+|Dequeue message from Q. 
 *qspace* Name of the event to post. 
 *qname* ATMI buffer. 
 *ctl* Control structure. 
 *tb* Typed buffer. 
 *flags* ATMI call flags. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpDiscon()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpDiscon(cd int) ATMIError
-| Description
-| Disconnect from conversation. 
+|Function
+|func (ac *ATMICtx) TpDiscon(cd int) ATMIError
+|Description
+|Disconnect from conversation. 
 *cd* Call Descriptor. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpEnqueue()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb
+|Function
+|func (ac *ATMICtx) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb
 TypedBuffer, flags int64) ATMIError
-| Description
-| Enqueue message to Q. 
+|Description
+|Enqueue message to Q. 
 *qspace* Name of the event to post. 
 *qname* ATMI buffer. 
 *ctl* Control structure. 
 *tb* Typed buffer. 
 *flags* ATMI call flags. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpExtAddPeriodCB()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError
-| Description
-| Set periodic before poll callback func. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError
+|Description
+|Set periodic before poll callback func. 
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpExtAddPollerFD()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{},
+|Function
+|func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{},
 cb TPPollerFdCallback) ATMIError
-| Description
-| Add custom File Descriptor (FD) to Q poller. 
+|Description
+|Add custom File Descriptor (FD) to Q poller. 
 *events* Epoll events. 
 *ptr1* Custom data block to be passed to callback func. 
 *cb* Callback func. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpExtDelB4PollCB()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError
-| Description
-| Delete before-doing-poll callback. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError
+|Description
+|Delete before-doing-poll callback. 
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpExtDelPeriodCB()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError
-| Description
-| Delet del periodic callback. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError
+|Description
+|Delet del periodic callback. 
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpExtDelPollerfd()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError
-| Description
-| Remove the polling file descriptor. 
+|Function
+|func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError
+|Description
+|Remove the polling file descriptor. 
 *fd* FD to poll on. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpForward()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64)
-| Description
-| Forward the call to specified poller and return to Q poller. 
+|Function
+|func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64)
+|Description
+|Forward the call to specified poller and return to Q poller. 
 *svc* Service name to forward the call to. 
 *data* ATMI buffer. 
 *flags* Flags. 
-| Applies
-| To XATMI server
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpFree()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpFree(buf *ATMIBuf)
-| Description
-| Free the ATMI buffer. 
+|Function
+|func (ac *ATMICtx) TpFree(buf *ATMIBuf)
+|Description
+|Free the ATMI buffer. 
 *buf* ATMI buffer. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpGetLev()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpGetLev() int
-| Description
-| Check are we in globa transaction?. 
-| Returns
-| 0 - not in global Tx, 1 - in global Tx
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpGetLev() int
+|Description
+|Check are we in globa transaction?. 
+|Returns
+|0 - not in global Tx, 1 - in global Tx
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpGetRply()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int,
+|Function
+|func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int,
 ATMIError)
-| Description
-| Get async call reply. 
+|Description
+|Get async call reply. 
 *cd* call. 
 *buf* ATMI buffer. 
 *flags* call flags. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpGetSrvId()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpGetSrvId() int
-| Description
-| Return server id. 
-| Returns
-| server_id
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpGetSrvId() int
+|Description
+|Return server id. 
+|Returns
+|server_id
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpGetnodeId()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpGetnodeId() int64
-| Description
-| Get cluster node id. 
-| Returns
-| Node Id
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpGetnodeId() int64
+|Description
+|Get cluster node id. 
+|Returns
+|Node Id
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpInit()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpInit() ATMIError
-| Description
-| Initialize client. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpInit() ATMIError
+|Description
+|Initialize client. 
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLog()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage). 
+|Function
+|func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage). 
 *lev* Logging level. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogAlways()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogAlways(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
+|Function
+|func (ac *ATMICtx) TpLogAlways(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
 wrapper. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogCloseReqFile()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogCloseReqFile()
-| Description
-| Close request logger (see tplogclosereqfile(3) manpage). 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpLogCloseReqFile()
+|Description
+|Close request logger (see tplogclosereqfile(3) manpage). 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogCloseThread()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogCloseThread()
-| Description
-| Close request logger (see tplogclosethread(3) manpage). 
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpLogCloseThread()
+|Description
+|Close request logger (see tplogclosethread(3) manpage). 
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogConfig()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogConfig(logger int, lev int, debug_string string,
+|Function
+|func (ac *ATMICtx) TpLogConfig(logger int, lev int, debug_string string,
 module string, new_file string) NSTDError
-| Description
-| Configure Enduro/X logger (see tplogconfig(3) manpage). 
+|Description
+|Configure Enduro/X logger (see tplogconfig(3) manpage). 
 *logger* is bitwise 'ored' (see LOG_FACILITY_*). 
 *lev* is optional (if not set: -1), log level to be assigned to facilites. 
 *debug_string* optional Enduro/X debug string (see ndrxdebug.conf(5) manpage). 
 *new_file* optional (if not set - empty string) logging output file, overrides
 debug_string file tag. 
-| Returns
-| NSTDError - standard library error
-| Applies
-| XATMI client and server
+|Returns
+|NSTDError - standard library error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogDebug()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogDebug(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Debug level
+|Function
+|func (ac *ATMICtx) TpLogDebug(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Debug level
 wrapper. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogDelBufReqFile()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError
-| Description
-| Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage). 
+|Function
+|func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError
+|Description
+|Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage). 
 *data* XATMI buffer, must be UBF type. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogDump()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen
-int) ATMIError
-| Description
-| Print the byte array buffer to Enduro/X logger (see tplogdump(3) manpage). 
+|Function
+|func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int)
+ATMIError
+|Description
+|Print the byte array buffer to Enduro/X logger (see tplogdump(3) manpage). 
 *lev* Logging level (see LOG_* constants). 
 *comment* Title of the buffer dump. 
 *ptr* Pointer to buffer for dump. 
 *dumplen* Length of the bytes to dump. 
-| Returns
-| atmiError (in case if invalid length we have for ptr and dumplen)
-| Applies
-| XATMI client and server
+|Returns
+|atmiError (in case if invalid length we have for ptr and dumplen)
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogDumpDiff()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2
+|Function
+|func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2
 []byte, difflen int) ATMIError
-| Description
-| Function compares to byte array buffers and prints the differences to
-Enduro/X logger (see tplogdumpdiff(3) manpage). 
+|Description
+|Function compares to byte array buffers and prints the differences to Enduro/X
+logger (see tplogdumpdiff(3) manpage). 
 *lev* Logging level (see LOG_* constants). 
 *comment* Title of the buffer diff. 
 *ptr1* Pointer to buffer1 for compare. 
 *ptr2* Pointer to buffer2 for compare. 
 *difflen* Length of the bytes to compare. 
-| Returns
-| atmiError (in case if invalid length we have for ptr1/ptr2 and difflen)
-| Applies
-| XATMI client and server
+|Returns
+|atmiError (in case if invalid length we have for ptr1/ptr2 and difflen)
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogError()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogError(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Error level
+|Function
+|func (ac *ATMICtx) TpLogError(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Error level
 wrapper. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogFatal()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogFatal(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
+|Function
+|func (ac *ATMICtx) TpLogFatal(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
 wrapper. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogGetBufReqFile()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError)
-| Description
-| Get the request file name from UBF buffer (see tploggetbufreqfile(3)
-manpage). 
+|Function
+|func (ac *ATMICtx) TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError)
+|Description
+|Get the request file name from UBF buffer (see tploggetbufreqfile(3) manpage).
+
 *data* XATMI buffer (must be UBF). 
-| Returns
-| file name, ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|file name, ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogGetReqFile()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogGetReqFile() (bool, string)
-| Description
-| Return request logging file (if there is one currenlty in use)  (see
+|Function
+|func (ac *ATMICtx) TpLogGetReqFile() (bool, string)
+|Description
+|Return request logging file (if there is one currenlty in use)  (see
 tploggetreqfile(3) manpage). 
-| Returns
-| Status (request logger open or not), full path to request file
-| Applies
-| XATMI client and server
+|Returns
+|Status (request logger open or not), full path to request file
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogInfo()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogInfo(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Info level
-wrapper. 
+|Function
+|func (ac *ATMICtx) TpLogInfo(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Info level wrapper.
+
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogSetReqFile()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc
+|Function
+|func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc
 string) ATMIError
-| Description
-| Set request file to log to (see tplogsetreqfile(3) manpage). 
+|Description
+|Set request file to log to (see tplogsetreqfile(3) manpage). 
 *data* pointer to  XATMI buffer (must be UBF, others will cause error),
 optional. 
 *filename* field name to set (this goes to UBF buffer too, if set), optional. 
 *filesvc* XATMI service name to call for requesting the new request file name,
 optional. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogSetReqFile_Direct()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogSetReqFile_Direct(filename string)
-| Description
-| Set request logging file, direct version (see tplogsetreqfile_direct(3)
+|Function
+|func (ac *ATMICtx) TpLogSetReqFile_Direct(filename string)
+|Description
+|Set request logging file, direct version (see tplogsetreqfile_direct(3)
 manpage) Which does operate with thread local storage If fails to open request
 logging file, it will automatically fall-back to stderr.. 
 *filename* Set file name to perform logging to. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpLogWarn()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpLogWarn(format string, a ...interface{})
-| Description
-| Log the message to Enduro/X loggers (see tplog(3) manpage) Warning level
+|Function
+|func (ac *ATMICtx) TpLogWarn(format string, a ...interface{})
+|Description
+|Log the message to Enduro/X loggers (see tplog(3) manpage) Warning level
 wrapper. 
 *a* arguemnts for sprintf. 
 *format* Format string for loggers. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpOpen()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpOpen() ATMIError
-| Description
-| Open XA Sub-system. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpOpen() ATMIError
+|Description
+|Open XA Sub-system. 
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpPost()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags
+|Function
+|func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags
 int64) (int, ATMIError)
-| Description
-| Post the event to subscribers. 
+|Description
+|Post the event to subscribers. 
 *eventname* Name of the event to post. 
 *data* ATMI buffer. 
 *flags* flags. 
-| Returns
-| Number Of events posted, ATMI error
-| Applies
-| XATMI client and server
+|Returns
+|Number Of events posted, ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpRecv()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64)
+|Function
+|func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64)
 ATMIError
-| Description
-| Receive data from conversation. 
+|Description
+|Receive data from conversation. 
 *cd* call descriptor. 
 *data* ATMI buffer. 
 *revent* Return Event. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpResume()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError
-| Description
-| Resume transaction. 
+|Function
+|func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError
+|Description
+|Resume transaction. 
 *tranid* Transaction Id reference. 
 *flags* Flags for tran resume (must be 0). 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpReturn()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags
+|Function
+|func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags
 int64)
-| Description
-| Return the ATMI call and go to Q poller. 
+|Description
+|Return the ATMI call and go to Q poller. 
 *rvel* Return value (TPFAIL or TPSUCCESS). 
 *rcode* Return code (used for custom purposes). 
 *tb* ATMI buffer. 
 *flags* Flags. 
-| Applies
-| To XATMI server
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpRun()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc)
+|Function
+|func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc)
 ATMIError
-| Description
-| We should pass here init & un-init functions... So that we can start the
+|Description
+|We should pass here init & un-init functions... So that we can start the
 processing. 
 *initf* callback to init function. 
 *uninitf* callback to un-init function. 
-| Returns
-| Enduro/X service exit code, ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|Enduro/X service exit code, ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpSend()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64)
+|Function
+|func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64)
 ATMIError
-| Description
-| Receive data from conversation. 
+|Description
+|Receive data from conversation. 
 *cd* call descriptor. 
 *data* ATMI buffer. 
 *revent* Return Event. 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpSrvFreeCtxData()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSrvFreeCtxData(data *TPSRVCTXDATA)
-| Description
-| Free the server context data. 
+|Function
+|func (ac *ATMICtx) TpSrvFreeCtxData(data *TPSRVCTXDATA)
+|Description
+|Free the server context data. 
 *data* Context data block. 
-| Applies
-| To XATMI server
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpSrvGetCtxData()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError)
-| Description
-| Get Server Call thread context data (free of *TPSRVCTXDATA must be done by
+|Function
+|func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError)
+|Description
+|Get Server Call thread context data (free of *TPSRVCTXDATA must be done by
 user). 
-| Returns
-| contect data, ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|contect data, ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpSrvSetCtxData()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError
-| Description
-| Restore thread context data. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Function
+|func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError
+|Description
+|Restore thread context data. 
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpSubscribe()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL,
+|Function
+|func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL,
 flags int64) (int64, ATMIError)
-| Description
-| Subscribe service to some specified event. 
+|Description
+|Subscribe service to some specified event. 
 *eventexpr* Subscription ID (retruned by TPSubscribe()). 
 *filter* Event filter expression (regex). 
 *ctl* Control struct. 
 *flags* Flags. 
-| Returns
-| Subscription id, ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|Subscription id, ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpSuspend()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError
-| Description
-| Suspend transaction. 
+|Function
+|func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError
+|Description
+|Suspend transaction. 
 *tranid* Transaction Id reference. 
 *flags* Flags for suspend (must be 0). 
-| Returns
-| ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpTerm()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpTerm() ATMIError
-| Description
-| Terminate the client. 
-| Returns
-| ATMI error
-| Applies
-| XATMI client and server
+|Function
+|func (ac *ATMICtx) TpTerm() ATMIError
+|Description
+|Terminate the client. 
+|Returns
+|ATMI error
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpTypes()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string)
+|Function
+|func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string)
 (int64, ATMIError)
-| Description
-| Return ATMI buffer info. 
+|Description
+|Return ATMI buffer info. 
 *ptr* Pointer to ATMI buffer. 
 *itype* ptr to string to return the buffer type  (can be nil). 
 *subtype* ptr to string to return sub-type (can be nil). 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpUnadvertise()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError
-| Description
-| Unadvertise service dynamically. 
+|Function
+|func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError
+|Description
+|Unadvertise service dynamically. 
 *svcname* Service Name. 
-| Returns
-| ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.TpUnsubscribe()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int,
+|Function
+|func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int,
 ATMIError)
-| Description
-| Unsubscribe from event broker. 
+|Description
+|Unsubscribe from event broker. 
 *subscription* Subscription ID (retruned by TPSubscribe()). 
 *flags* Flags. 
-| Returns
-| Number of subscriptions deleted, ATMI Error
-| Applies
-| To XATMI server
+|Returns
+|Number of subscriptions deleted, ATMI Error
+|Applies
+|To XATMI server
 |===
 
 ==== ATMICtx.UBFAlloc()
 [cols="h,5a"]
 |===
-| Function
-| func (ac *ATMICtx) UBFAlloc(size int64) (TypedUBF, ATMIError)
-| Description
-| Allocate the UBF buffer. 
+|Function
+|func (ac *ATMICtx) UBFAlloc(size int64) (TypedUBF, ATMIError)
+|Description
+|Allocate the UBF buffer. 
 *size* Buffer size in bytes. 
-| Returns
-| UBF Handler, ATMI Error
-| Applies
-| XATMI client and server
+|Returns
+|UBF Handler, ATMI Error
+|Applies
+|XATMI client and server
 |===
 
 === String IPC buffer format
@@ -2083,48 +2089,48 @@ buffer cannot contain binary zero (0x00) byte.
 ==== TypedString.GetBuf()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedString) GetBuf() *ATMIBuf
-| Description
-| Return The ATMI buffer to caller. 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedString) GetBuf() *ATMIBuf
+|Description
+|Return The ATMI buffer to caller. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedString.GetString()
 [cols="h,5a"]
 |===
-| Function
-| func (s *TypedString) GetString() string
-| Description
-| Get the string value out from buffer. 
-| Returns
-| String value
-| Applies
-| XATMI client and server
+|Function
+|func (s *TypedString) GetString() string
+|Description
+|Get the string value out from buffer. 
+|Returns
+|String value
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedString.SetString()
 [cols="h,5a"]
 |===
-| Function
-| func (s *TypedString) SetString(gs string) ATMIError
-| Description
-| Set the string to the buffer. 
+|Function
+|func (s *TypedString) SetString(gs string) ATMIError
+|Description
+|Set the string to the buffer. 
 *str* String value. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedString.TpRealloc()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedString) TpRealloc(size int64) ATMIError
-| Description
-| . 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedString) TpRealloc(size int64) ATMIError
+|Description
+|. 
+|Applies
+|XATMI client and server
 |===
 
 === JSON IPC buffer format
@@ -2136,59 +2142,59 @@ with UBF field names and values. Values can be arrays.
 ==== TypedJSON.GetBuf()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedJSON) GetBuf() *ATMIBuf
-| Description
-| Return The ATMI buffer to caller. 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedJSON) GetBuf() *ATMIBuf
+|Description
+|Return The ATMI buffer to caller. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedJSON.GetJSONText()
 [cols="h,5a"]
 |===
-| Function
-| func (j *TypedJSON) GetJSONText() string
-| Description
-| Get the string value out from buffer. 
-| Returns
-| JSON value
-| Applies
-| XATMI client and server
+|Function
+|func (j *TypedJSON) GetJSONText() string
+|Description
+|Get the string value out from buffer. 
+|Returns
+|JSON value
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedJSON.SetJSON()
 [cols="h,5a"]
 |===
-| Function
-| func (j *TypedJSON) SetJSON(b []byte) ATMIError
-| Description
-| Set JSON bytes. 
-| Applies
-| XATMI client and server
+|Function
+|func (j *TypedJSON) SetJSON(b []byte) ATMIError
+|Description
+|Set JSON bytes. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedJSON.SetJSONText()
 [cols="h,5a"]
 |===
-| Function
-| func (j *TypedJSON) SetJSONText(gs string) ATMIError
-| Description
-| Set the string to the buffer. 
+|Function
+|func (j *TypedJSON) SetJSONText(gs string) ATMIError
+|Description
+|Set the string to the buffer. 
 *str* JSON value. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedJSON.TpRealloc()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedJSON) TpRealloc(size int64) ATMIError
-| Description
-| . 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedJSON) TpRealloc(size int64) ATMIError
+|Description
+|. 
+|Applies
+|XATMI client and server
 |===
 
 === Binary buffer IPC buffer format
@@ -2197,69 +2203,69 @@ Typed Carray, basically is byte array buffer.
 ==== TypedCarray.GetBuf()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedCarray) GetBuf() *ATMIBuf
-| Description
-| Return The ATMI buffer to caller. 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedCarray) GetBuf() *ATMIBuf
+|Description
+|Return The ATMI buffer to caller. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedCarray.SetBytes()
 [cols="h,5a"]
 |===
-| Function
-| func (s *TypedCarray) SetBytes(b []byte) ATMIError
-| Description
-| . 
+|Function
+|func (s *TypedCarray) SetBytes(b []byte) ATMIError
+|Description
+|. 
 *str* String value. 
-| Applies
-| XATMI client and server
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedCarray.TpRealloc()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedCarray) TpRealloc(size int64) ATMIError
-| Description
-| . 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedCarray) TpRealloc(size int64) ATMIError
+|Description
+|. 
+|Applies
+|XATMI client and server
 |===
 
 === BUF Error object/ UBFError interface
 ==== ubfError.Code()
 [cols="h,5a"]
 |===
-| Function
-| func (e ubfError) Code() int
-| Description
-| code getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e ubfError) Code() int
+|Description
+|code getter. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ubfError.Error()
 [cols="h,5a"]
 |===
-| Function
-| func (e ubfError) Error() string
-| Description
-| Standard error interface. 
-| Applies
-| XATMI client and server
+|Function
+|func (e ubfError) Error() string
+|Description
+|Standard error interface. 
+|Applies
+|XATMI client and server
 |===
 
 ==== ubfError.Message()
 [cols="h,5a"]
 |===
-| Function
-| func (e ubfError) Message() string
-| Description
-| message getter. 
-| Applies
-| XATMI client and server
+|Function
+|func (e ubfError) Message() string
+|Description
+|message getter. 
+|Applies
+|XATMI client and server
 |===
 
 === UBF Key/value IPC buffer format
@@ -2269,523 +2275,523 @@ can contain the array of elements (occurrences).
 ==== TypedUBF.BAdd()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BAdd(bfldid int, ival interface{}) UBFError
-| Description
-| Add field to buffer. 
+|Function
+|func (u *TypedUBF) BAdd(bfldid int, ival interface{}) UBFError
+|Description
+|Add field to buffer. 
 *bfldid* Field ID. 
 *ival* Input value. 
-| Returns
-| UBF Error
-| Applies
-| XATMI client and server
+|Returns
+|UBF Error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BBoolEv()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BBoolEv(tree *ExprTree) bool
-| Description
-| Test the expresion tree to current UBF buffer. 
+|Function
+|func (u *TypedUBF) BBoolEv(tree *ExprTree) bool
+|Description
+|Test the expresion tree to current UBF buffer. 
 *tree* compiled expression tree. 
-| Returns
-| true (buffer matched expression) or false (buffer not matched expression)
-| Applies
-| XATMI client and server
+|Returns
+|true (buffer matched expression) or false (buffer not matched expression)
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BChg()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BChg(bfldid int, occ int, ival interface{}) UBFError
-| Description
-| Change field in buffer. 
+|Function
+|func (u *TypedUBF) BChg(bfldid int, occ int, ival interface{}) UBFError
+|Description
+|Change field in buffer. 
 *bfldid* Field ID. 
 *ival* Input value. 
-| Returns
-| UBF Error
-| Applies
-| XATMI client and server
+|Returns
+|UBF Error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BChgCombined()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add
+|Function
+|func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add
 bool) UBFError
-| Description
-| Set the field value. Combined supports change (chg) or add mode. 
+|Description
+|Set the field value. Combined supports change (chg) or add mode. 
 *bfldid* Field ID. 
 *occ* Field Occurrance. 
 *ival* Input value. 
 *do_add* Adding mode true = add, false = change. 
-| Returns
-| UBF Error
-| Applies
-| XATMI client and server
+|Returns
+|UBF Error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BDel()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BDel(bfldid int, occ int) UBFError
-| Description
-| Delete the field from buffer. 
+|Function
+|func (u *TypedUBF) BDel(bfldid int, occ int) UBFError
+|Description
+|Delete the field from buffer. 
 *fldid* Field ID. 
 *occ* Field occurance. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BDelAll()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BDelAll(bfldid int) UBFError
-| Description
-| Delete field (all occurrances) from buffer. 
+|Function
+|func (u *TypedUBF) BDelAll(bfldid int) UBFError
+|Description
+|Delete field (all occurrances) from buffer. 
 *bfldid* field ID. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BDelete()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BDelete(fldlist []int) UBFError
-| Description
-| Delete listed fields from UBF buffer. 
+|Function
+|func (u *TypedUBF) BDelete(fldlist []int) UBFError
+|Description
+|Delete listed fields from UBF buffer. 
 *fldlist* list of fields (array). 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BExtRead()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BExtRead(s string) UBFError
-| Description
-| Read the bufer content from string. 
+|Function
+|func (u *TypedUBF) BExtRead(s string) UBFError
+|Description
+|Read the bufer content from string. 
 *s* String buffer representation. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BFloatEv()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BFloatEv(tree *ExprTree) float64
-| Description
-| Evalute expression value in float64 format. 
+|Function
+|func (u *TypedUBF) BFloatEv(tree *ExprTree) float64
+|Description
+|Evalute expression value in float64 format. 
 *tree* compiled expression tree. 
-| Returns
-| expression value
-| Applies
-| XATMI client and server
+|Returns
+|expression value
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGet()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError)
-| Description
-| Get the field form buffer. This returns the interface to underlaying type. 
+|Function
+|func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError)
+|Description
+|Get the field form buffer. This returns the interface to underlaying type. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| interface to value,	 UBF error
-| Applies
-| XATMI client and server
+|Returns
+|interface to value,	 UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetByte()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError)
-| Description
-| Return byte (c char) value from buffer. 
+|Function
+|func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError)
+|Description
+|Return byte (c char) value from buffer. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| byte val, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|byte val, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetByteArr()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError)
-| Description
-| Get string value. 
+|Function
+|func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError)
+|Description
+|Get string value. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| string val, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|string val, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetFloat32()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError)
-| Description
-| Get float value. 
+|Function
+|func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError)
+|Description
+|Get float value. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| float, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|float, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetFloat64()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError)
-| Description
-| Get double value. 
+|Function
+|func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError)
+|Description
+|Get double value. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| double, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|double, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetInt16()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetInt16(bfldid int, occ int) (int16, UBFError)
-| Description
-| Return int16 value from buffer. 
+|Function
+|func (u *TypedUBF) BGetInt16(bfldid int, occ int) (int16, UBFError)
+|Description
+|Return int16 value from buffer. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| int16 val,	 UBF error
-| Applies
-| XATMI client and server
+|Returns
+|int16 val,	 UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetInt64()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError)
-| Description
-| Return int64 value from buffer. 
+|Function
+|func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError)
+|Description
+|Return int64 value from buffer. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| int64 val,	 UBF error
-| Applies
-| XATMI client and server
+|Returns
+|int64 val,	 UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BGetString()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError)
-| Description
-| Get string value. 
+|Function
+|func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError)
+|Description
+|Get string value. 
 *bfldid* Field ID. 
 *occ* Occurrance. 
-| Returns
-| string val, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|string val, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BIsUBF()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BIsUBF() bool
-| Description
-| Test C buffer for UBF format. 
-| Returns
-| TRUE - buffer is UBF, FALSE - not UBF
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BIsUBF() bool
+|Description
+|Test C buffer for UBF format. 
+|Returns
+|TRUE - buffer is UBF, FALSE - not UBF
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BLen()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError)
-| Description
-| Get the field len. 
+|Function
+|func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError)
+|Description
+|Get the field len. 
 *fldid* Field ID. 
 *occ* Field occurance. 
-| Returns
-| FIeld len, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|FIeld len, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BNext()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BNext(first bool) (int, int, UBFError)
-| Description
-| Iterate over the buffer NOTE: This is not multiple context safe. It stores
+|Function
+|func (u *TypedUBF) BNext(first bool) (int, int, UBFError)
+|Description
+|Iterate over the buffer NOTE: This is not multiple context safe. It stores
 iteration state internally. 
 *first* TRUE start iteration, FALSE continue iteration. 
-| Returns
-| Field ID, Field Occurrance, UBF Error
-| Applies
-| XATMI client and server
+|Returns
+|Field ID, Field Occurrance, UBF Error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BOccur()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BOccur(bfldid int) (int, UBFError)
-| Description
-| Get the number of field occurrances in buffer. 
+|Function
+|func (u *TypedUBF) BOccur(bfldid int) (int, UBFError)
+|Description
+|Get the number of field occurrances in buffer. 
 *bfldid* Field ID. 
-| Returns
-| count (or -1 on error), UBF error
-| Applies
-| XATMI client and server
+|Returns
+|count (or -1 on error), UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BPres()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BPres(bfldid int, occ int) bool
-| Description
-| Check for field presence in buffer. 
+|Function
+|func (u *TypedUBF) BPres(bfldid int, occ int) bool
+|Description
+|Check for field presence in buffer. 
 *fldid* Field ID. 
 *occ* Field occurance. 
-| Returns
-| true/false present/not present
-| Applies
-| XATMI client and server
+|Returns
+|true/false present/not present
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BPrint()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BPrint() UBFError
-| Description
-| Print the buffer to stdout. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BPrint() UBFError
+|Description
+|Print the buffer to stdout. 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BProj()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BProj(fldlist []int) UBFError
-| Description
-| Make a project copy of the fields (leave only those in array). 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BProj(fldlist []int) UBFError
+|Description
+|Make a project copy of the fields (leave only those in array). 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BQBoolEv()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BQBoolEv(expr string) (bool, UBFError)
-| Description
-| Quick eval of the expression (compiles & frees the handler automatically). 
+|Function
+|func (u *TypedUBF) BQBoolEv(expr string) (bool, UBFError)
+|Description
+|Quick eval of the expression (compiles & frees the handler automatically). 
 *expr* Expression tree. 
-| Returns
-| result: true or false, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|result: true or false, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BRead()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BRead(dump []byte) UBFError
-| Description
-| Serialize the UBF buffer. 
-| Returns
-| serialized bytes, UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BRead(dump []byte) UBFError
+|Description
+|Serialize the UBF buffer. 
+|Returns
+|serialized bytes, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BSizeof()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BSizeof() (int64, UBFError)
-| Description
-| Get the total buffer size. 
-| Returns
-| bufer size, UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BSizeof() (int64, UBFError)
+|Description
+|Get the total buffer size. 
+|Returns
+|bufer size, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BSprint()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BSprint() (string, UBFError)
-| Description
-| Alternative for Bfprint. Will return the output in string variable So that
+|Function
+|func (u *TypedUBF) BSprint() (string, UBFError)
+|Description
+|Alternative for Bfprint. Will return the output in string variable So that
 caller can do anything it wants with the string output. 
-| Returns
-| Printed buffer, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|Printed buffer, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BType()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BType(bfldid int) (string, UBFError)
-| Description
-| Return field name in string. 
+|Function
+|func (u *TypedUBF) BType(bfldid int) (string, UBFError)
+|Description
+|Return field name in string. 
 *bfldid* field ID. 
-| Returns
-| field type, UBF error
-| Applies
-| XATMI client and server
+|Returns
+|field type, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BUnused()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BUnused() (int64, UBFError)
-| Description
-| Get the number of free bytes of UBF buffer. 
-| Returns
-| buffer free bytes, UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BUnused() (int64, UBFError)
+|Description
+|Get the number of free bytes of UBF buffer. 
+|Returns
+|buffer free bytes, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BUsed()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BUsed() (int64, UBFError)
-| Description
-| Get the number of bytes used in UBF buffer. 
-| Returns
-| number of byptes used, UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BUsed() (int64, UBFError)
+|Description
+|Get the number of bytes used in UBF buffer. 
+|Returns
+|number of byptes used, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.BWrite()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) BWrite() ([]byte, UBFError)
-| Description
-| Serialize the UBF buffer. 
-| Returns
-| serialized bytes, UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) BWrite() ([]byte, UBFError)
+|Description
+|Serialize the UBF buffer. 
+|Returns
+|serialized bytes, UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.GetBuf()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) GetBuf() *ATMIBuf
-| Description
-| Return The ATMI buffer to caller. 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) GetBuf() *ATMIBuf
+|Description
+|Return The ATMI buffer to caller. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.Marshal()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) Marshal(v interface{}) UBFError
-| Description
-| Copy the specified fields to the local structure Copy the local struct to
-UBF. 
+|Function
+|func (u *TypedUBF) Marshal(v interface{}) UBFError
+|Description
+|Copy the specified fields to the local structure Copy the local struct to UBF.
+
 *v* local struct. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.TpLogPrintUBF()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) TpLogPrintUBF(lev int, title string)
-| Description
-| Print the buffer to stdout. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) TpLogPrintUBF(lev int, title string)
+|Description
+|Print the buffer to stdout. 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.TpRealloc()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) TpRealloc(size int64) ATMIError
-| Description
-| . 
-| Applies
-| XATMI client and server
+|Function
+|func (u *TypedUBF) TpRealloc(size int64) ATMIError
+|Description
+|. 
+|Applies
+|XATMI client and server
 |===
 
 ==== TypedUBF.Unmarshal()
 [cols="h,5a"]
 |===
-| Function
-| func (u *TypedUBF) Unmarshal(v interface{}) UBFError
-| Description
-| Copy the specified fields to the local structure according to the `ubf'. 
+|Function
+|func (u *TypedUBF) Unmarshal(v interface{}) UBFError
+|Description
+|Copy the specified fields to the local structure according to the `ubf'. 
 *v* local struct. 
-| Returns
-| UBF error
-| Applies
-| XATMI client and server
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
 |===
 
 [[gen_doc-stop]]
