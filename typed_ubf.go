@@ -563,6 +563,19 @@ func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError) {
 	return int64(c_val), nil
 }
 
+//Return int (basicaly C long (int64) casted to) value from buffer
+//@param bfldid 	Field ID
+//@param occ	Occurrance
+//@return int64 val,	 UBF error
+func (u *TypedUBF) BGetInt(bfldid int, occ int) (int, UBFError) {
+	var c_val C.long
+	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, C.GetU(u.Buf.C_ptr), C.BFLDID(bfldid),
+		C.BFLDOCC(occ), C.GetCharPtr(unsafe.Pointer(&c_val)), nil, BFLD_LONG); ret != SUCCEED {
+		return 0, u.Buf.Ctx.NewUBFError()
+	}
+	return int(c_val), nil
+}
+
 //Return byte (c char) value from buffer
 //@param bfldid 	Field ID
 //@param occ	Occurrance
@@ -576,7 +589,7 @@ func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError) {
 	return byte(c_val), nil
 }
 
-//Get float value
+//Get float value from UBF buffer, see CBget(3)
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return float, UBF error
