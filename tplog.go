@@ -1,9 +1,10 @@
 package atmi
-/* 
+
+/*
 ** TPLOG - text logging and debuging API provided by Enduro/X
 **
 ** @file tplog.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +12,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -29,7 +30,7 @@ package atmi
 ** A commercial use license is available from ATR Baltic, SIA
 ** contact@atrbaltic.com
 ** -----------------------------------------------------------------------------
-*/
+ */
 
 /*
 #cgo pkg-config: atmisrvinteg
@@ -145,6 +146,32 @@ func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 	defer C.free(unsafe.Pointer(c_msg))
 
 	C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage), internal ndrx only
+//@param lev	Logging level
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) ndrxLog(lev int, format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+
+	c_msg := C.CString(msg)
+	defer C.free(unsafe.Pointer(c_msg))
+
+	C.Ondrxlog(&ac.c_ctx, C.int(lev), c_msg)
+}
+
+//Log the message to Enduro/X loggers (see tplog(3) manpage), internal ubf only
+//@param lev	Logging level
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) ubfLog(lev int, format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+
+	c_msg := C.CString(msg)
+	defer C.free(unsafe.Pointer(c_msg))
+
+	C.Oubflog(&ac.c_ctx, C.int(lev), c_msg)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
