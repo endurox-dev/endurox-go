@@ -179,7 +179,7 @@ func (ac *ATMICtx) ubfLog(lev int, format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
-	ac.TpLog(LOG_DEBUG, format, a)
+	ac.TpLog(LOG_DEBUG, format, a...)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -187,7 +187,7 @@ func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
-	ac.TpLog(LOG_INFO, format, a)
+	ac.TpLog(LOG_INFO, format, a...)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -195,7 +195,7 @@ func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
-	ac.TpLog(LOG_WARN, format, a)
+	ac.TpLog(LOG_WARN, format, a...)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -203,7 +203,7 @@ func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
-	ac.TpLog(LOG_ERROR, format, a)
+	ac.TpLog(LOG_ERROR, format, a...)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -211,7 +211,7 @@ func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
-	ac.TpLog(LOG_ALWAYS, format, a)
+	ac.TpLog(LOG_ALWAYS, format, a...)
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -219,7 +219,7 @@ func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogFatal(format string, a ...interface{}) {
-	ac.TpLog(LOG_ALWAYS, format, a)
+	ac.TpLog(LOG_ALWAYS, format, a...)
 }
 
 //Return request logging file (if there is one currenlty in use)
