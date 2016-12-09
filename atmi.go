@@ -1091,8 +1091,11 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 
 //Return ATMI buffer info
 //@param ptr 	Pointer to ATMI buffer
-//@param itype	ptr to string to return the buffer type  (can be nil)
+//@param itype	ptr to string to return the buffer type  (can be nil), if set
+//then on output value will be UBF, CARRAY, STRING or JSON other buffers currently
+//are not supported.
 //@param subtype ptr to string to return sub-type (can be nil)
+//@return	Buffer lenght if no error or -1 if error, ATMI error
 func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
 	var err ATMIError
 
@@ -1127,6 +1130,16 @@ func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 	}
 
 	return int64(ret), err
+}
+
+//Return ATMI buffer info
+//@param itype	ptr to string to return the buffer type  (can be nil), if set
+//then on output value will be UBF, CARRAY, STRING or JSON other buffers currently
+//are not supported.
+//@param subtype ptr to string to return sub-type (can be nil)
+//@return	Buffer lenght if no error or -1 if error, ATMI error
+func (ptr *ATMIBuf) TpTypes(itype *string, subtype *string) (int64, ATMIError) {
+	return ptr.Ctx.TpTypes(ptr, itype, subtype)
 }
 
 //Terminate the client
