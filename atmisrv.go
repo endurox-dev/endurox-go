@@ -64,6 +64,7 @@ static int c_tpsrvinit(int argc, char **argv)
 	//Set back the context
 	tpsetctxt(ctx, 0);
 
+	return ret;
 }
 
 static void c_tpsrvdone(void)
@@ -146,9 +147,9 @@ static long go_tpsubscribe (TPCONTEXT_T *p_ctx, char *eventexpr, char *filter,
 	long ret;
 	TPEVCTL ctl;
 	strncpy(ctl.name1, ctl_name1, XATMI_SERVICE_NAME_LENGTH);
-	ctl.name1[XATMI_SERVICE_NAME_LENGTH] = '\0';
+	ctl.name1[XATMI_SERVICE_NAME_LENGTH-1] = '\0';
 	strncpy(ctl.name2, ctl_name2, XATMI_SERVICE_NAME_LENGTH);
-	ctl.name2[XATMI_SERVICE_NAME_LENGTH] = '\0';
+	ctl.name2[XATMI_SERVICE_NAME_LENGTH-1] = '\0';
 	ctl.flags = ctl_flags;
 
 	ret = Otpsubscribe (p_ctx, eventexpr, filter, &ctl, flags);
@@ -170,7 +171,7 @@ static int c_periodcallback(void)
 
 static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)
 {
-	Otpext_addperiodcb(p_ctx, sec, c_periodcallback);
+	return Otpext_addperiodcb(p_ctx, sec, c_periodcallback);
 }
 
 
@@ -188,6 +189,8 @@ static int c_pollevent(int fd, uint32_t events, void *ptr1)
 
 	//Set back the context
 	tpsetctxt(ctx, 0);
+
+	return ret;
 }
 
 //Wrapper for FD poller
