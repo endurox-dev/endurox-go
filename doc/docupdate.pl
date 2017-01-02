@@ -172,7 +172,7 @@ NEXT:	while (<$fh>) {
 					$varname =~ s/^\s+|\s+$//g;
 					$vardescr =~ s/^\s+|\s+$//g;
 					
-					$descr = $descr."\n*$varname* $vardescr. ";
+					$descr = $descr."\n*$varname* is $vardescr. ";
 				}
 				elsif ($fields[$i]=~/^return/)
 				{
