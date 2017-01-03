@@ -48,6 +48,7 @@ extern int go_tpsrvinit();
 extern void go_tpsrvdone();
 extern void go_cb_dispatch_call(TPCONTEXT_T ctx, TPSVCINFO *p_svc, char *name, char *fname, char *cltid);
 extern int go_periodcallback();
+extern int go_b4pollcallback();
 extern int go_pollevent(TPCONTEXT_T ctx, int fd, unsigned int events);
 
 static int c_tpsrvinit(int argc, char **argv)
@@ -163,15 +164,52 @@ static long go_tpsubscribe (TPCONTEXT_T *p_ctx, char *eventexpr, char *filter,
 
 }
 
+//Wrappers b4poll callbacks
+static int c_b4pollcallback(void)
+{
+	int ret;
+	//We run in server context, thus get the current handler
+	//And pass it to go func
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
+	ret = go_b4pollcallback(ctx);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
+
+}
+
 //Wrappers periodic callbacks
 static int c_periodcallback(void)
 {
-	return go_periodcallback();
+	int ret;
+	//We run in server context, thus get the current handler
+	//And pass it to go func
+	//Pass the current context
+	TPCONTEXT_T ctx;
+
+	//Get the context
+	tpgetctxt(&ctx, 0);
+
+	ret = go_periodcallback(ctx);
+
+	//Set back the context
+	tpsetctxt(ctx, 0);
+
 }
 
 static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)
 {
 	return Otpext_addperiodcb(p_ctx, sec, c_periodcallback);
+}
+
+static int c_tpext_addb4pollcb(TPCONTEXT_T *p_ctx)
+{
+	return Otpext_addb4pollcb(p_ctx, c_b4pollcallback);
 }
 
 
@@ -227,13 +265,15 @@ type fdpollcallback struct {
 type TPSrvInitFunc func(ctx *ATMICtx) int //TODO: Add parsed args after --
 type TPSrvUninitFunc func(ctx *ATMICtx)
 type TPServiceFunction func(ctx *ATMICtx, svc *TPSVCINFO)
-type TPPeriodCallback func() int
+type TPPeriodCallback func(ctx *ATMICtx) int //Periodic callback
+type TPB4PollCallback func(ctx *ATMICtx) int //Before poll callback
 type TPPollerFdCallback func(ctx *ATMICtx, fd int, events uint32, ptr1 interface{}) int
 
 //Server init callbacks globals...
 var cb_initf TPSrvInitFunc
 var cb_uninitf TPSrvUninitFunc
 var cb_priod TPPeriodCallback
+var cb_b4poll TPB4PollCallback
 
 //Function maps
 var funcmaps map[string]TPServiceFunction
@@ -255,8 +295,33 @@ func go_tpsrvinit(ctx C.TPCONTEXT_T) C.int {
 }
 
 //export go_periodcallback
-func go_periodcallback() C.int {
-	return C.int(cb_priod())
+func go_periodcallback(ctx C.TPCONTEXT_T) C.int {
+	var ret int
+	ret = FAIL
+
+	ac := MakeATMICtx(ctx)
+
+	if nil != cb_initf {
+		ret = cb_priod(ac)
+	}
+
+	return C.int(ret)
+
+}
+
+//export go_b4pollcallback
+func go_b4pollcallback(ctx C.TPCONTEXT_T) C.int {
+	var ret int
+	ret = FAIL
+
+	ac := MakeATMICtx(ctx)
+
+	if nil != cb_initf {
+		ret = cb_b4poll(ac)
+	}
+
+	return C.int(ret)
+
 }
 
 //export go_tpsrvdone
@@ -485,7 +550,7 @@ func (ac *ATMICtx) TpSrvFreeCtxData(data *TPSRVCTXDATA) {
 //Remove the polling file descriptor
 //@param fd 		FD to poll on
 //@return ATMI Error
-func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError {
+func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError {
 	var err ATMIError
 	ret := C.Otpext_delpollerfd(&ac.c_ctx, C.int(fd))
 
@@ -496,11 +561,21 @@ func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError {
 	return err
 }
 
-//Delet del periodic callback
+//Set periodic before poll callback func
+//@param cb	Callback function with "func(ctx *ATMICtx) int" signature
 //@return ATMI Error
-func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError {
+func (ac *ATMICtx) TpExtAddB4PollCB(cb TPB4PollCallback) ATMIError {
 	var err ATMIError
-	ret := C.Otpext_delperiodcb(&ac.c_ctx)
+
+	if nil == cb {
+		/* Set Error */
+		err = NewCustomATMIError(TPEINVAL, "TpExtAddB4PollCB - cb is nil,"+
+			" but mandatory!")
+		return err /* <<<< RETURN! */
+	}
+
+	cb_b4poll = cb
+	ret := C.c_tpext_addb4pollcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
@@ -522,7 +597,14 @@ func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError {
 	return err
 }
 
-//Set periodic before poll callback func
+//Set periodic poll callback function.
+//Function is called from main service dispatcher in case if given number of seconds
+//are elapsed. If the service is doing some work currenlty then it will not be interrupted.
+//If the service workload was longer than period, then given period will be lost and
+//will be serviced and next sleep period or after receiving next service call.
+//@param secs 	Interval in secods between calls. This basically is number of seconds in
+//which service will sleep and wake up.
+//@param cb 	Callback function with signature: "func(ctx *ATMICtx) int".
 //@return ATMI Error
 func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 	var err ATMIError
@@ -535,6 +617,19 @@ func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 
 	cb_priod = cb
 	ret := C.c_tpext_addperiodcb(&ac.c_ctx, C.int(secs))
+
+	if SUCCEED != ret {
+		err = ac.NewATMIError()
+	}
+
+	return err
+}
+
+//Delete del periodic callback
+//@return ATMI Error
+func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError {
+	var err ATMIError
+	ret := C.Otpext_delperiodcb(&ac.c_ctx)
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
