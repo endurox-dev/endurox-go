@@ -443,6 +443,8 @@ const (
 	NESYSTEM    = 5 /* System failure */
 	NEMANDATORY = 6 /* Mandatory field is missing */
 	NEFORMAT    = 7 /* Format error */
+	NETOUT      = 8 /* Time-out condition */
+	NENOCONN    = 9 /* No connection */
 )
 
 /*
@@ -632,6 +634,9 @@ func (e nstdError) Message() string {
 
 //Allocate new ATMI context. This is the context with most of the XATMI operations
 //are made. Single go routine can have multiple contexts at the same time.
+//The function does not open queues or init XATMI sub-system unless the dependant
+//operation is called. For example you may allocat the context and use it for logging
+//that will not make overhead for system queues.
 //@return ATMI Error, Pointer to ATMI Context object
 func NewATMICtx() (*ATMICtx, ATMIError) {
 	var ret ATMICtx
