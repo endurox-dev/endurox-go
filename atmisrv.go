@@ -181,6 +181,8 @@ static int c_b4pollcallback(void)
 	//Set back the context
 	tpsetctxt(ctx, 0);
 
+        return ret;
+
 }
 
 //Wrappers periodic callbacks
@@ -199,6 +201,8 @@ static int c_periodcallback(void)
 
 	//Set back the context
 	tpsetctxt(ctx, 0);
+
+        return ret;
 
 }
 
