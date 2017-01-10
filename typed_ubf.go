@@ -412,7 +412,7 @@ func (u *TypedUBF) BNext(first bool) (int, int, UBFError) {
 //@param u UBF buffer
 //@param ulen	lenght of the buffer
 //@return UBF error
-func (ac *ATMICtx) BInit(u *TypedUBF, ulen int) UBFError {
+func (ac *ATMICtx) BInit(u *TypedUBF, ulen int64) UBFError {
 	if ret := C.OBinit(&ac.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		C.BFLDLEN(ulen)); SUCCEED != ret {
 		return ac.NewUBFError()
