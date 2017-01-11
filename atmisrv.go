@@ -367,7 +367,9 @@ func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fn
 
 //Continue main thread processing (go back to server polling)
 func (ac *ATMICtx) TpContinue() {
-	C.Otpcontinue(&ac.c_ctx)
+	/*  This does nothing - no need to call 
+        C.Otpcontinue(&ac.c_ctx)
+        */
 }
 
 //We should pass here init & un-init functions...
