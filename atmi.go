@@ -445,6 +445,7 @@ const (
 	NEFORMAT    = 7 /* Format error */
 	NETOUT      = 8 /* Time-out condition */
 	NENOCONN    = 9 /* No connection */
+	NELIMIT     =10 /* Limit reached */
 )
 
 /*
