@@ -62,26 +62,30 @@ import (
 //@return 	atmiError (in case if invalid length we have for ptr and dumplen)
 func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int) ATMIError {
 
-	c_comment := C.CString(comment)
-	defer C.free(unsafe.Pointer(c_comment))
-	l1 := len(ptr)
+	//NOTE: Checking level here - assume C call in cheaper than
+	//String formatting and memory copy in Go!
+	if lev <= int(C.debug_get_tp_level()) {
+		c_comment := C.CString(comment)
+		defer C.free(unsafe.Pointer(c_comment))
+		l1 := len(ptr)
 
-	/* Check the buffer sizes (both must be equal or larger then len) */
-	if l1 < dumplen {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("ptr len is %d but must be >= %d (len param)",
-				l1, dumplen))
+		/* Check the buffer sizes (both must be equal or larger then len) */
+		if l1 < dumplen {
+			return NewCustomATMIError(TPEINVAL,
+				fmt.Sprintf("ptr len is %d but must be >= %d (len param)",
+					l1, dumplen))
+		}
+
+		c_ptr := C.malloc(C.size_t(l1))
+		defer C.free(c_ptr)
+
+		//Copy stuff to C memory (ptr1)
+		for i := 0; i < l1; i++ {
+			*(*C.char)(unsafe.Pointer(uintptr(c_ptr) + uintptr(i))) = C.char(ptr[i])
+		}
+
+		C.Otplogdump(&ac.c_ctx, C.int(lev), c_comment, c_ptr, C.int(dumplen))
 	}
-
-	c_ptr := C.malloc(C.size_t(l1))
-	defer C.free(c_ptr)
-
-	//Copy stuff to C memory (ptr1)
-	for i := 0; i < l1; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ptr) + uintptr(i))) = C.char(ptr[i])
-	}
-
-	C.Otplogdump(&ac.c_ctx, C.int(lev), c_comment, c_ptr, C.int(dumplen))
 
 	return nil
 }
@@ -96,50 +100,52 @@ func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int) A
 //@return 	atmiError (in case if invalid length we have for ptr1/ptr2 and difflen)
 func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []byte, difflen int) ATMIError {
 
-	c_comment := C.CString(comment)
-	defer C.free(unsafe.Pointer(c_comment))
-	l1 := len(ptr1)
-	l2 := len(ptr2)
+	if lev <= int(C.debug_get_tp_level()) {
+		c_comment := C.CString(comment)
+		defer C.free(unsafe.Pointer(c_comment))
+		l1 := len(ptr1)
+		l2 := len(ptr2)
 
-	/* Check the buffer sizes (both must be equal or larger then len) */
-	if l1 < difflen {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("ptr1 len is %d but must be >= %d (len param)",
-				l1, difflen))
+		/* Check the buffer sizes (both must be equal or larger then len) */
+		if l1 < difflen {
+			return NewCustomATMIError(TPEINVAL,
+				fmt.Sprintf("ptr1 len is %d but must be >= %d (len param)",
+					l1, difflen))
+		}
+
+		if l2 < difflen {
+			return NewCustomATMIError(TPEINVAL,
+				fmt.Sprintf("ptr2 len is %d but must be >= %d (len param)",
+					l2, difflen))
+		}
+
+		c_ptr1 := C.malloc(C.size_t(l1))
+		defer C.free(c_ptr1)
+
+		//Copy stuff to C memory (ptr1)
+		for i := 0; i < l1; i++ {
+			*(*C.char)(unsafe.Pointer(uintptr(c_ptr1) + uintptr(i))) = C.char(ptr1[i])
+		}
+
+		c_ptr2 := C.malloc(C.size_t(l2))
+		defer C.free(c_ptr2)
+
+		//Copy stuff to C memory (ptr1)
+		for i := 0; i < l2; i++ {
+			*(*C.char)(unsafe.Pointer(uintptr(c_ptr2) + uintptr(i))) = C.char(ptr2[i])
+		}
+
+		C.Otplogdumpdiff(&ac.c_ctx, C.int(lev), c_comment, c_ptr1, c_ptr2, C.int(difflen))
 	}
-
-	if l2 < difflen {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("ptr2 len is %d but must be >= %d (len param)",
-				l2, difflen))
-	}
-
-	c_ptr1 := C.malloc(C.size_t(l1))
-	defer C.free(c_ptr1)
-
-	//Copy stuff to C memory (ptr1)
-	for i := 0; i < l1; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ptr1) + uintptr(i))) = C.char(ptr1[i])
-	}
-
-	c_ptr2 := C.malloc(C.size_t(l2))
-	defer C.free(c_ptr2)
-
-	//Copy stuff to C memory (ptr1)
-	for i := 0; i < l2; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ptr2) + uintptr(i))) = C.char(ptr2[i])
-	}
-
-	C.Otplogdumpdiff(&ac.c_ctx, C.int(lev), c_comment, c_ptr1, c_ptr2, C.int(difflen))
-
 	return nil
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
+//This version does not check the debug level (kind of internal one)
 //@param lev	Logging level
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
-func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
+func (ac *ATMICtx) tpLog(lev int, format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
 
 	c_msg := C.CString(msg)
@@ -148,17 +154,36 @@ func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 	C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
 }
 
+//Log the message to Enduro/X loggers (see tplog(3) manpage)
+//@param lev	Logging level
+//@param a	arguemnts for sprintf
+//@param format Format string for loggers
+func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
+
+	if lev <= int(C.debug_get_tp_level()) {
+		msg := fmt.Sprintf(format, a...)
+
+		c_msg := C.CString(msg)
+		defer C.free(unsafe.Pointer(c_msg))
+
+		C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
+	}
+}
+
 //Log the message to Enduro/X loggers (see tplog(3) manpage), internal ndrx only
 //@param lev	Logging level
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) ndrxLog(lev int, format string, a ...interface{}) {
-	msg := fmt.Sprintf(format, a...)
+	if lev <= int(C.debug_get_ndrx_level()) {
 
-	c_msg := C.CString(msg)
-	defer C.free(unsafe.Pointer(c_msg))
+		msg := fmt.Sprintf(format, a...)
 
-	C.Ondrxlog(&ac.c_ctx, C.int(lev), c_msg)
+		c_msg := C.CString(msg)
+		defer C.free(unsafe.Pointer(c_msg))
+
+		C.Ondrxlog(&ac.c_ctx, C.int(lev), c_msg)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage), internal ubf only
@@ -166,12 +191,14 @@ func (ac *ATMICtx) ndrxLog(lev int, format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) ubfLog(lev int, format string, a ...interface{}) {
-	msg := fmt.Sprintf(format, a...)
+	if lev <= int(C.debug_get_ubf_level()) {
+		msg := fmt.Sprintf(format, a...)
 
-	c_msg := C.CString(msg)
-	defer C.free(unsafe.Pointer(c_msg))
+		c_msg := C.CString(msg)
+		defer C.free(unsafe.Pointer(c_msg))
 
-	C.Oubflog(&ac.c_ctx, C.int(lev), c_msg)
+		C.Oubflog(&ac.c_ctx, C.int(lev), c_msg)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -179,7 +206,9 @@ func (ac *ATMICtx) ubfLog(lev int, format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
-	ac.TpLog(LOG_DEBUG, format, a...)
+	if LOG_DEBUG <= int(C.debug_get_tp_level()) {
+		ac.tpLog(LOG_DEBUG, format, a...)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -187,7 +216,9 @@ func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
-	ac.TpLog(LOG_INFO, format, a...)
+	if LOG_INFO <= int(C.debug_get_tp_level()) {
+		ac.TpLog(LOG_INFO, format, a...)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -195,7 +226,9 @@ func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
-	ac.TpLog(LOG_WARN, format, a...)
+	if LOG_WARN <= int(C.debug_get_tp_level()) {
+		ac.TpLog(LOG_WARN, format, a...)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -203,7 +236,9 @@ func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
-	ac.TpLog(LOG_ERROR, format, a...)
+	if LOG_WARN <= int(C.debug_get_tp_level()) {
+		ac.TpLog(LOG_WARN, format, a...)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -211,7 +246,9 @@ func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
-	ac.TpLog(LOG_ALWAYS, format, a...)
+	if LOG_ALWAYS <= int(C.debug_get_tp_level()) {
+		ac.TpLog(LOG_ALWAYS, format, a...)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -219,7 +256,9 @@ func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
 //@param a	arguemnts for sprintf
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogFatal(format string, a ...interface{}) {
-	ac.TpLog(LOG_ALWAYS, format, a...)
+	if LOG_ALWAYS <= int(C.debug_get_tp_level()) {
+		ac.TpLog(LOG_ALWAYS, format, a...)
+	}
 }
 
 //Return request logging file (if there is one currenlty in use)
@@ -285,7 +324,7 @@ func (ac *ATMICtx) TpLogCloseThread() {
 //If fails to open request logging file, it will
 //automatically fall-back to stderr.
 //@param filename	Set file name to perform logging to
-func (ac *ATMICtx) TpLogSetReqFile_Direct(filename string) {
+func (ac *ATMICtx) TpLogSetReqFileDirect(filename string) {
 	c_filename := C.CString(filename)
 	defer C.free(unsafe.Pointer(c_filename))
 
