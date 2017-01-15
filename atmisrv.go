@@ -444,15 +444,8 @@ func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFu
 func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
-	//We have to check, if buffer is auto, then we need to free it up righ
-	//here!
+
 	C.Otpreturn(&ac.c_ctx, C.int(rval), C.long(rcode), data.C_ptr, data.C_len, C.long(flags))
-
-	//If it is auto, then XATMI will make free
-	if 1 == C.tpisautobuf(data.C_ptr) {
-		data.C_ptr = nil
-	}
-
 }
 
 //Forward the call to specified poller and return to Q poller
@@ -462,14 +455,9 @@ func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) 
 func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
-	//We have to check, if buffer is auto, then we need to free it up righ
-	//here!
+
 	C.go_tpforward(&ac.c_ctx, C.CString(svc), data.C_ptr, data.C_len, C.long(flags))
 
-	//If it is auto, then XATMI will make free
-	if 1 == C.tpisautobuf(data.C_ptr) {
-		data.C_ptr = nil
-	}
 }
 
 //Unadvertise service dynamically
