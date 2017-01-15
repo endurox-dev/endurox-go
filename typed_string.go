@@ -1,9 +1,9 @@
 package atmi
-/* 
+/*
 ** Plain text IPC buffer support
 **
 ** @file typed_string.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +11,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -75,12 +75,12 @@ func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError) {
 }
 
 //Get the String Handler from ATMI Buffer
-func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (TypedString, ATMIError) {
+func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (*TypedString, ATMIError) {
 	var buf TypedString
 
 	buf.Buf = abuf
 
-	return buf, nil
+	return &buf, nil
 }
 
 //Get the string value out from buffer

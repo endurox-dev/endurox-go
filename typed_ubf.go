@@ -431,13 +431,13 @@ func (ac *ATMICtx) UBFAlloc(size int64) (TypedUBF, ATMIError) {
 }
 
 //Get the UBF Handler
-func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (TypedUBF, ATMIError) {
+func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError) {
 	var buf TypedUBF
 
 	//TODO: Check the buffer type!
 	buf.Buf = abuf
 
-	return buf, nil
+	return &buf, nil
 }
 
 //Get the field form buffer. This returns the interface to underlaying type
