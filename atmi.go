@@ -436,16 +436,16 @@ const (
  * Enduro/X standard library error codes
  */
 const (
-	NEINVALINI  = 1 /* Invalid INI file */
-	NEMALLOC    = 2 /* Malloc failed */
-	NEUNIX      = 3 /* Unix error occurred */
-	NEINVAL     = 4 /* Invalid value passed to function */
-	NESYSTEM    = 5 /* System failure */
-	NEMANDATORY = 6 /* Mandatory field is missing */
-	NEFORMAT    = 7 /* Format error */
-	NETOUT      = 8 /* Time-out condition */
-	NENOCONN    = 9 /* No connection */
-	NELIMIT     =10 /* Limit reached */
+	NEINVALINI  = 1  /* Invalid INI file */
+	NEMALLOC    = 2  /* Malloc failed */
+	NEUNIX      = 3  /* Unix error occurred */
+	NEINVAL     = 4  /* Invalid value passed to function */
+	NESYSTEM    = 5  /* System failure */
+	NEMANDATORY = 6  /* Mandatory field is missing */
+	NEFORMAT    = 7  /* Format error */
+	NETOUT      = 8  /* Time-out condition */
+	NENOCONN    = 9  /* No connection */
+	NELIMIT     = 10 /* Limit reached */
 )
 
 /*
