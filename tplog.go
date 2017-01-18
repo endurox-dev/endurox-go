@@ -232,7 +232,7 @@ func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
 	if LOG_INFO <= int(C.debug_get_tp_level()) {
-		ac.TpLog(LOG_INFO, format, a...)
+		ac.tpLog(LOG_INFO, format, a...)
 	}
 }
 
@@ -242,7 +242,7 @@ func (ac *ATMICtx) TpLogInfo(format string, a ...interface{}) {
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
 	if LOG_WARN <= int(C.debug_get_tp_level()) {
-		ac.TpLog(LOG_WARN, format, a...)
+		ac.tpLog(LOG_WARN, format, a...)
 	}
 }
 
@@ -252,7 +252,7 @@ func (ac *ATMICtx) TpLogWarn(format string, a ...interface{}) {
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
 	if LOG_WARN <= int(C.debug_get_tp_level()) {
-		ac.TpLog(LOG_WARN, format, a...)
+		ac.tpLog(LOG_WARN, format, a...)
 	}
 }
 
@@ -262,7 +262,7 @@ func (ac *ATMICtx) TpLogError(format string, a ...interface{}) {
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
 	if LOG_ALWAYS <= int(C.debug_get_tp_level()) {
-		ac.TpLog(LOG_ALWAYS, format, a...)
+		ac.tpLog(LOG_ALWAYS, format, a...)
 	}
 }
 
@@ -272,7 +272,7 @@ func (ac *ATMICtx) TpLogAlways(format string, a ...interface{}) {
 //@param format Format string for loggers
 func (ac *ATMICtx) TpLogFatal(format string, a ...interface{}) {
 	if LOG_ALWAYS <= int(C.debug_get_tp_level()) {
-		ac.TpLog(LOG_ALWAYS, format, a...)
+		ac.tpLog(LOG_ALWAYS, format, a...)
 	}
 }
 
