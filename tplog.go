@@ -47,7 +47,12 @@ package atmi
 import "C"
 import (
 	"fmt"
+	"runtime"
 	"unsafe"
+)
+
+const (
+	DETAIL_MODE = "detailed" //Slower, not for production !
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +156,17 @@ func (ac *ATMICtx) tpLog(lev int, format string, a ...interface{}) {
 	c_msg := C.CString(msg)
 	defer C.free(unsafe.Pointer(c_msg))
 
-	C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
+	if ac.TpLogGetIflags() != DETAIL_MODE {
+		C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
+	} else {
+		//Get the stack and give file name and line
+		_, file, line, _ := runtime.Caller(2)
+
+		c_file := C.CString(file)
+		defer C.free(unsafe.Pointer(c_file))
+
+		C.Otplogex(&ac.c_ctx, C.int(lev), c_file, C.long(line), c_msg)
+	}
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -389,4 +404,11 @@ func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError {
 	}
 
 	return err
+}
+
+//Return integration flags
+//Well we will run it in cached mode...
+func (ac *ATMICtx) TpLogGetIflags() string {
+
+	return C.GoString(C.tploggetiflags())
 }
