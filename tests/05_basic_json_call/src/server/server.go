@@ -27,9 +27,9 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	//Return to the caller
 	defer func() {
 		if SUCCEED == ret {
-			ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+			ac.TpReturn(atmi.TPSUCCESS, 0, ub, 0)
 		} else {
-			ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+			ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
 		}
 	}()
 
