@@ -658,7 +658,9 @@ to Go level ATMI Context..
 |Description
 |Allocate new ATMI context. This is the context with most of the XATMI
 operations are made. Single go routine can have multiple contexts at the same
-time.. 
+time. The function does not open queues or init XATMI sub-system unless the
+dependant operation is called. For example you may allocat the context and use
+it for logging that will not make overhead for system queues.. 
 |Returns
 |ATMI Error, Pointer to ATMI Context object
 |Applies
@@ -990,7 +992,7 @@ association.
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) BInit(u *TypedUBF, ulen int) UBFError
+|func (ac *ATMICtx) BInit(u *TypedUBF, ulen int64) UBFError
 |Description
 |Initialize/re-initialize UBF buffer. 
 *u* is UBF buffer. 
@@ -1060,7 +1062,7 @@ UBFError
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError)
+|func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (*TypedCarray, ATMIError)
 |Description
 |Get the String Handler. 
 |Applies
@@ -1071,7 +1073,7 @@ UBFError
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError)
+|func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (*TypedJSON, ATMIError)
 |Description
 |Get the JSON Handler from ATMI Buffer. 
 |Applies
@@ -1082,7 +1084,7 @@ UBFError
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (TypedString, ATMIError)
+|func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (*TypedString, ATMIError)
 |Description
 |Get the String Handler from ATMI Buffer. 
 |Applies
@@ -1093,7 +1095,7 @@ UBFError
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (TypedUBF, ATMIError)
+|func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError)
 |Description
 |Get the UBF Handler. 
 |Applies
@@ -1427,13 +1429,34 @@ TypedBuffer, flags int64) ATMIError
 |XATMI client and server
 |===
 
+==== ATMICtx.TpExtAddB4PollCB()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpExtAddB4PollCB(cb TPB4PollCallback) ATMIError
+|Description
+|Set periodic before poll callback func. 
+*cb* is Callback function with "func(ctx *ATMICtx) int" signature. 
+|Returns
+|ATMI Error
+|Applies
+|To XATMI server
+|===
+
 ==== ATMICtx.TpExtAddPeriodCB()
 [cols="h,5a"]
 |===
 |Function
 |func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError
 |Description
-|Set periodic before poll callback func. 
+|Set periodic poll callback function. Function is called from main service
+dispatcher in case if given number of seconds are elapsed. If the service is
+doing some work currenlty then it will not be interrupted. If the service
+workload was longer than period, then given period will be lost and will be
+serviced and next sleep period or after receiving next service call.. 
+*secs* is Interval in secods between calls. This basically is number of seconds
+in which service will sleep and wake up.. 
+*cb* is Callback function with signature: "func(ctx *ATMICtx) int".. 
 |Returns
 |ATMI Error
 |Applies
@@ -1476,18 +1499,18 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError
 |Description
-|Delet del periodic callback. 
+|Delete del periodic callback. 
 |Returns
 |ATMI Error
 |Applies
 |To XATMI server
 |===
 
-==== ATMICtx.TpExtDelPollerfd()
+==== ATMICtx.TpExtDelPollerFD()
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) TpExtDelPollerfd(fd int) ATMIError
+|func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError
 |Description
 |Remove the polling file descriptor. 
 *fd* is FD to poll on. 
@@ -1769,6 +1792,17 @@ wrapper.
 |XATMI client and server
 |===
 
+==== ATMICtx.TpLogGetIflags()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpLogGetIflags() string
+|Description
+|Return integration flags Well we will run it in cached mode.... 
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMICtx.TpLogGetReqFile()
 [cols="h,5a"]
 |===
@@ -1817,11 +1851,11 @@ name, optional.
 |XATMI client and server
 |===
 
-==== ATMICtx.TpLogSetReqFile_Direct()
+==== ATMICtx.TpLogSetReqFileDirect()
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) TpLogSetReqFile_Direct(filename string)
+|func (ac *ATMICtx) TpLogSetReqFileDirect(filename string)
 |Description
 |Set request logging file, direct version (see tplogsetreqfile_direct(3)
 manpage) Which does operate with thread local storage If fails to open request
