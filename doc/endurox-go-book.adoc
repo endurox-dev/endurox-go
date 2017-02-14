@@ -1252,6 +1252,8 @@ TPServiceFunction) ATMIError
 |Advertise service. 
 *svcname* is Service Name. 
 *funcname* is Function Name. 
+*fptr* is Pointer to service function, signature "func FUNCNAME(ac
+*atmi.ATMICtx, svc *atmi.TPSVCINFO)". 
 |Returns
 |ATMI Error
 |Applies
