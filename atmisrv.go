@@ -413,6 +413,7 @@ func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError
 //Advertise service
 //@param svcname		Service Name
 //@param funcname	Function Name
+//@param fptr   Pointer to service function, signature "func FUNCNAME(ac \*atmi.ATMICtx, svc \*atmi.TPSVCINFO)"
 //@return ATMI Error
 func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIError {
 	var err ATMIError
