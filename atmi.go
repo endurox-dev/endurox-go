@@ -331,6 +331,7 @@ const (
 	TPSENDONLY    = 0x00000800
 	TPRECVONLY    = 0x00001000
 	TPTRANSUSPEND = 0x00040000 /* Suspend current transaction */
+	TPSOFTTIMEOUT = 0x00080000 /* Software time-out, translated to XATMI timeout for caller */
 )
 
 /*
