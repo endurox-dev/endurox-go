@@ -42,6 +42,7 @@ package atmi
 #include <stdlib.h>
 #include <ubf.h>
 #include <oubf.h>
+#include <userlog.h>
 
 */
 import "C"
@@ -411,4 +412,17 @@ func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError {
 func (ac *ATMICtx) TpLogGetIflags() string {
 
 	return C.GoString(C.tploggetiflags())
+}
+
+//Do the user logging. This prints the message to ULOG. Suitable for system wide
+//critical message notifications
+//@param format	format string
+//@param a list of data fields for format string
+func (ac *ATMICtx) UserLog(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+
+	c_msg := C.CString(msg)
+	defer C.free(unsafe.Pointer(c_msg))
+
+	C.userlog_const(c_msg)
 }
