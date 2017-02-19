@@ -158,6 +158,8 @@ func main() {
 			ac.TpLogCloseReqFile()
 		}
 
+		ac.UserLog("Hello %s from userlog", "World")
+		
 		runtime.GC()
 	}
 }
