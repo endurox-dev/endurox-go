@@ -1040,19 +1040,6 @@ func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
 	return nil
 }
 
-//Copy buffer content from source to dest
-//@param dest 	dest buffer
-//@param src	source buffer
-//@return UBF error
-func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError {
-
-	if ret := C.OBcpy(&ac.c_ctx, (*C.UBFH)(unsafe.Pointer(dest.Buf.C_ptr)),
-		(*C.UBFH)(unsafe.Pointer(src.Buf.C_ptr))); ret != SUCCEED {
-		return ac.NewUBFError()
-	}
-	return nil
-}
-
 //Contact the buffers
 //@param dest 	dest buffer
 //@param src		source buffer
