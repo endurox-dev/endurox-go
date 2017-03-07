@@ -512,6 +512,10 @@ type ATMIBuf struct {
 	//We will need some API for length & buffer setting
 	//Probably we need a wrapper for lenght function
 	C_len C.long
+
+        //have finalizer installed
+        HaveFinalizer bool
+
 	//Have some context, just a reference to, for ATMI buffer operations
 	Ctx *ATMICtx
 }
@@ -733,6 +737,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_subtype))
 
 	runtime.SetFinalizer(&buf, tpfree)
+        buf.HaveFinalizer = true
 
 	return &buf, err
 }

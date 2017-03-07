@@ -246,6 +246,7 @@ static int c_tpext_addpollerfd(TPCONTEXT_T *p_ctx, int fd, unsigned int events)
 import "C"
 import "os"
 import "unsafe"
+import "runtime"
 
 //Servic call info
 type TPSVCINFO struct {
@@ -446,6 +447,11 @@ func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) 
 
 	data := tb.GetBuf()
 
+        //mvitolin 07/03/2016 - tpreturn will free the any buffer (auto and manual) #100
+        if data.HaveFinalizer {
+                runtime.SetFinalizer(data, nil)
+        }
+
 	C.Otpreturn(&ac.c_ctx, C.int(rval), C.long(rcode), data.C_ptr, data.C_len, C.long(flags))
 }
 
@@ -456,6 +462,11 @@ func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) 
 func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
+
+        //mvitolin 07/03/2016 - tpforward will free the any buffer (auto and manual) #100
+        if data.HaveFinalizer {
+                runtime.SetFinalizer(data, nil)
+        }
 
 	C.go_tpforward(&ac.c_ctx, C.CString(svc), data.C_ptr, data.C_len, C.long(flags))
 
