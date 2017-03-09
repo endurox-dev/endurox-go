@@ -127,19 +127,6 @@ static int __run_advertise(TPCONTEXT_T *p_ctx, char *svcnm, char *fname)
 	return ret;
 }
 
-//Wrapper for doing for doing free of the service string
-static void go_tpforward (TPCONTEXT_T *p_ctx, char *svc, char *data, long len, long flags)
-{
-	char svcnm[XATMI_SERVICE_NAME_LENGTH+1];
-	//Pass the current context
-	TPCONTEXT_T ctx;
-
-	strncpy(svcnm, svc, XATMI_SERVICE_NAME_LENGTH+1);
-	svcnm[XATMI_SERVICE_NAME_LENGTH] = '\0';
-	free(svc);
-
-	Otpforward (p_ctx, svc, data, len, flags);
-}
 
 //Wrapper for tpsubscribe() - to handle data types more accurately.
 static long go_tpsubscribe (TPCONTEXT_T *p_ctx, char *eventexpr, char *filter,
@@ -424,7 +411,12 @@ func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFu
 	}
 
 	c_svcname := C.CString(svcname)
+
+	defer C.free(unsafe.Pointer(c_svcname))
+
 	c_funcname := C.CString(funcname)
+
+	defer C.free(unsafe.Pointer(c_funcname))
 
 	ret := C.__run_advertise(&ac.c_ctx, c_svcname, c_funcname)
 
@@ -468,7 +460,12 @@ func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
                 runtime.SetFinalizer(data, nil)
         }
 
-	C.go_tpforward(&ac.c_ctx, C.CString(svc), data.C_ptr, data.C_len, C.long(flags))
+
+	c_svc:=	C.CString(svc)
+
+	defer C.free(unsafe.Pointer(c_svc))
+
+	C.Otpforward(&ac.c_ctx, c_svc, data.C_ptr, data.C_len, C.long(flags))
 
 }
 
@@ -478,6 +475,8 @@ func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError {
 	var err ATMIError
 	c_svcname := C.CString(svcname)
+
+	defer C.free(unsafe.Pointer(c_svcname))
 
 	ret := C.Otpunadvertise(&ac.c_ctx, c_svcname)
 
@@ -678,7 +677,8 @@ func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb 
 
 	if nil == cb {
 		/* Set Error */
-		err = NewCustomATMIError(TPEINVAL, "Tpext_addpollerfd - cb is nil, but mandatory!")
+		err = NewCustomATMIError(TPEINVAL, "Tpext_addpollerfd - cb is "+
+			"nil, but mandatory!")
 		return err /* <<<< RETURN! */
 	}
 

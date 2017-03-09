@@ -7,6 +7,7 @@ all:
 	$(MAKE) -C 06_ubf_marshal
 	$(MAKE) -C 07_basic_durable_queue
 	$(MAKE) -C 08_logging
+	$(MAKE) -C 09_return_manual_buffer
 
 clean:
 	$(MAKE) -C 01_basic_ubf_call clean
@@ -16,4 +17,5 @@ clean:
 	$(MAKE) -C 06_ubf_marshal clean
 	$(MAKE) -C 07_basic_durable_queue clean
 	$(MAKE) -C 08_logging clean
+	$(MAKE) -C 09_return_manual_buffer
 
