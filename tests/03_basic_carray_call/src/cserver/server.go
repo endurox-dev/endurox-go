@@ -36,9 +36,9 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 out:
 	//Return to the caller
 	if SUCCEED == ret {
-		ac.TpReturn(atmi.TPSUCCESS, 0, &c, 0)
+		ac.TpReturn(atmi.TPSUCCESS, 0, c, 0)
 	} else {
-		ac.TpReturn(atmi.TPFAIL, 0, &c, 0)
+		ac.TpReturn(atmi.TPFAIL, 0, c, 0)
 	}
 	return
 }

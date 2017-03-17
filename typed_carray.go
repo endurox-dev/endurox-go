@@ -1,9 +1,9 @@
 package atmi
-/* 
+/*
 ** Typed C-Array (binary array) IPC buffer support
 **
 ** @file typed_carray.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +11,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -84,10 +84,10 @@ func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 }
 
 //Get the String Handler
-func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (TypedCarray, ATMIError) {
+func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (*TypedCarray, ATMIError) {
 	var buf TypedCarray
 	buf.Buf = abuf
-	return buf, nil
+	return &buf, nil
 }
 
 //Get the string value out from buffer

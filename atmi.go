@@ -331,6 +331,8 @@ const (
 	TPSENDONLY    = 0x00000800
 	TPRECVONLY    = 0x00001000
 	TPTRANSUSPEND = 0x00040000 /* Suspend current transaction */
+	TPSOFTTIMEOUT = 0x00080000 /* Software time-out, translated to XATMI timeout for caller */
+	TPSOFTNOENT   = 0x00100000 /* No service entry */
 )
 
 /*
@@ -436,13 +438,16 @@ const (
  * Enduro/X standard library error codes
  */
 const (
-	NEINVALINI  = 1 /* Invalid INI file */
-	NEMALLOC    = 2 /* Malloc failed */
-	NEUNIX      = 3 /* Unix error occurred */
-	NEINVAL     = 4 /* Invalid value passed to function */
-	NESYSTEM    = 5 /* System failure */
-	NEMANDATORY = 6 /* Mandatory field is missing */
-	NEFORMAT    = 7 /* Format error */
+	NEINVALINI  = 1  /* Invalid INI file */
+	NEMALLOC    = 2  /* Malloc failed */
+	NEUNIX      = 3  /* Unix error occurred */
+	NEINVAL     = 4  /* Invalid value passed to function */
+	NESYSTEM    = 5  /* System failure */
+	NEMANDATORY = 6  /* Mandatory field is missing */
+	NEFORMAT    = 7  /* Format error */
+	NETOUT      = 8  /* Time-out condition */
+	NENOCONN    = 9  /* No connection */
+	NELIMIT     = 10 /* Limit reached */
 )
 
 /*
@@ -507,6 +512,10 @@ type ATMIBuf struct {
 	//We will need some API for length & buffer setting
 	//Probably we need a wrapper for lenght function
 	C_len C.long
+
+        //have finalizer installed
+        HaveFinalizer bool
+
 	//Have some context, just a reference to, for ATMI buffer operations
 	Ctx *ATMICtx
 }
@@ -632,6 +641,9 @@ func (e nstdError) Message() string {
 
 //Allocate new ATMI context. This is the context with most of the XATMI operations
 //are made. Single go routine can have multiple contexts at the same time.
+//The function does not open queues or init XATMI sub-system unless the dependant
+//operation is called. For example you may allocat the context and use it for logging
+//that will not make overhead for system queues.
 //@return ATMI Error, Pointer to ATMI Context object
 func NewATMICtx() (*ATMICtx, ATMIError) {
 	var ret ATMICtx
@@ -725,6 +737,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_subtype))
 
 	runtime.SetFinalizer(&buf, tpfree)
+        buf.HaveFinalizer = true
 
 	return &buf, err
 }
@@ -1091,8 +1104,11 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 
 //Return ATMI buffer info
 //@param ptr 	Pointer to ATMI buffer
-//@param itype	ptr to string to return the buffer type  (can be nil)
+//@param itype	ptr to string to return the buffer type  (can be nil), if set
+//then on output value will be UBF, CARRAY, STRING or JSON other buffers currently
+//are not supported.
 //@param subtype ptr to string to return sub-type (can be nil)
+//@return	Buffer lenght if no error or -1 if error, ATMI error
 func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
 	var err ATMIError
 
@@ -1127,6 +1143,16 @@ func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 	}
 
 	return int64(ret), err
+}
+
+//Return ATMI buffer info
+//@param itype	ptr to string to return the buffer type  (can be nil), if set
+//then on output value will be UBF, CARRAY, STRING or JSON other buffers currently
+//are not supported.
+//@param subtype ptr to string to return sub-type (can be nil)
+//@return	Buffer lenght if no error or -1 if error, ATMI error
+func (ptr *ATMIBuf) TpTypes(itype *string, subtype *string) (int64, ATMIError) {
+	return ptr.Ctx.TpTypes(ptr, itype, subtype)
 }
 
 //Terminate the client

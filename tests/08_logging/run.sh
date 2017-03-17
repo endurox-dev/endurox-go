@@ -58,6 +58,13 @@ if [[ "X$OUT" == "X" ]]; then
         exit 1
 fi
 
+
+OUT=`grep 'Hello World from userlog' /tmp/ULOG*`
+if [[ "X$OUT" == "X" ]]; then
+        echo "TESTERROR: [Hello World from userlog] not found in /tmp/ULOG*"
+        exit 2
+fi
+
 echo "Test OK"
 
 # shutdown the app server

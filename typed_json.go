@@ -1,9 +1,9 @@
 package atmi
-/* 
+/*
 ** JSON IPC Buffer support
 **
 ** @file typed_json.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, SIA. All Rights Reserved.
@@ -11,7 +11,7 @@ package atmi
 ** GPL or ATR Baltic's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -53,7 +53,7 @@ func (u *TypedJSON) GetBuf() *ATMIBuf {
 	return u.Buf
 }
 
-//Allocate new string buffer
+//Allocate new JSON buffer
 //@param s - source string
 func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError) {
 	var buf TypedJSON
@@ -76,12 +76,12 @@ func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError) {
 }
 
 //Get the JSON Handler from ATMI Buffer
-func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (TypedJSON, ATMIError) {
+func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (*TypedJSON, ATMIError) {
 	var buf TypedJSON
 
 	buf.Buf = abuf
 
-	return buf, nil
+	return &buf, nil
 }
 
 //Get the string value out from buffer

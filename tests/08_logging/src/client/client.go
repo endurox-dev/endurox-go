@@ -106,7 +106,7 @@ func main() {
 
 		//Open request logging
 
-		ac.TpLogSetReqFile_Direct("/tmp/08_single-request-1.log")
+		ac.TpLogSetReqFileDirect("/tmp/08_single-request-1.log")
 
 		ac.TpLog(atmi.LOG_ERROR, "Hello from request")
 
@@ -158,6 +158,8 @@ func main() {
 			ac.TpLogCloseReqFile()
 		}
 
+		ac.UserLog("Hello %s from userlog", "World")
+		
 		runtime.GC()
 	}
 }

@@ -172,7 +172,7 @@ NEXT:	while (<$fh>) {
 					$varname =~ s/^\s+|\s+$//g;
 					$vardescr =~ s/^\s+|\s+$//g;
 					
-					$descr = $descr."\n*$varname* $vardescr. ";
+					$descr = $descr."\n*$varname* is $vardescr. ";
 				}
 				elsif ($fields[$i]=~/^return/)
 				{
@@ -201,12 +201,12 @@ NEXT:	while (<$fh>) {
 				$final_block = <<"END_MESSAGE";
 [cols="h,5a"]
 |===
-| Function
-| $def
-| Description
-| $descr
-| Applies
-| $server_block
+|Function
+|$def
+|Description
+|$descr
+|Applies
+|$server_block
 |===
 
 END_MESSAGE
@@ -216,14 +216,14 @@ END_MESSAGE
 				$final_block = <<"END_MESSAGE";
 [cols="h,5a"]
 |===
-| Function
-| $def
-| Description
-| $descr
-| Returns
-| $retdescr
-| Applies
-| $server_block
+|Function
+|$def
+|Description
+|$descr
+|Returns
+|$retdescr
+|Applies
+|$server_block
 |===
 
 END_MESSAGE
