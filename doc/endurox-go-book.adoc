@@ -34,6 +34,46 @@ shutdown single server, then XATMI server process is notified of this action
 and server process can gracefully do the de-init and shutdown. The uninit callback
 is send to server process while doing shutdown.
 
+== Installation on Linux operating system
+
+To get started with endurox-go module, it is required to install
+
+1. Go compiler
+
+2. PKG Config package (used by endurox-go) to resolve library dependencies
+
+
+=== Installing Golang on Linux box
+
+The process of installation should very similar on other operating systems too
+(i.e. OSX, FreeBSD, etc.).
+
+Select the Download package from here: https://golang.org/dl/
+
+The endurox-go requires Golang 1.6+
+
+Particularity sample will run on amd64 on Linux OS:
+
+--------------------------------------------------------------------------------
+$ cd ~
+$ wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.8.linux-amd64.tar.gz
+sudo ln -s /usr/local/go/bin/go /usr/bin/go
+sudo ln -s /usr/local/go/bin/godoc /usr/bin/godoc
+sudo ln -s /usr/local/go/bin/gofmt /usr/bin/gofmt
+--------------------------------------------------------------------------------
+
+=== Installing pkg config
+
+The PKG config is needed for endurox-go to select the needed dependences. The 
+Enduro/X install the pkg config file named *atmisrvinteg.pc* to system's pkgconfig
+path. This is later used by golang to build endurox-go. Golang needs pkgconfig package.
+
+Installation process on Linux Ubuntu
+
+--------------------------------------------------------------------------------
+$ sudo apt-get install pkg-config
+--------------------------------------------------------------------------------
 
 == API Model
 
@@ -70,7 +110,7 @@ This chapter describes constants used by Enduro/X module. This includes error co
 and flags.
 
 
-=== ATMI Context method binary OR'able flags
+=== OR'able flags for different ATMI Object methods
 
 *TPNOBLOCK* (0x00000001) - Do not block the operation (don't wait for reply or 
 resource availability).
@@ -98,6 +138,13 @@ error will be generated.
 *TPRECVONLY* (0x00001000) - Enter in receiving mode during conversational IPC.
 
 *TPTRANSUSPEND* (0x00040000) - Suspend current transaction.
+
+*TPSOFTTIMEOUT* (0x00080000) - Soft timout condition -> ret TPETIME, used for TpReturn()
+
+*TPSOFTENOENT* (0x00100000) - Simulate that service is not found, used for TpReturn()
+
+*TPNOAUTBUF* (0x00200000) - Don't restore autbuf in srv context, used for TpSrvSetCtxData()
+
 
 
 === ATMI buffer size
@@ -1156,7 +1203,7 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError)
 |Description
-|Allocate new string buffer. 
+|Allocate new JSON buffer. 
 *s* is - source string. 
 |Applies
 |XATMI client and server
@@ -2137,6 +2184,20 @@ ATMIError)
 *size* is Buffer size in bytes. 
 |Returns
 |UBF Handler, ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.UserLog()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) UserLog(format string, a ...interface{})
+|Description
+|Do the user logging. This prints the message to ULOG. Suitable for system wide
+critical message notifications. 
+*format* is format string. 
+*a* is list of data fields for format string. 
 |Applies
 |XATMI client and server
 |===
