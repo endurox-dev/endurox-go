@@ -307,7 +307,7 @@ func (u *TypedUBF) _marshal(is_marshal bool, v interface{}) UBFError {
 
 	rvv := rv.Elem()
 
-	fmt.Printf("rvv = %T\n", rvv)
+	//fmt.Printf("rvv = %T\n", rvv)
 
 	typ := reflect.TypeOf(v)
 	// if a pointer to a struct is passed, get the type of the dereferenced object

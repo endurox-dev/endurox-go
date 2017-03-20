@@ -53,7 +53,7 @@ func (u *TypedJSON) GetBuf() *ATMIBuf {
 	return u.Buf
 }
 
-//Allocate new string buffer
+//Allocate new JSON buffer
 //@param s - source string
 func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError) {
 	var buf TypedJSON
