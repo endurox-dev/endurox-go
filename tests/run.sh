@@ -38,3 +38,5 @@ run_test "07_basic_durable_queue"
 run_test "08_logging"
 
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"
+
+exit $M_fail
