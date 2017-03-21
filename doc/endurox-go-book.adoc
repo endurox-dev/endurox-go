@@ -75,6 +75,11 @@ Installation process on Linux Ubuntu
 $ sudo apt-get install pkg-config
 --------------------------------------------------------------------------------
 
+On RHEL Linux (if not already installed):
+--------------------------------------------------------------------------------
+# yum install pkgconfig
+--------------------------------------------------------------------------------
+
 == API Model
 
 The Enduro/X API object oriented where the main Enduro/X objects are held into Go
