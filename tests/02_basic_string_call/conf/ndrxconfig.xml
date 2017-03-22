@@ -74,7 +74,7 @@
     <!--     <exportsvcs>FOREX</exportsvcs> -->
 	</defaults>
 	<servers>
-		<server name="sserver">
+		<server name="tserver">
 			<srvid>1</srvid>
 			<min>2</min>
 			<max>2</max>

@@ -1,3 +1,3 @@
 all:
-	$(MAKE) -C sserver
+	$(MAKE) -C tserver
 	$(MAKE) -C etclient
