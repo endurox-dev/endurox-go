@@ -14,7 +14,7 @@ popd
 xadmin start -y
 
 # should print some hello world
-sclient | tee test.out
+etclient | tee test.out
 
 # Test the logfile for content
 

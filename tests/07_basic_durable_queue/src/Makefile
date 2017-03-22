@@ -1,2 +1,2 @@
 all:
-	$(MAKE) -C sclient
+	$(MAKE) -C etclient

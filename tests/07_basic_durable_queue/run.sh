@@ -14,7 +14,7 @@ popd
 xadmin start -y
 
 # should print some hello world
-sclient
+etclient
 
 RET=$?
 
