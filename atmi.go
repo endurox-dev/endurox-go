@@ -343,6 +343,18 @@ const (
 	TPSUCCESS = 0x0002
 )
 
+
+/*
+ * events returned during conversational communication
+ */
+const (
+        TPEV_DISCONIMM  = 0x0001
+        TPEV_SVCERR     = 0x0002
+        TPEV_SVCFAIL    = 0x0004
+        TPEV_SVCSUCC    = 0x0008
+        TPEV_SENDONLY   = 0x0020
+)
+
 /*
  * Max message size (int bytes)
  */
