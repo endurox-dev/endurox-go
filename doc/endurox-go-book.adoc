@@ -69,6 +69,7 @@ The PKG config is needed for endurox-go to select the needed dependences. The
 Enduro/X install the pkg config file named *atmisrvinteg.pc* to system's pkgconfig
 path. This is later used by golang to build endurox-go. Golang needs pkgconfig package.
 
+
 Installation process on Linux Ubuntu
 
 --------------------------------------------------------------------------------
@@ -76,9 +77,22 @@ $ sudo apt-get install pkg-config
 --------------------------------------------------------------------------------
 
 On RHEL Linux (if not already installed):
+
 --------------------------------------------------------------------------------
+$ su - root
 # yum install pkgconfig
 --------------------------------------------------------------------------------
+
+
+On FreeBSD:
+--------------------------------------------------------------------------------
+$ su - root
+# pkg install pkgconf
+$ exit
+$ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib
+--------------------------------------------------------------------------------
+
+Or for BSD, add the PKG_CONFIG_PATH path to /etc/profile.
 
 == API Model
 
