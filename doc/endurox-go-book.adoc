@@ -93,7 +93,7 @@ $ su - root
 # mv /usr/bin/make /usr/bin/make.orig
 # ln -s /usr/local/bin/gmake /usr/bin/make
 $ exit
-$ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib
+$ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 --------------------------------------------------------------------------------
 
 Or for BSD, add the PKG_CONFIG_PATH path to /etc/profile.
