@@ -84,10 +84,14 @@ $ su - root
 --------------------------------------------------------------------------------
 
 
-On FreeBSD:
+Installation on FreeBSD. Also we export PKG_CONFIG_PATH. And we switch the system
+to the GNU make, otherwise tests does not compile.
 --------------------------------------------------------------------------------
 $ su - root
 # pkg install pkgconf
+# pkg install gmake
+# mv /usr/bin/make /usr/bin/make.orig
+# ln -s /usr/local/bin/gmake /usr/bin/make
 $ exit
 $ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib
 --------------------------------------------------------------------------------
