@@ -42,7 +42,8 @@ import (
 
 //UBF Buffer
 type TypedVIEW struct {
-	Buf *ATMIBuf
+	vname string //Cached view name
+	Buf   *ATMIBuf
 }
 
 //Return The ATMI buffer to caller
@@ -61,14 +62,26 @@ func (ac *ATMICtx) VIEWAlloc(view string, size int64) (TypedVIEW, ATMIError) {
 	var err ATMIError
 	var buf TypedVIEW
 	buf.Buf, err = ac.TpAlloc("VIEW", view, size)
+	buf.vname = view
 	return buf, err
 }
 
 //Get the UBF Handler
 func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 	var buf TypedVIEW
+	var itype *string
+	var subtype *string
 
-	//TODO: Check the buffer type!
+	// Check the buffer type & get view name
+	if errA := ac.TpTypes(abuf, itype, subtype); nil != errA {
+		return nil, errA
+	}
+
+	if (itype != "VIEW") || (itype != "VIEW32") {
+		return nil, ac.NewCustomATMIError(TPEINVAL, "Invalid buffer type,"+
+			" expected VIEW, got [%s]", itype)
+	}
+
 	buf.Buf = abuf
 
 	return &buf, nil
@@ -82,6 +95,10 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int) (int16, UBFError) {
 	var c_val C.short
 
 	//char *view, char *cname
+	c_cname := C.CString(cname)
+	defer C.free(unsafe.Pointer(c_cname))
+
+	//Get the view name
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		C.BFLDID(bfldid),
@@ -391,11 +408,12 @@ func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 //NOTE: realloc or other ATMI ops you can do with TypedVIEW.Buf
 //@param size - buffer size
 //@return Typed UBF, ATMI error
-func (ac *ATMICtx) NewVIEW(view stirng, size int64) (*TypedVIEW, ATMIError) {
+func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 
 	var buf TypedVIEW
+	buf.vname = view
 
-	if ptr, err := ac.TpAlloc("UBF", "", size); nil != err {
+	if ptr, err := ac.TpAlloc("VIEW", "", size); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
