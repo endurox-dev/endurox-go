@@ -36,14 +36,19 @@ import (
 	"unsafe"
 )
 
+//View flags
+const (
+	BVACCESS_NOTNULL = 0x00000001 //View access mode (return non null values only)
+)
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Buffer def, typedefs
 ///////////////////////////////////////////////////////////////////////////////////
 
 //UBF Buffer
 type TypedVIEW struct {
-	vname string //Cached view name
-	Buf   *ATMIBuf
+	view string //Cached view name
+	Buf  *ATMIBuf
 }
 
 //Return The ATMI buffer to caller
@@ -88,10 +93,11 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 }
 
 //Return int16 value from buffer
-//@param bfldid 	Field ID
+//@param cname 	C field name for view
 //@param occ	Occurrance
+//@param flags	BVACCESS_NOTNULL or 0
 //@return int16 val,	 UBF error
-func (u *TypedVIEW) BVGetInt16(cname string, occ int) (int16, UBFError) {
+func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFError) {
 	var c_val C.short
 
 	//char *view, char *cname
@@ -100,9 +106,12 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int) (int16, UBFError) {
 
 	//Get the view name
 
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
-		C.BFLDID(bfldid),
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT); ret != SUCCEED {
+		c_view, c_cname, C.BFLDOCC(occ),
+		(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT, flags); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return int16(c_val), nil
