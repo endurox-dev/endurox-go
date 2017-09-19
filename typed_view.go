@@ -31,6 +31,18 @@ package atmi
 ** contact@mavimax.com
 ** -----------------------------------------------------------------------------
  */
+
+/*
+ #cgo pkg-config: atmisrvinteg
+
+ #include <string.h>
+ #include <stdlib.h>
+ #include <ndebug.h>
+ #include <oatmi.h>
+ #include <ubf.h>
+ #include <oubf.h>
+ #include <oatmi.h>
+*/
 import "C"
 import (
 	"unsafe"
@@ -38,7 +50,9 @@ import (
 
 //View flags
 const (
-	BVACCESS_NOTNULL = 0x00000001 //View access mode (return non null values only)
+	BVACCESS_NOTNULL    = 0x00000001 //View access mode (return non null values only)
+	VIEW_NAME_LEN       = 33         //View name max len
+	NDRX_VIEW_CNAME_LEN = 256        // View filed max len
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +63,11 @@ const (
 type TypedVIEW struct {
 	view string //Cached view name
 	Buf  *ATMIBuf
+}
+
+//State for view iterator
+type BVNextState struct {
+	state C.Bvnext_state_t
 }
 
 //Return The ATMI buffer to caller
@@ -315,7 +334,15 @@ func (u *TypedVIEW) BVChg(bfldid int, occ int, ival interface{}) UBFError {
 //@param ival Input value
 //@param	 do_add Adding mode true = add, false = change
 //@return UBF Error
-func (u *TypedVIEW) BVChgCombined(bfldid int, occ int, ival interface{}, do_add bool) UBFError {
+func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFError {
+
+	//Get the view name
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
+	//Field name
+	c_cname := C.CString(cname)
+	defer C.free(unsafe.Pointer(c_cname))
 
 	switch ival.(type) {
 	case int,
@@ -354,87 +381,50 @@ func (u *TypedVIEW) BVChgCombined(bfldid int, occ int, ival interface{}, do_add 
 		}
 		c_val := C.long(val)
 
-		if do_add {
-			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_LONG); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
-		} else {
-			if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_LONG); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
+		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+			c_view, c_cname, C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_LONG); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
 		}
+
 	case float32:
 		fval := ival.(float32)
 		c_val := C.float(fval)
-		if do_add {
-			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_FLOAT); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
-		} else {
-			if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_FLOAT); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
+		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+			c_view, c_cname, C.BFLDOCC(occ),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_FLOAT); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
 		}
 	case float64:
 		dval := ival.(float64)
 		c_val := C.double(dval)
-		if do_add {
-			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_DOUBLE); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
-		} else {
-			if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_DOUBLE); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
+
+		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+			c_view, c_cname, C.BFLDOCC(occ),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_DOUBLE); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
 		}
+
 	case string:
 		str := ival.(string)
 		c_val := C.CString(str)
 		defer C.free(unsafe.Pointer(c_val))
-		if do_add {
-			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				c_val, 0, BFLD_STRING); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
-		} else {
-			if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), c_val, 0, BFLD_STRING); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
+
+		if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+			c_view, c_cname,
+			C.BFLDOCC(occ), c_val, 0, BFLD_STRING); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
 		}
+
 	case []byte:
 		arr := ival.([]byte)
 		c_len := C.BFLDLEN(len(arr))
 		c_arr := (*C.char)(unsafe.Pointer(&arr[0]))
 
-		if do_add {
-			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				c_arr, c_len, BFLD_CARRAY); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
-		} else {
-			if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
-				C.BFLDOCC(occ), c_arr, c_len, BFLD_CARRAY); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
-			}
+		if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+			c_view, c_cname,
+			C.BFLDOCC(occ), c_arr, c_len, BFLD_CARRAY); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
 		}
-		/*
-				- Currently not supported!
-			case fmt.Stringer:
-				str := ival.(fmt.Stringer).String()
-				c_val := C.CString(str)
-				defer C.free(unsafe.Pointer(c_val))
-				if ret := C.CBchg((*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr), C.BFLDID(bfldid),
-					C.BFLDOCC(occ), c_val, 0, BFLD_STRING); ret != SUCCEED {
-					return NewUBFError()
-				}
-		*/
 	default:
 		/* TODO: Possibly we could take stuff from println to get string val... */
 		return NewCustomUBFError(BEINVAL, "Cannot determine field type")
@@ -446,21 +436,53 @@ func (u *TypedVIEW) BVChgCombined(bfldid int, occ int, ival interface{}, do_add 
 //Get the number of field occurrances in buffer
 //@param bfldid	Field ID
 //@return count (or -1 on error), UBF error
-func (u *TypedVIEW) BVOccur(cname string) (int, UBFError) {
-	c_ret := C.OBoccur(&u.Buf.Ctx.c_ctx,
-		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid))
+func (u *TypedVIEW) BVOccur(cname string) (int, int, int, long, UBFError) {
+
+	//Get the view name
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
+	//Field name
+	c_cname := C.CString(cname)
+	defer C.free(unsafe.Pointer(c_cname))
+
+	var c_maxocc C.int
+	var c_realocc C.int
+	var c_dim_size C.long
+
+	c_ret := C.OBvoccur(&u.Buf.Ctx.c_ctx,
+		(*C.char)(unsafe.Pointer(u.Buf.C_ptr)), c_view, c_cname, &c_maxocc, &c_realocc, c_dim_size)
+
+	if FAIL == c_ret {
+		return 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
+	}
+
+	return int(c_ret), int(c_maxocc), int(c_realocc), long(c_dim_size), nil
+}
+
+//Get the total buffer size
+//@return bufer size, UBF error
+func BVSizeof(view string) (int64, UBFError) {
+
+	c_view := C.CString(cname)
+	defer C.free(unsafe.Pointer(c_view))
+
+	c_ret := C.OBsizeof(&u.Buf.Ctx.c_ctx, c_view)
 
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
-	return int(c_ret), nil
+	return int64(c_ret), nil
 }
 
-//Get the total buffer size
-//@return bufer size, UBF error
 func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
-	c_ret := C.OBsizeof(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
+
+	//Get the view name
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
+	c_ret := C.OBvsizeof(&u.Buf.Ctx.c_ctx, c_view)
 
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
@@ -473,8 +495,17 @@ func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
 //@param bfldid field ID
 //@return UBF error
 func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
-	if ret := C.OBdelall(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
-		C.BFLDID(bfldid)); SUCCEED != ret {
+
+	//Get the view name
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
+	//Field name
+	c_cname := C.CString(cname)
+	defer C.free(unsafe.Pointer(c_cname))
+
+	if ret := C.OBvsetoccur(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+		c_view, c_cname, C.BFLDOCC(occ)); SUCCEED != ret {
 		return u.Buf.Ctx.NewUBFError()
 	}
 	return nil
@@ -489,7 +520,7 @@ func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 	var buf TypedVIEW
 	buf.vname = view
 
-	if ptr, err := ac.TpAlloc("VIEW", "", size); nil != err {
+	if ptr, err := ac.TpAlloc("VIEW", view, size); nil != err {
 		return nil, err
 	} else {
 		buf.Buf = ptr
@@ -505,46 +536,45 @@ func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 //JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
 //occurrences.
 //@return UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
-func (u *TypedVIEW) TpJSONToVIEW(buffer string) UBFError {
+func TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
+
 	size := int64(len(buffer))
-	sizeof, _ := u.BSizeof()
-	unused, _ := u.BUnused()
-	alloc := size - unused
-
 	c_buffer := C.CString(buffer)
-
 	defer C.free(unsafe.Pointer(c_buffer))
 
-	u.Buf.Ctx.ndrxLog(LOG_INFO, "Data size: %d, UBF sizeof: %d, "+
-		"unused: %d, about to alloc (if >0) %d",
-		size, sizeof, unused, alloc)
+	var c_view [VIEW_NAME_LEN + 1]C.char
 
-	if alloc > 0 {
-		if err := u.TpRealloc(sizeof + alloc); nil != err {
-			return NewCustomUBFError(BMALLOC, err.Message())
-		}
+	if ret := C.Otpjsontoview(&u.Buf.Ctx.c_ctx,
+		(*C.char)(unsafe.Pointer(c_view)), c_buffer); ret != 0 {
+		return nil, u.Buf.Ctx.NewUBFError()
 	}
 
-	if ret := C.Otpjsontoubf(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
-		c_buffer); ret != 0 {
-		return NewCustomUBFError(BEINVAL, "Failed to convert JSON 2 UBF "+
-			"(tpjsontoubf() failed see UBF/ATMI logs")
-	}
+	var atmiBuf ATMIBuf
+	atmiBuf.C_ptr = ret
+	atmiBuf.C_len = BVSizeof(C.GoString(c_view))
 
-	return nil
+	var tv TypedVIEW
+
+	tv.Buf = &atmiBuf
+
+	return &tv, nil
 }
 
 //Convert given UBF buffer to JSON block, see tpubftojson(3) C call
 //Output string is automatically allocated
 //@return JSON string (if converted ok), ATMIError in case of failure. More detailed
 //infos in case of error is found in 'ubf' and 'ndrx' facility logs.
-func (u *TypedVIEW) TpVIEWToJSON() (string, ATMIError) {
+func (u *TypedVIEW) TpVIEWToJSON(flags long) (string, ATMIError) {
 
-	used, _ := u.BUsed()
+	//Get the view name
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
 
+	used, _ := u.BVSizeof()
 	ret_size := used * 10
 
-	u.Buf.Ctx.ndrxLog(LOG_INFO, "TpUBFToJSON: used %d allocating %d", used, ret_size)
+	u.Buf.Ctx.ndrxLog(LOG_INFO, "TpVIEWToJSON: sizeof %d allocating %d",
+		used, ret_size)
 
 	c_buffer := C.malloc(C.size_t(ret_size))
 
@@ -554,10 +584,9 @@ func (u *TypedVIEW) TpVIEWToJSON() (string, ATMIError) {
 
 	defer C.free(c_buffer)
 
-	if ret := C.Otpubftojson(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
-		(*C.char)(unsafe.Pointer(c_buffer)), C.int(ret_size)); ret != 0 {
-		return "", NewCustomUBFError(BEINVAL, "Failed to convert UBF2JSON "+
-			"(tpubftojson() failed see UBF/ATMI logs")
+	if ret := C.Otpviewtojson(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+		c_view, (*C.char)(unsafe.Pointer(c_buffer)), C.int(ret_size), C.long(flags)); ret != 0 {
+		return "", u.Buf.Ctx.NewUBFError()
 	}
 
 	return C.GoString((*C.char)(c_buffer)), nil
@@ -565,6 +594,34 @@ func (u *TypedVIEW) TpVIEWToJSON() (string, ATMIError) {
 }
 
 //TODO: Iter func..
+// Declare wrapper for Bvnext_state_t
+//int Bvnext (Bvnext_state_t *state, char *view, char *cname,
+//                            int *fldtype, BFLDOCC *maxocc, long *dim_size);
+
+func (v *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, long, UBFError) {
+
+	var c_view *C.char = nil
+
+	var c_cname [VIEW_NAME_LEN + 1]C.char
+
+	if start {
+		c_view = C.CString(u.view)
+		defer C.free(unsafe.Pointer(c_view))
+	}
+
+	var c_fldtype C.int
+	var c_maxocc C.BFLDOCC
+	var c_dim_size C.long
+
+	if ret := C.OBvnext(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(&state.state)),
+		c_view, c_cname, &c_fldtype, &c_maxocc, &c_dim_size); ret >= 0 {
+		return int(ret), C.GoString(c_cname), int(c_fldtype), int(c_maxocc), long(c_dim_size), nil
+	}
+
+	//We have a failure
+	return -1, "", 0, 0, 0, u.Buf.Ctx.NewUBFError()
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Wrappers for memory management
