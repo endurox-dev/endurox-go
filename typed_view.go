@@ -45,6 +45,7 @@ package atmi
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -86,7 +87,7 @@ func (ac *ATMICtx) VIEWAlloc(view string, size int64) (TypedVIEW, ATMIError) {
 	var err ATMIError
 	var buf TypedVIEW
 	buf.Buf, err = ac.TpAlloc("VIEW", view, size)
-	buf.vname = view
+	buf.view = view
 	return buf, err
 }
 
@@ -97,13 +98,13 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 	var subtype *string
 
 	// Check the buffer type & get view name
-	if errA := ac.TpTypes(abuf, itype, subtype); nil != errA {
+	if _, errA := ac.TpTypes(abuf, itype, subtype); nil != errA {
 		return nil, errA
 	}
 
-	if (itype != "VIEW") || (itype != "VIEW32") {
-		return nil, ac.NewCustomATMIError(TPEINVAL, "Invalid buffer type,"+
-			" expected VIEW, got [%s]", itype)
+	if (*itype != "VIEW") || (*itype != "VIEW32") {
+		return nil, NewCustomATMIError(TPEINVAL, fmt.Sprintf("Invalid buffer type,"+
+			" expected VIEW, got [%s]", itype))
 	}
 
 	buf.Buf = abuf
@@ -129,7 +130,7 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFEr
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname, C.BFLDOCC(occ),
-		(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT, flags); ret != SUCCEED {
+		(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return int16(c_val), nil
@@ -139,7 +140,7 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFEr
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return int64 val,	 UBF error
-func (u *TypedVIEW) BVGetInt64(cname string, occ int) (int64, UBFError) {
+func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFError) {
 	var c_val C.long
 
 	//Get the view name
@@ -152,7 +153,8 @@ func (u *TypedVIEW) BVGetInt64(cname string, occ int) (int64, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_LONG); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+		nil, BFLD_LONG, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return int64(c_val), nil
@@ -162,7 +164,7 @@ func (u *TypedVIEW) BVGetInt64(cname string, occ int) (int64, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return int64 val,	 UBF error
-func (u *TypedVIEW) BVGetInt(cname string, occ int) (int, UBFError) {
+func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError) {
 	var c_val C.long
 
 	//Get the view name
@@ -175,7 +177,8 @@ func (u *TypedVIEW) BVGetInt(cname string, occ int) (int, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_INT); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+		nil, BFLD_INT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return int(c_val), nil
@@ -185,7 +188,7 @@ func (u *TypedVIEW) BVGetInt(cname string, occ int) (int, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return byte val, UBF error
-func (u *TypedVIEW) BVGetByte(cname string, occ int) (byte, UBFError) {
+func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFError) {
 	var c_val C.char
 
 	//Get the view name
@@ -198,7 +201,8 @@ func (u *TypedVIEW) BVGetByte(cname string, occ int) (byte, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_CHAR); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+		nil, BFLD_CHAR, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return byte(c_val), nil
@@ -208,7 +212,7 @@ func (u *TypedVIEW) BVGetByte(cname string, occ int) (byte, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return float, UBF error
-func (u *TypedVIEW) BVGetFloat32(cname string, occ int) (float32, UBFError) {
+func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32, UBFError) {
 	var c_val C.float
 
 	//Get the view name
@@ -221,7 +225,8 @@ func (u *TypedVIEW) BVGetFloat32(cname string, occ int) (float32, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_FLOAT); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+		nil, BFLD_FLOAT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return float32(c_val), nil
@@ -231,7 +236,7 @@ func (u *TypedVIEW) BVGetFloat32(cname string, occ int) (float32, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return double, UBF error
-func (u *TypedVIEW) BVGetFloat64(cname string, occ int) (float64, UBFError) {
+func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, UBFError) {
 	var c_val C.double
 
 	//Get the view name
@@ -244,7 +249,8 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int) (float64, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_DOUBLE); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+		nil, BFLD_DOUBLE, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
 	return float64(c_val), nil
@@ -254,7 +260,7 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int) (float64, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return string val, UBF error
-func (u *TypedVIEW) BVGetString(cname string, occ int) (string, UBFError) {
+func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBFError) {
 	var c_len C.BFLDLEN
 	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
 	c_len = ATMI_MSG_MAX_SIZE
@@ -275,7 +281,7 @@ func (u *TypedVIEW) BVGetString(cname string, occ int) (string, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(c_val), &c_len, BFLD_STRING); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(c_val), &c_len, BFLD_STRING, C.long(flags)); ret != SUCCEED {
 		return "", u.Buf.Ctx.NewUBFError()
 	}
 
@@ -286,7 +292,7 @@ func (u *TypedVIEW) BVGetString(cname string, occ int) (string, UBFError) {
 //@param bfldid 	Field ID
 //@param occ	Occurrance
 //@return string val, UBF error
-func (u *TypedVIEW) BVGetByteArr(cname string, occ int) ([]byte, UBFError) {
+func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UBFError) {
 	var c_len C.BFLDLEN
 	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
 	c_len = ATMI_MSG_MAX_SIZE
@@ -307,7 +313,8 @@ func (u *TypedVIEW) BVGetByteArr(cname string, occ int) ([]byte, UBFError) {
 
 	if ret := C.OCBvget(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 		c_view, c_cname,
-		C.BFLDOCC(occ), (*C.char)(c_val), &c_len, BFLD_CARRAY); ret != SUCCEED {
+		C.BFLDOCC(occ), (*C.char)(c_val),
+		&c_len, BFLD_CARRAY, C.long(flags)); ret != SUCCEED {
 		return nil, u.Buf.Ctx.NewUBFError()
 	}
 
@@ -324,8 +331,8 @@ func (u *TypedVIEW) BVGetByteArr(cname string, occ int) ([]byte, UBFError) {
 //@param	bfldid	Field ID
 //@param ival Input value
 //@return UBF Error
-func (u *TypedVIEW) BVChg(bfldid int, occ int, ival interface{}) UBFError {
-	return u.BChgCombined(bfldid, occ, ival, false)
+func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError {
+	return u.BVChgCombined(cname, occ, ival)
 }
 
 //Set the field value. Combined supports change (chg) or add mode
@@ -409,7 +416,7 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 		c_val := C.CString(str)
 		defer C.free(unsafe.Pointer(c_val))
 
-		if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 			c_view, c_cname,
 			C.BFLDOCC(occ), c_val, 0, BFLD_STRING); ret != SUCCEED {
 			return u.Buf.Ctx.NewUBFError()
@@ -420,7 +427,7 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 		c_len := C.BFLDLEN(len(arr))
 		c_arr := (*C.char)(unsafe.Pointer(&arr[0]))
 
-		if ret := C.OCBchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
+		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
 			c_view, c_cname,
 			C.BFLDOCC(occ), c_arr, c_len, BFLD_CARRAY); ret != SUCCEED {
 			return u.Buf.Ctx.NewUBFError()
@@ -436,7 +443,7 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 //Get the number of field occurrances in buffer
 //@param bfldid	Field ID
 //@return count (or -1 on error), UBF error
-func (u *TypedVIEW) BVOccur(cname string) (int, int, int, long, UBFError) {
+func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, UBFError) {
 
 	//Get the view name
 	c_view := C.CString(u.view)
@@ -457,7 +464,7 @@ func (u *TypedVIEW) BVOccur(cname string) (int, int, int, long, UBFError) {
 		return 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
 	}
 
-	return int(c_ret), int(c_maxocc), int(c_realocc), long(c_dim_size), nil
+	return int(c_ret), int(c_maxocc), int(c_realocc), int64(c_dim_size), nil
 }
 
 //Get the total buffer size
@@ -564,7 +571,7 @@ func TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
 //Output string is automatically allocated
 //@return JSON string (if converted ok), ATMIError in case of failure. More detailed
 //infos in case of error is found in 'ubf' and 'ndrx' facility logs.
-func (u *TypedVIEW) TpVIEWToJSON(flags long) (string, ATMIError) {
+func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 
 	//Get the view name
 	c_view := C.CString(u.view)
