@@ -443,7 +443,7 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 //Get the number of field occurrances in buffer
 //@param bfldid	Field ID
 //@return count (or -1 on error), UBF error
-func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, UBFError) {
+func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) {
 
 	//Get the view name
 	c_view := C.CString(u.view)
@@ -453,31 +453,33 @@ func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, UBFError) {
 	c_cname := C.CString(cname)
 	defer C.free(unsafe.Pointer(c_cname))
 
-	var c_maxocc C.int
-	var c_realocc C.int
+	var c_maxocc C.BFLDOCC
+	var c_realocc C.BFLDOCC
+	var c_fldtype C.int
 	var c_dim_size C.long
 
 	c_ret := C.OBvoccur(&u.Buf.Ctx.c_ctx,
-		(*C.char)(unsafe.Pointer(u.Buf.C_ptr)), c_view, c_cname, &c_maxocc, &c_realocc, c_dim_size)
+		(*C.char)(unsafe.Pointer(u.Buf.C_ptr)), c_view, c_cname,
+            &c_maxocc, &c_realocc, &c_dim_size, &c_fldtype)
 
 	if FAIL == c_ret {
-		return 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
+		return 0, 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
 	}
 
-	return int(c_ret), int(c_maxocc), int(c_realocc), int64(c_dim_size), nil
+	return int(c_ret), int(c_maxocc), int(c_realocc), int64(c_dim_size), int(c_fldtype), nil
 }
 
 //Get the total buffer size
 //@return bufer size, UBF error
-func BVSizeof(view string) (int64, UBFError) {
+func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
 
-	c_view := C.CString(cname)
+	c_view := C.CString(view)
 	defer C.free(unsafe.Pointer(c_view))
 
-	c_ret := C.OBsizeof(&u.Buf.Ctx.c_ctx, c_view)
+	c_ret := C.OBvsizeof(&ac.c_ctx, c_view)
 
 	if FAIL == c_ret {
-		return FAIL, u.Buf.Ctx.NewUBFError()
+		return FAIL, ac.NewUBFError()
 	}
 
 	return int64(c_ret), nil
