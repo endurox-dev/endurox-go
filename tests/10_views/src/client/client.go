@@ -8,7 +8,6 @@ import (
 	//_ "net/http/pprof"
 	"os"
 	"strconv"
-	"ubftab"
 )
 
 const (
@@ -35,7 +34,7 @@ func main() {
 			os.Exit(atmi.FAIL)
 		}
 
-		buf, err := ac.NewUBF(1024)
+		buf, err := ac.NewVIEW("MYVIEW1", 0)
 
 		if err != nil {
 			ac.TpLogError("ATMI Error %s", err.Error())
@@ -46,8 +45,60 @@ func main() {
 		s := strconv.Itoa(i)
 
 		//Set one field for call
-		if errB := buf.BChg(ubftab.T_STRING_FLD, 0, s); nil != errB {
-			ac.TpLogError("UBF Error: %s", errB.Error())
+		if errB := buf.BVChg("tshort1", 0, s); nil != errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		if errB := buf.BVChg("tint2", 1, 123456789); nil != errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		if errB := buf.BVChg("tchar2", 4, 'A'); nil != errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		if errB := buf.BVChg("tfloat2", 0, 0.11); nil != errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		if errB := buf.BVChg("tdouble2", 0, 110.099); nil != errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		var errB1 atmi.UBFError
+
+		if errB1 = buf.BVChg("tdouble2", 1, 110.099); nil == errB1 {
+			ac.TpLogError("MUST HAVWE ERROR tdouble occ=1 does not exists, but SUCCEED!")
+			ret = FAIL
+			goto out
+		}
+
+		if errB1.Code() != atmi.BEINVAL {
+			ac.TpLogError("Expeced error code %d but got %d", atmi.BEINVAL, errB1.Code())
+			ret = FAIL
+			goto out
+		}
+
+		if errB := buf.BVChg("tstring0", 2, "HELLO ENDURO"); nil == errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
+			ret = FAIL
+			goto out
+		}
+
+		b := []byte{0, 1, 2, 3, 4, 5}
+
+		if errB := buf.BVChg("tcarray2", 0, b); nil == errB {
+			ac.TpLogError("VIEW Error: %s", errB.Error())
 			ret = FAIL
 			goto out
 		}
@@ -57,18 +108,6 @@ func main() {
 			ac.TpLogError("ATMI Error: %s", err.Error())
 			ret = FAIL
 			goto out
-		}
-
-		res, errB := buf.BGetString(ubftab.T_STRING_3_FLD, 0)
-
-		if nil!=errB {
-			ac.TpLogError("UBF Error: %s", errB.Error())
-			ret = FAIL
-			goto out
-		}
-
-		if res!=s {
-			ac.TpLogError("Sent %s, but got [%s]")
 		}
 
 		ac.TpTerm()

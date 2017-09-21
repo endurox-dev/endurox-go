@@ -82,4 +82,6 @@ export NDRX_DEBUG_CONF=`pwd`/debug.conf
 # UBFTAB
 export FLDTBLDIR=`pwd`/../src/ubftab
 export FIELDTBLS=test.fd,Exfields
+export VIEWDIR=`pwd`/../src/viewdir
+export VIEWFILES=t40.V
 
