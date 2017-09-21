@@ -51,9 +51,9 @@ import (
 
 //View flags
 const (
-	BVACCESS_NOTNULL    = 0x00000001 //View access mode (return non null values only)
-	VIEW_NAME_LEN       = 33         //View name max len
-	NDRX_VIEW_CNAME_LEN = 256        // View filed max len
+	BVACCESS_NOTNULL = 0x00000001 //View access mode (return non null values only)
+	VIEW_NAME_LEN    = 33         //View name max len
+	VIEW_CNAME_LEN   = 256        // View filed max len
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +460,7 @@ func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) 
 
 	c_ret := C.OBvoccur(&u.Buf.Ctx.c_ctx,
 		(*C.char)(unsafe.Pointer(u.Buf.C_ptr)), c_view, c_cname,
-            &c_maxocc, &c_realocc, &c_dim_size, &c_fldtype)
+		&c_maxocc, &c_realocc, &c_dim_size, &c_fldtype)
 
 	if FAIL == c_ret {
 		return 0, 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
@@ -527,7 +527,7 @@ func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 
 	var buf TypedVIEW
-	buf.vname = view
+	buf.view = view
 
 	if ptr, err := ac.TpAlloc("VIEW", view, size); nil != err {
 		return nil, err
@@ -545,26 +545,35 @@ func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 //JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
 //occurrences.
 //@return UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
-func TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
+func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
 
-	size := int64(len(buffer))
 	c_buffer := C.CString(buffer)
 	defer C.free(unsafe.Pointer(c_buffer))
 
-	var c_view [VIEW_NAME_LEN + 1]C.char
+	c_view := C.malloc(VIEW_NAME_LEN + 1)
+	c_view_ptr := (*C.char)(unsafe.Pointer(c_view))
+	defer C.free(unsafe.Pointer(c_view))
 
-	if ret := C.Otpjsontoview(&u.Buf.Ctx.c_ctx,
-		(*C.char)(unsafe.Pointer(c_view)), c_buffer); ret != 0 {
-		return nil, u.Buf.Ctx.NewUBFError()
+	var ret *C.char
+
+	if ret = C.Otpjsontoview(&ac.c_ctx, c_view_ptr, c_buffer); ret == nil {
+		return nil, ac.NewUBFError()
 	}
 
 	var atmiBuf ATMIBuf
 	atmiBuf.C_ptr = ret
-	atmiBuf.C_len = BVSizeof(C.GoString(c_view))
+	view := C.GoString(c_view_ptr)
+	len, errA := ac.BVSizeof(view)
+
+	if nil != errA {
+		return nil, errA
+	}
 
 	var tv TypedVIEW
 
+	atmiBuf.C_len = C.long(len)
 	tv.Buf = &atmiBuf
+	tv.view = view
 
 	return &tv, nil
 }
@@ -607,24 +616,27 @@ func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 //int Bvnext (Bvnext_state_t *state, char *view, char *cname,
 //                            int *fldtype, BFLDOCC *maxocc, long *dim_size);
 
-func (v *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, long, UBFError) {
+func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, int64, UBFError) {
 
 	var c_view *C.char = nil
-
-	var c_cname [VIEW_NAME_LEN + 1]C.char
 
 	if start {
 		c_view = C.CString(u.view)
 		defer C.free(unsafe.Pointer(c_view))
 	}
 
+	c_cname := C.malloc(VIEW_CNAME_LEN + 1)
+	c_cname_ptr := (*C.char)(unsafe.Pointer(c_cname))
+	defer C.free(unsafe.Pointer(c_cname))
+
 	var c_fldtype C.int
 	var c_maxocc C.BFLDOCC
 	var c_dim_size C.long
 
-	if ret := C.OBvnext(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(&state.state)),
-		c_view, c_cname, &c_fldtype, &c_maxocc, &c_dim_size); ret >= 0 {
-		return int(ret), C.GoString(c_cname), int(c_fldtype), int(c_maxocc), long(c_dim_size), nil
+	if ret := C.OBvnext(&u.Buf.Ctx.c_ctx, (*C.struct_Bvnext_state)(unsafe.Pointer(&state.state)),
+		c_view, c_cname_ptr, &c_fldtype, &c_maxocc, &c_dim_size); ret >= 0 {
+		return int(ret), C.GoString(c_cname_ptr), int(c_fldtype),
+			int(c_maxocc), int64(c_dim_size), nil
 	}
 
 	//We have a failure
