@@ -7,7 +7,7 @@ import (
 	//http "net/http"
 	//_ "net/http/pprof"
 	"os"
-	"strconv"
+	//"strconv"
 )
 
 const (
@@ -35,6 +35,7 @@ func main() {
 		}
 
 		buf, err := ac.NewVIEW("MYVIEW1", 0)
+//		buf, err := ac.NewUBF(1024)
 
 		if err != nil {
 			ac.TpLogError("ATMI Error %s", err.Error())
@@ -42,6 +43,7 @@ func main() {
 			goto out
 		}
 
+/*
 		s := strconv.Itoa(i)
 
 		//Set one field for call
@@ -89,7 +91,7 @@ func main() {
 			goto out
 		}
 
-		if errB := buf.BVChg("tstring0", 2, "HELLO ENDURO"); nil == errB {
+		if errB := buf.BVChg("tstring0", 2, "HELLO ENDURO"); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			ret = FAIL
 			goto out
@@ -97,11 +99,12 @@ func main() {
 
 		b := []byte{0, 1, 2, 3, 4, 5}
 
-		if errB := buf.BVChg("tcarray2", 0, b); nil == errB {
+		if errB := buf.BVChg("tcarray2", 0, b); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			ret = FAIL
 			goto out
 		}
+*/
 
 		//Call the server
 		if _, err := ac.TpCall("TEST1", buf, 0); nil != err {
