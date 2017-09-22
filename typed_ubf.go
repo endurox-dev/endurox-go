@@ -149,14 +149,15 @@ const (
 	BFTSYNTAX = 13
 	BEINVAL   = 14
 	BERFU1    = 15
-	BERFU2    = 16
-	BERFU3    = 17
-	BERFU4    = 18
-	BERFU5    = 19
-	BERFU6    = 20
-	BERFU7    = 21
-	BERFU8    = 22
-	BMAXVAL   = 22 /* max error */
+	BBADTBL   = 16
+	BBADVIEW  = 17
+	BVFSYNTAX = 18
+	BVFOPEN   = 19
+	BBADACM   = 20
+	BNOCNAME  = 21
+	BEBADOP   = 22
+
+	BMAXVAL = 22 /* max error */
 )
 
 const (

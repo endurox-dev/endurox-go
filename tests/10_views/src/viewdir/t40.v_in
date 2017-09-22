@@ -40,12 +40,12 @@ END
 
 VIEW MYVIEW2
 #type    cname      fbname              count   flag    size    null
-short    tshort1    -                   1       -       -       2000
-long     tlong1     -                   1       -       -       5
-char     tchar1     -                   1       -       -       '\0'
-float    tfloat1    -                   1       -       -       1.1
-double   tdouble1   -                   1       -       -       0.0
-string   tstring1   -                   1       P       15      'HELLO WORLDB'
-carray   tcarray1   -                   1       -      10      '-'
+short    ttshort1    -                   1       -       -       2000
+long     ttlong1     -                   1       -       -       5
+char     ttchar1     -                   1       -       -       '\0'
+float    ttfloat1    -                   1       -       -       1.1
+double   ttdouble1   -                   1       -       -       0.0
+string   ttstring1   -                   1       P       15      'HELLO WORLDB'
+carray   ttcarray1   -                   1       -      10      '-'
 END
 

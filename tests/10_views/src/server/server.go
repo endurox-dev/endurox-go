@@ -4,7 +4,6 @@ import (
 	"atmi"
 	"fmt"
 	"os"
-	"ubftab"
 )
 
 const (
@@ -12,107 +11,123 @@ const (
 	FAIL    = -1
 )
 
+var M_counter int = 0
+var M_ret int
+var M_ac *atmi.ATMICtx
+
+func assertEqual(a interface{}, b interface{}, message string) {
+	if a == b {
+		return
+	}
+	if len(message) == 0 {
+		message = fmt.Sprintf("%v != %v", a, b)
+	}
+	M_ac.TpLogError("%s", message)
+}
+
 //TEST1 service
 //Read the value of the T_STRING_FLD, alloc new buffer and set T_STRING2_FLD
 //Forward to TEST2 service
 func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
-	ret := SUCCEED
+	M_ret = SUCCEED
+	M_ac = ac
 
 	//Get UBF Handler
 	v, err := ac.CastToVIEW(&svc.Data)
-    if err!=nil {
-        ac.TpLogError("Failed to cast to view: %s", err.Error())
-        ret = FAIL
-        return //drop the message...
-    }
-   
+	if err != nil {
+		ac.TpLogError("Failed to cast to view: %s", err.Error())
+		M_ret = FAIL
+		return //drop the message...
+	}
+
 	//Return to the caller
 	defer func() {
-
-		ac.TpLogCloseReqFile()
-		if SUCCEED == ret {
-			ac.TpForward("TEST2", v, 0)
+		M_counter++
+		if SUCCEED == M_ret {
+			ac.TpReturn(atmi.TPSUCCESS, 0, v, 0)
 		} else {
 			ac.TpReturn(atmi.TPFAIL, 0, v, 0)
 		}
 	}()
 
-	//Set some field
-	s, errB := v.BVGetString("tstring0", 2, atmi.BVACCESS_NOTNULL)
+	////////////////////////////////////////////////////////////////////////
+	//Test the values received
+	////////////////////////////////////////////////////////////////////////
+	tshort1, errV := v.BVGetInt16("tshort1", 0, 0)
+	assertEqual(tshort1, M_counter, "tshort1")
+	assertEqual(errV, nil, "tshort1 -> errV")
 
-	if  errB != nil {
-		ac.TpLogError("BVGetString() Got error: %s", errB.Error())
-		ret = FAIL
+	tint2, errV := v.BVGetInt("tint2", 1, 0)
+	assertEqual(tint2, 123456789, "tint2")
+	assertEqual(errV, nil, "tint2 -> errV")
+
+	tchar2, errV := v.BVGetString("tchar2", 4, 0)
+	assertEqual(tchar2, "C", "tchar2")
+	assertEqual(errV, nil, "tchar2 -> errV")
+
+	tfloat2, errV := v.BVGetFloat32("tfloat2", 0, 0)
+	assertEqual(tfloat2, 0.11, "tfloat2")
+	assertEqual(errV, nil, "tfloat2 -> errV")
+
+	tdouble2, errV := v.BVGetFloat64("tdouble2", 0, 0)
+	assertEqual(tdouble2, 110.099, "tdouble2")
+	assertEqual(errV, nil, "tdouble2 -> errV")
+
+	tstring0, errV := v.BVGetString("tstring0", 2, 0)
+	assertEqual(tstring0, "HELLO ENDURO", "tstring0")
+	assertEqual(errV, nil, "tstring0 -> errV")
+
+	b := []byte{0, 1, 2, 3, 4, 5}
+
+	tcarray2, errV := v.BVGetByteArr("tcarray2", 0, 0)
+	for i:=0; i<5; i++ {
+		assertEqual(tcarray2[i], b[i], "tcarray2")
+	}
+	//assertEqual(tcarray2, b, "tcarray2")
+	assertEqual(tcarray2, nil, "tcarray2 -> errV")
+	////////////////////////////////////////////////////////////////////////
+	//Test BVACCESS_NOTNULL functionality...
+	////////////////////////////////////////////////////////////////////////
+
+	tshort2, errV := v.BVGetInt16("tshort2", 1, 0)
+	assertEqual(tshort2, 2001, "tshort2")
+	assertEqual(errV, nil, "tshort2 -> errV")
+
+	tshort2_2, errV := v.BVGetInt16("tshort2", 1, atmi.BVACCESS_NOTNULL)
+	assertEqual(tshort2_2, 0, "tshort2")
+	assertEqual(errV.Code(), atmi.BNOTPRES, "tshort2_2 -> must not be present"+
+			" with atmi.BVACCESS_NOTNULL")
+
+	_, errV = v.BVGetInt16("tshortX", 1, atmi.BVACCESS_NOTNULL)
+	assertEqual(errV.Code(), atmi.BNOCNAME, "tshortX")
+
+
+	v, err = ac.NewVIEW("MYVIEW2", 0);
+	if err != nil {
+		ac.TpLogError("Failed to cast to view: %s", err.Error())
+		M_ret = FAIL
 		return
 	}
 
-	if s!="HELLO ENDURO" {
-		ac.TpLogError("Expected: [HELLO ENDURO] got: %s", s);
-		ret = FAIL
+	if errB := v.BVChg("tshort1", 0, 2233); nil != errB {
+		ac.TpLogError("VIEW Error: %s", errB.Error())
+		M_ret = FAIL
+		return
+	}
+
+	if errB := v.BVChg("tstring1", 0, "HELLO ENDURO"); nil != errB {
+		ac.TpLogError("VIEW Error: %s", errB.Error())
+		M_ret = FAIL
 		return
 	}
 }
-
-//TEST2 service
-//Read the value of the T_STRING2_FLD, alloc new buffer and set T_STRING3_FLD
-//And return
-func TEST2(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
-
-	ret := SUCCEED
-
-	//Get UBF Handler
-	ub, _ := ac.CastToUBF(&svc.Data)
-
-	//Return to the caller
-	defer func() {
-
-		ac.TpLogCloseReqFile()
-		if SUCCEED == ret {
-			ac.TpReturn(atmi.TPSUCCESS, 0, ub, 0)
-		} else {
-			ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
-		}
-	}()
-
-	//Set some field
-	f, errB := ub.BGetString(ubftab.T_STRING_2_FLD, 0)
-
-	if  errB != nil {
-		ac.TpLogError("Bget() Got error: %s", errB.Error())
-		ret = FAIL
-		return
-	}
-
-	//Alloc new buffer
-	ub, errA := ac.NewUBF(1024)
-
-	if errA != nil {
-		ac.TpLogError("ATMI Error: %s", errA.Error())
-		ret=FAIL
-		return
-	}
-
-	//Set one field for call
-	if errB = ub.BChg(ubftab.T_STRING_3_FLD, 0, f); nil != errB {
-		fmt.Printf("UBF Error: %s", errB.Error())
-		ret = FAIL
-		return
-	}
-}
-
 
 //Server init
 func Init(ac *atmi.ATMICtx) int {
 
 	//Advertize TEST1
 	if err := ac.TpAdvertise("TEST1", "TEST1", TEST1); err != nil {
-		ac.TpLogError("TpAdvertise fail: %s", err.Error())
-		return atmi.FAIL
-	}
-
-	//Advertize TEST2
-	if err := ac.TpAdvertise("TEST2", "TEST2", TEST2); err != nil {
 		ac.TpLogError("TpAdvertise fail: %s", err.Error())
 		return atmi.FAIL
 	}
@@ -131,7 +146,7 @@ func main() {
 	ac, err := atmi.NewATMICtx()
 
 	if nil != err {
-		fmt.Errorf("Failed to allocate cotnext!", err)
+		fmt.Errorf("Failed to allocate cotnext: %s!", err.Message())
 		os.Exit(atmi.FAIL)
 	} else {
 		//Run as server
