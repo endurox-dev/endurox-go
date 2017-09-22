@@ -35,6 +35,7 @@ func main() {
 
 	M_ret = SUCCEED
 
+	//Test the service call with view setup
 	for i := 0; i < 10000 && SUCCEED == M_ret; i++ {
 
 		ac, err := atmi.NewATMICtx()
@@ -60,31 +61,26 @@ func main() {
 		if errB := buf.BVChg("tshort1", 0, s); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB := buf.BVChg("tint2", 1, 123456789); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB := buf.BVChg("tchar2", 4, 'C'); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB := buf.BVChg("tfloat2", 0, 0.11); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB := buf.BVChg("tdouble2", 0, 110.099); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		var errB1 atmi.UBFError
@@ -92,19 +88,16 @@ func main() {
 		if errB1 = buf.BVChg("tdouble2", 1, 110.099); nil == errB1 {
 			ac.TpLogError("MUST HAVWE ERROR tdouble occ=1 does not exists, but SUCCEED!")
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB1.Code() != atmi.BEINVAL {
 			ac.TpLogError("Expeced error code %d but got %d", atmi.BEINVAL, errB1.Code())
 			M_ret = FAIL
-			goto out
 		}
 
 		if errB := buf.BVChg("tstring0", 2, "HELLO ENDURO"); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		b := []byte{0, 1, 2, 3, 4, 5}
@@ -112,14 +105,12 @@ func main() {
 		if errB := buf.BVChg("tcarray2", 0, b); nil != errB {
 			ac.TpLogError("VIEW Error: %s", errB.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		//Call the server
 		if _, err := ac.TpCall("TEST1", buf, 0); nil != err {
 			ac.TpLogError("ATMI Error: %s", err.Error())
 			M_ret = FAIL
-			goto out
 		}
 
 		//Test the result buffer, type should be MYVIEW2
@@ -147,6 +138,39 @@ func main() {
 
 		//runtime.GC()
 	}
+
+	if FAIL!=M_ret {		
+		//Test view 2 json and vice versa...
+		ac, err := atmi.NewATMICtx()
+		M_ac = ac
+
+		if nil != err {
+			fmt.Errorf("Failed to allocate cotnext!", err)
+			os.Exit(atmi.FAIL)
+		}
+
+		buf, err := ac.NewVIEW("MYVIEW2", 0);
+
+		if err != nil {
+			ac.TpLogError("ATMI Error %s", err.Message())
+			M_ret = FAIL
+		}
+
+		//The buffer shall be initialized to default values...
+
+		//Conver with zeros
+		strj, err :=buf.TpVIEWToJSON(0);
+
+		if nil!=err {
+			ac.TpLogError("Failed to convert view to JSON, ATMI Error %s",
+				err.Error())
+			M_ret = FAIL
+			goto out
+		}
+
+		ac.TpLogDebug("Got JSON: [%s]", strj);
+	}
+
 
 out:
 	//Close the ATMI session
