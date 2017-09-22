@@ -16,14 +16,17 @@ var M_ret int
 var M_ac *atmi.ATMICtx
 
 func assertEqual(a interface{}, b interface{}, message string) {
-	if a == b {
-		return
-	}
-	if len(message) == 0 {
-		message = fmt.Sprintf("%v != %v", a, b)
-	}
-	M_ac.TpLogError("%s", message)
+        aa:= fmt.Sprintf("%v", a)
+        bb:= fmt.Sprintf("%v", b)
+
+        if aa == bb {
+                return
+        }
+        msg2:= fmt.Sprintf("%v != %v", a, b)
+        M_ac.TpLogError("%s: %s", message, msg2)
+        M_ret = FAIL
 }
+
 
 //TEST1 service
 //Read the value of the T_STRING_FLD, alloc new buffer and set T_STRING2_FLD
@@ -85,7 +88,7 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		assertEqual(tcarray2[i], b[i], "tcarray2")
 	}
 	//assertEqual(tcarray2, b, "tcarray2")
-	assertEqual(tcarray2, nil, "tcarray2 -> errV")
+	assertEqual(errV, nil, "tcarray2 -> errV")
 	////////////////////////////////////////////////////////////////////////
 	//Test BVACCESS_NOTNULL functionality...
 	////////////////////////////////////////////////////////////////////////
@@ -110,13 +113,13 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		return
 	}
 
-	if errB := v.BVChg("tshort1", 0, 2233); nil != errB {
+	if errB := v.BVChg("ttshort1", 0, 2233); nil != errB {
 		ac.TpLogError("VIEW Error: %s", errB.Error())
 		M_ret = FAIL
 		return
 	}
 
-	if errB := v.BVChg("tstring1", 0, "HELLO ENDURO"); nil != errB {
+	if errB := v.BVChg("ttstring1", 0, "HELLO ENDURO"); nil != errB {
 		ac.TpLogError("VIEW Error: %s", errB.Error())
 		M_ret = FAIL
 		return

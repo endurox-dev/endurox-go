@@ -343,16 +343,15 @@ const (
 	TPSUCCESS = 0x0002
 )
 
-
 /*
  * events returned during conversational communication
  */
 const (
-        TPEV_DISCONIMM  = 0x0001
-        TPEV_SVCERR     = 0x0002
-        TPEV_SVCFAIL    = 0x0004
-        TPEV_SVCSUCC    = 0x0008
-        TPEV_SENDONLY   = 0x0020
+	TPEV_DISCONIMM = 0x0001
+	TPEV_SVCERR    = 0x0002
+	TPEV_SVCFAIL   = 0x0004
+	TPEV_SVCSUCC   = 0x0008
+	TPEV_SENDONLY  = 0x0020
 )
 
 /*
@@ -525,8 +524,8 @@ type ATMIBuf struct {
 	//Probably we need a wrapper for lenght function
 	C_len C.long
 
-        //have finalizer installed
-        HaveFinalizer bool
+	//have finalizer installed
+	HaveFinalizer bool
 
 	//Have some context, just a reference to, for ATMI buffer operations
 	Ctx *ATMICtx
@@ -749,7 +748,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_subtype))
 
 	runtime.SetFinalizer(&buf, tpfree)
-        buf.HaveFinalizer = true
+	buf.HaveFinalizer = true
 
 	return &buf, err
 }
@@ -804,6 +803,21 @@ func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
+	}
+	//Check the types
+	if err == nil {
+		switch tb.(type) {
+		case *TypedVIEW:
+			if v, ok := tb.(*TypedVIEW); ok {
+				itype := ""
+				_, errA := ac.TpTypes(buf, &itype, &v.view)
+
+				if nil != err && nil != errA {
+					err = errA
+				}
+			}
+			break
+		}
 	}
 
 	C.free(unsafe.Pointer(c_svc))

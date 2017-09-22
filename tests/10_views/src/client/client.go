@@ -19,23 +19,26 @@ var M_ret int
 var M_ac *atmi.ATMICtx
 
 func assertEqual(a interface{}, b interface{}, message string) {
-	if a == b {
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
+
+	if aa == bb {
 		return
 	}
-	if len(message) == 0 {
-		message = fmt.Sprintf("%v != %v", a, b)
-	}
-	M_ac.TpLogError("%s", message)
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+	M_ac.TpLogError("%s: %s", message, msg2)
+	M_ret = FAIL
 }
 
 //Binary main entry
 func main() {
 
-	M_ret := SUCCEED
+	M_ret = SUCCEED
 
-	for i := 0; i < 10000 && SUCCEED==M_ret; i++ {
+	for i := 0; i < 10000 && SUCCEED == M_ret; i++ {
 
 		ac, err := atmi.NewATMICtx()
+		M_ac = ac
 
 		if nil != err {
 			fmt.Errorf("Failed to allocate cotnext!", err)
@@ -122,11 +125,11 @@ func main() {
 		//Test the result buffer, type should be MYVIEW2
 
 		ttshort1, errB := buf.BVGetInt16("ttshort1", 0, 0)
-		assertEqual(ttshort1, 2233, "ttshort1")
+		assertEqual(ttshort1, 2233, "ttshort1 !!!")
 		assertEqual(errB, nil, "ttshort1 -> errB")
 
 		ttstring1, errB := buf.BVGetString("ttstring1", 0, 0)
-		assertEqual(ttstring1, 2233, "ttstring1")
+		assertEqual(ttstring1, "HELLO ENDURO", "ttstring1 !!!")
 		assertEqual(errB, nil, "ttstring1 -> errB")
 
 		var itype, subtype string
