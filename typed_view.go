@@ -102,11 +102,14 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 		return nil, errA
 	}
 
-	if (itype != "VIEW") || (itype != "VIEW32") {
+	if (itype != "VIEW") && (itype != "VIEW32") {
 		return nil, NewCustomATMIError(TPEINVAL, fmt.Sprintf("Invalid buffer type,"+
 			" expected VIEW, got [%s]", itype))
 	}
 
+    ac.TpLogInfo("Got View: %s", subtype);
+
+    buf.view = subtype
 	buf.Buf = abuf
 
 	return &buf, nil

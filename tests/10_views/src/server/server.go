@@ -20,8 +20,13 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	ret := SUCCEED
 
 	//Get UBF Handler
-	v, _ := ac.CastToVIEW(&svc.Data)
-
+	v, err := ac.CastToVIEW(&svc.Data)
+    if err!=nil {
+        ac.TpLogError("Failed to cast to view: %s", err.Error())
+        ret = FAIL
+        return //drop the message...
+    }
+   
 	//Return to the caller
 	defer func() {
 
