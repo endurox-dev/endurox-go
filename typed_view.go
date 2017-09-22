@@ -94,15 +94,15 @@ func (ac *ATMICtx) VIEWAlloc(view string, size int64) (TypedVIEW, ATMIError) {
 //Get the UBF Handler
 func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 	var buf TypedVIEW
-	var itype *string
-	var subtype *string
+	var itype string
+	var subtype string
 
 	// Check the buffer type & get view name
-	if _, errA := ac.TpTypes(abuf, itype, subtype); nil != errA {
+	if _, errA := ac.TpTypes(abuf, &itype, &subtype); nil != errA {
 		return nil, errA
 	}
 
-	if (*itype != "VIEW") || (*itype != "VIEW32") {
+	if (itype != "VIEW") || (itype != "VIEW32") {
 		return nil, NewCustomATMIError(TPEINVAL, fmt.Sprintf("Invalid buffer type,"+
 			" expected VIEW, got [%s]", itype))
 	}

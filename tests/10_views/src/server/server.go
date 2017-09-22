@@ -20,40 +20,30 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	ret := SUCCEED
 
 	//Get UBF Handler
-	ub, _ := ac.CastToUBF(&svc.Data)
+	v, _ := ac.CastToVIEW(&svc.Data)
 
 	//Return to the caller
 	defer func() {
 
 		ac.TpLogCloseReqFile()
 		if SUCCEED == ret {
-			ac.TpForward("TEST2", ub, 0)
+			ac.TpForward("TEST2", v, 0)
 		} else {
-			ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
+			ac.TpReturn(atmi.TPFAIL, 0, v, 0)
 		}
 	}()
 
 	//Set some field
-	f, errB := ub.BGetString(ubftab.T_STRING_FLD, 0)
+	s, errB := v.BVGetString("tstring0", 2, atmi.BVACCESS_NOTNULL)
 
 	if  errB != nil {
-		ac.TpLogError("Bget() Got error: %s", errB.Error())
+		ac.TpLogError("BVGetString() Got error: %s", errB.Error())
 		ret = FAIL
 		return
 	}
 
-	//Alloc new buffer
-	ub, errA := ac.NewUBF(1024)
-
-	if errA != nil {
-		ac.TpLogError("ATMI Error: %s", errA.Error())
-		ret=FAIL
-		return
-	}
-
-	//Set one field for call
-	if errB = ub.BChg(ubftab.T_STRING_2_FLD, 0, f); nil != errB {
-		fmt.Printf("UBF Error: %s", errB.Error())
+	if s!="HELLO ENDURO" {
+		ac.TpLogError("Expected: [HELLO ENDURO] got: %s", s);
 		ret = FAIL
 		return
 	}

@@ -1,0 +1,13 @@
+tests/01_basic_ubf_call/bin/
+tests/01_basic_ubf_call/pkg/
+tests/01_basic_ubf_call/src/github.com/
+tests/01_basic_ubf_call/src/golang.org/
+tests/01_basic_ubf_call/src/ubftab/test.fd.go
+tests/10_views/bin/
+tests/10_views/pkg/
+tests/10_views/src/github.com/
+tests/10_views/src/golang.org/
+tests/10_views/src/ubftab/test.fd.go
+tests/10_views/src/viewdir/t40.V
+tests/10_views/src/viewdir/t40.h
+
