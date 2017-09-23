@@ -259,6 +259,10 @@ END_MESSAGE
 			{
 				$prefix = "09";
 			}
+			elsif ($struct=~/^TypedVIEW$/)
+            {
+                $prefix = "10";
+            }
 			elsif ($struct=~/^TypedCarray$/)
 			{
 				$prefix = "07";

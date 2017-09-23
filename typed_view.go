@@ -80,18 +80,10 @@ func (u *TypedVIEW) GetBuf() *ATMIBuf {
 // VIEW API
 ///////////////////////////////////////////////////////////////////////////////////
 
-//Allocate the UBF buffer
-//@param size	Buffer size in bytes
-//@return UBF Handler, ATMI Error
-func (ac *ATMICtx) VIEWAlloc(view string, size int64) (TypedVIEW, ATMIError) {
-	var err ATMIError
-	var buf TypedVIEW
-	buf.Buf, err = ac.TpAlloc("VIEW", view, size)
-	buf.view = view
-	return buf, err
-}
-
-//Get the UBF Handler
+//Get the view buffer handler. Usually used by service functions when
+//request is received.
+//@param abuf ATMI buffer
+//@return Typed view (if OK), nil on error. ATMI error in case of error or nil
 func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 	var buf TypedVIEW
 	var itype string
@@ -115,10 +107,11 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 	return &buf, nil
 }
 
-//Return int16 value from buffer
+//Return int16 value from view field. See CBvget(3).
 //@param cname 	C field name for view
 //@param occ	Occurrance
-//@param flags	BVACCESS_NOTNULL or 0
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return int16 val,	 UBF error
 func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFError) {
 	var c_val C.short
@@ -139,9 +132,11 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFEr
 	return int16(c_val), nil
 }
 
-//Return int64 value from buffer
-//@param bfldid 	Field ID
+//Return int64 value from view field. See CBvget(3).
+//@param cname 	C field name for view
 //@param occ	Occurrance
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return int64 val,	 UBF error
 func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFError) {
 	var c_val C.long
@@ -163,10 +158,12 @@ func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFEr
 	return int64(c_val), nil
 }
 
-//Return int (basicaly C long (int64) casted to) value from buffer
-//@param bfldid 	Field ID
+//Return int value from view field. See CBvget(3).
+//@param cname 	C field name for view
 //@param occ	Occurrance
-//@return int64 val,	 UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return int val,	 UBF error
 func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError) {
 	var c_val C.long
 
@@ -187,10 +184,12 @@ func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError)
 	return int(c_val), nil
 }
 
-//Return byte (c char) value from buffer
-//@param bfldid 	Field ID
+//Return Byte (char) value from view field. See CBvget(3).
+//@param cname 	C field name for view
 //@param occ	Occurrance
-//@return byte val, UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return signle byte val, UBF error
 func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFError) {
 	var c_val C.char
 
@@ -211,10 +210,12 @@ func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFErro
 	return byte(c_val), nil
 }
 
-//Get float value from UBF buffer, see CBget(3)
-//@param bfldid 	Field ID
+//Return float value from view field. See CBvget(3).
+//@param cname 	C field name for view
 //@param occ	Occurrance
-//@return float, UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return float val,	 UBF error
 func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32, UBFError) {
 	var c_val C.float
 
@@ -235,10 +236,12 @@ func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32, U
 	return float32(c_val), nil
 }
 
-//Get double value
-//@param bfldid 	Field ID
+//Return double value from view field. See CBvget(3).
+//@param cname 	C field name for view
 //@param occ	Occurrance
-//@return double, UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return double val,	 UBF error
 func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, UBFError) {
 	var c_val C.double
 
@@ -259,10 +262,12 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, U
 	return float64(c_val), nil
 }
 
-//Get string value
-//@param bfldid 	Field ID
+//Return string value from view field. See CBvget(3).
+//@param cname 	C field name of view
 //@param occ	Occurrance
-//@return string val, UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return string val,	 UBF error
 func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBFError) {
 	var c_len C.BFLDLEN
 	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
@@ -291,10 +296,12 @@ func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBF
 	return C.GoString((*C.char)(c_val)), nil
 }
 
-//Get string value
-//@param bfldid 	Field ID
+//Return carray/byte array BLOB value from view field. See CBvget(3).
+//@param cname 	C field name of view
 //@param occ	Occurrance
-//@return string val, UBF error
+//@param flags	BVACCESS_NOTNULL (do not return NULL value defined in view but
+//report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
+//@return byte array val,	 UBF error
 func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UBFError) {
 	var c_len C.BFLDLEN
 	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
@@ -330,21 +337,13 @@ func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UB
 	return g_val, nil
 }
 
-//Change field in buffer
-//@param	bfldid	Field ID
-//@param ival Input value
-//@return UBF Error
+//Set view field value. See CBvchg(3).
+//@param cname 	C field name of view
+//@param occ	Occurrance to set
+//@param ival	Value to set to. Note that given field is automatically converted
+//to specified typed in view with best possible converstion
+//@return byte array val,	 UBF error
 func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError {
-	return u.BVChgCombined(cname, occ, ival)
-}
-
-//Set the field value. Combined supports change (chg) or add mode
-//@param	bfldid	Field ID
-//@param occ	Field Occurrance
-//@param ival Input value
-//@param	 do_add Adding mode true = add, false = change
-//@return UBF Error
-func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFError {
 
 	//Get the view name
 	c_view := C.CString(u.view)
@@ -392,8 +391,10 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 		c_val := C.long(val)
 
 		if ret := C.OCBvchg(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(u.Buf.C_ptr)),
-			c_view, c_cname, C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, BFLD_LONG); ret != SUCCEED {
-			return u.Buf.Ctx.NewUBFError()
+			c_view, c_cname, C.BFLDOCC(occ),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
+			0, BFLD_LONG); ret != SUCCEED {
+				return u.Buf.Ctx.NewUBFError()
 		}
 
 	case float32:
@@ -443,9 +444,13 @@ func (u *TypedVIEW) BVChgCombined(cname string, occ int, ival interface{}) UBFEr
 	return nil
 }
 
-//Get the number of field occurrances in buffer
-//@param bfldid	Field ID
-//@return count (or -1 on error), UBF error
+//Get view field information, occurrences and related infos. See Bvoccur(3) C manpage for
+//more infos.
+//@param cname  view field name
+//@return ret (number of "C" set occs), maxocc (max occurrences fo field),
+//realocc (real non NULL occurrences measuring from array end), dim_size
+//(number of bytes stored in field (at C level)), fldtype (Field type, see BFLD_*),
+//errU (UBF error if set)
 func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) {
 
 	//Get the view name
@@ -472,8 +477,9 @@ func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) 
 	return int(c_ret), int(c_maxocc), int(c_realocc), int64(c_dim_size), int(c_fldtype), nil
 }
 
-//Get the total buffer size
-//@return bufer size, UBF error
+//Get structure size in bytes. See Bvsizeof(3).
+//@param view  View name
+//@return ret (number of view bytes (if no error)), UBFError in case of error
 func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
 
 	c_view := C.CString(view)
@@ -488,6 +494,8 @@ func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
 	return int64(c_ret), nil
 }
 
+//Get structure size in bytes for given TypedVIEW object. See Bvsizeof(3).
+//@return ret (number of view bytes (if no error)), UBFError in case of error
 func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
 
 	//Get the view name
@@ -503,9 +511,9 @@ func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
 	return int64(c_ret), nil
 }
 
-//Delete field (all occurrances) from buffer
-//@param bfldid field ID
-//@return UBF error
+//Set number number of occurrences in "C_<field>" field, if "C" flag defined in
+//view. If flag not defined, then call succeeds but value is ignored. See Bvsetoccur(3).
+//@return UBF error in case of error (nil on SUCCEED)
 func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 
 	//Get the view name
@@ -523,10 +531,9 @@ func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 	return nil
 }
 
-//Allocate the new UBF buffer
-//NOTE: realloc or other ATMI ops you can do with TypedVIEW.Buf
-//@param size - buffer size
-//@return Typed UBF, ATMI error
+//Allocate the new VIEW buffer
+//@param size - buffer size, If use 0, then 1024 or bigger view size is allocated.
+//@return TypedVIEW, ATMI error
 func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 
 	var buf TypedVIEW
@@ -541,13 +548,12 @@ func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 	}
 }
 
-//Converts string JSON buffer passed in 'buffer' to UBF buffer. This function will
-//automatically allocate the free space in UBF to fit the JSON. The size will be
-//determinated by string length. See tpjsontoubf(3) C call for more information.
+//Converts string JSON buffer passed in 'buffer' to VIEW buffer. This function will
+//automatically allocate new VIEW buffer. See tpjsontoview(3) C call for more information.
 //@param buffer	String buffer containing JSON message. The format must be one level
 //JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
 //occurrences.
-//@return UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
+//@return Typed view if parsed ok, or ATMI error
 func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError) {
 
 	c_buffer := C.CString(buffer)
@@ -582,10 +588,9 @@ func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError) {
 	return &tv, nil
 }
 
-//Convert given UBF buffer to JSON block, see tpubftojson(3) C call
+//Convert given VIEW buffer to JSON block, see tpviewtojson(3) C call
 //Output string is automatically allocated
-//@return JSON string (if converted ok), ATMIError in case of failure. More detailed
-//infos in case of error is found in 'ubf' and 'ndrx' facility logs.
+//@return JSON string (if converted ok), ATMIError in case of failure.
 func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 
 	//Get the view name
@@ -615,7 +620,15 @@ func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 
 }
 
-//Iterate over the view structure
+//Iterate over the view structure - return structure fields and field infos.
+//When starting to iterate, "start" field must be set to true, when continue to
+//iterate the, the start must be set to false. In case if field is found, the first
+//return value (ret) will be set to 1, if EOF is reached, then ret is set to 0.
+//If error occurs, the ret is set to -1 and UBFError is set
+//@param state object value to keep the state of the iteration
+//@param start true - if start to iterate, false - if continue to iterate
+//@return ret (status -1: fail, 0: EOF, 1: Got field), cname (field name),
+// fldtyp (BFLD_* type), maxocc (Max occurrences), dim_size (field size in bytes), UBF Error if have err
 func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, int64, UBFError) {
 
 	var c_view *C.char = nil

@@ -32,7 +32,7 @@ func assertEqual(a interface{}, b interface{}, message string) {
 	M_ret = FAIL
 }
 
-const test_count = 100
+const test_count = 10000
 //Binary main entry
 func main() {
 
@@ -326,7 +326,7 @@ func main() {
 		ac.TpTerm()
 		ac.FreeATMICtx()
 	}
-/*
+
 	//Test of BVSizeof
 	for i:=0; i<test_count && SUCCEED==M_ret; i++ {
 		//Test view 2 json and vice versa...
@@ -339,6 +339,8 @@ func main() {
 			return
 		}
 
+		ac.TpLogInfo("About to test sizes...")
+
 		buf, err := ac.NewVIEW("MYVIEW1", 0)
 
 		if err != nil {
@@ -347,16 +349,96 @@ func main() {
 			return
 		}
 
-		//Call TpTypes, must equal...
+		bvsizof_buf, errU := buf.BVSizeof()
 
-		//Call BVSizeof
+		if errU != nil {
+			ac.TpLogError("UBF Error %s", errU.Message())
+			M_ret = FAIL
+			return
+		}
 
-		// Must compare with // func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
+		bvsizof_atmi, errU := ac.BVSizeof("MYVIEW1")
+
+		if errU != nil {
+			ac.TpLogError("UBF Error %s", errU.Message())
+			M_ret = FAIL
+			return
+		}
+
+		assertEqual(bvsizof_buf, bvsizof_atmi, "bvsizof_atmi/UBF");
 
 		ac.TpTerm()
 		ac.FreeATMICtx()
 	}
-*/
+
+
+	//Test occurrances
+	for i:=0; i<test_count && SUCCEED==M_ret; i++ {
+		//Test view 2 json and vice versa...
+		ac, err := atmi.NewATMICtx()
+		M_ac = ac
+
+		if nil != err {
+			fmt.Errorf("Failed to allocate cotnext!", err)
+			M_ret = FAIL
+			return
+		}
+
+		ac.TpLogInfo("About to test sizes...")
+
+		buf, err := ac.NewVIEW("MYVIEW1", 0)
+
+		if err != nil {
+			ac.TpLogError("ATMI Error %s", err.Error())
+			M_ret = FAIL
+			return
+		}
+
+		erru:=buf.BVSetOccur("tchar2", 3)
+
+		if erru != nil {
+			ac.TpLogError("UBF Error %s", erru.Error())
+			M_ret = FAIL
+			return
+		}
+
+		ret, maxocc, realocc, dim_size, fldtype, errU := buf.BVOccur("tchar2")
+		assertEqual(ret, 3, "BVOccur ret");
+		assertEqual(maxocc, 5, "BVOccur maxocc");
+		assertEqual(realocc, 0, "BVOccur realocc");
+		assertEqual(dim_size, 1, "BVOccur dim_size");
+		assertEqual(fldtype, atmi.BFLD_CHAR, "BVOccur fldtype");
+		assertEqual(errU, nil, "BVOccur errU");
+
+
+		//Test errors
+		errU =buf.BVSetOccur("tchar2", 6)
+
+		if errU == nil {
+			ac.TpLogError("Error must be set!")
+			M_ret = FAIL
+			return
+		}
+
+		assertEqual(errU.Code(), atmi.BEINVAL, "BVOccur TPEINVAL must be set");
+
+
+		ret, maxocc, realocc, dim_size, fldtype, errU = buf.BVOccur("tchar7")
+
+		if errU == nil {
+			ac.TpLogError("Error must be set!")
+			M_ret = FAIL
+			return
+		}
+
+		assertEqual(errU.Code(), atmi.BNOCNAME, "BVOccur BNOCNAME must be set");
+
+		ac.TpTerm()
+		ac.FreeATMICtx()
+	}
+
+
+
 	//TODO: Test of:
 	// func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 	// func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) {
