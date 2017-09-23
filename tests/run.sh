@@ -43,6 +43,7 @@ run_test "06_ubf_marshal"
 run_test "07_basic_durable_queue"
 run_test "08_logging"
 run_test "09_return_manual_buffer"
+run_test "10_views"
 
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"
 

@@ -399,6 +399,19 @@ Typed Carray, basically is byte array buffer.
 END_MESSAGE
 		$output = $output.$msg;
 	}
+	elsif ($name=~/^...TypedVIEW\./ && $topic ne "TypedVIEW")
+    {
+        $topic = "TypedVIEW";
+        $output = $output."=== VIEW buffer format - dynamic access\n";
+#
+# Intro
+#
+my $msg = <<"END_MESSAGE";
+Typed view, dynamic access to C VIEW structures via field names.
+
+END_MESSAGE
+        $output = $output.$msg;
+    }
 	elsif ($name=~/^...ATMIBuf\./ && $topic ne "ATMIBuf")
 	{
 		$topic = "ATMIBuf";

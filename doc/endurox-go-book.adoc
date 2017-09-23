@@ -1128,6 +1128,20 @@ UBFError
 |XATMI client and server
 |===
 
+==== ATMICtx.BVSizeof()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError)
+|Description
+|Get structure size in bytes. See Bvsizeof(3).. 
+*view* is View name. 
+|Returns
+|ret (number of view bytes (if no error)), UBFError in case of error
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMICtx.CastToCarray()
 [cols="h,5a"]
 |===
@@ -1168,6 +1182,21 @@ UBFError
 |func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError)
 |Description
 |Get the UBF Handler. 
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.CastToVIEW()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError)
+|Description
+|Get the view buffer handler. Usually used by service functions when request is
+received.. 
+*abuf* is ATMI buffer. 
+|Returns
+|Typed view (if OK), nil on error. ATMI error in case of error or nil
 |Applies
 |XATMI client and server
 |===
@@ -1277,6 +1306,21 @@ TypedUBF.Buf.
 |func (ac *ATMICtx) NewUBFError() UBFError
 |Description
 |Generate UBF error, read the codes. 
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.NewVIEW()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError)
+|Description
+|Allocate the new VIEW buffer. 
+*size* is - buffer size, If use 0, then 1024 or bigger view size is allocated..
+
+|Returns
+|TypedVIEW, ATMI error
 |Applies
 |XATMI client and server
 |===
@@ -1681,6 +1725,24 @@ ATMIError)
 |Initialize client. 
 |Returns
 |ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpJSONToVIEW()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError)
+|Description
+|Converts string JSON buffer passed in 'buffer' to VIEW buffer. This function
+will automatically allocate new VIEW buffer. See tpjsontoview(3) C call for
+more information.. 
+*buffer* is String buffer containing JSON message. The format must be one level
+JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
+occurrences.. 
+|Returns
+|Typed view if parsed ok, or ATMI error
 |Applies
 |XATMI client and server
 |===
@@ -2982,6 +3044,283 @@ infos in case of error is found in 'ubf' and 'ndrx' facility logs.
 *v* is local struct. 
 |Returns
 |UBF error
+|Applies
+|XATMI client and server
+|===
+
+=== VIEW buffer format - dynamic access
+Typed view, dynamic access to C VIEW structures via field names.
+
+==== TypedVIEW.BVChg()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError
+|Description
+|Set view field value. See CBvchg(3).. 
+*cname* is C field name of view. 
+*occ* is Occurrance to set. 
+*ival* is Value to set to. Note that given field is automatically converted to
+specified typed in view with best possible converstion. 
+|Returns
+|byte array val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetByte()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte,
+UBFError)
+|Description
+|Return Byte (char) value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|signle byte val, UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetByteArr()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte,
+UBFError)
+|Description
+|Return carray/byte array BLOB value from view field. See CBvget(3).. 
+*cname* is C field name of view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|byte array val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetFloat32()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32,
+UBFError)
+|Description
+|Return float value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|float val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetFloat64()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64,
+UBFError)
+|Description
+|Return double value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|double val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetInt()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int,
+UBFError)
+|Description
+|Return int value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|int val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetInt16()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16,
+UBFError)
+|Description
+|Return int16 value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|int16 val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetInt64()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64,
+UBFError)
+|Description
+|Return int64 value from view field. See CBvget(3).. 
+*cname* is C field name for view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|int64 val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVGetString()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string,
+UBFError)
+|Description
+|Return string value from view field. See CBvget(3).. 
+*cname* is C field name of view. 
+*occ* is Occurrance. 
+*flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
+report as BNOTPRES error instead) or 0 (returns NULL values if view field is
+set to). 
+|Returns
+|string val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVNext()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int,
+int, int64, UBFError)
+|Description
+|Iterate over the view structure - return structure fields and field infos.
+When starting to iterate, "start" field must be set to true, when continue to
+iterate the, the start must be set to false. In case if field is found, the
+first return value (ret) will be set to 1, if EOF is reached, then ret is set
+to 0. If error occurs, the ret is set to -1 and UBFError is set. 
+*state* is object value to keep the state of the iteration. 
+*start* is true - if start to iterate, false - if continue to iterate. 
+|Returns
+|ret (status -1: fail, 0: EOF, 1: Got field), cname (field name),  fldtyp
+(BFLD_* type), maxocc (Max occurrences), dim_size (field size in bytes), UBF
+Error if have err
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVOccur()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int,
+UBFError)
+|Description
+|Get view field information, occurrences and related infos. See Bvoccur(3) C
+manpage for more infos.. 
+*cname* is view field name. 
+|Returns
+|ret (number of "C" set occs), maxocc (max occurrences fo field), realocc (real
+non NULL occurrences measuring from array end), dim_size (number of bytes
+stored in field (at C level)), fldtype (Field type, see BFLD_*), errU (UBF
+error if set)
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVSetOccur()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError
+|Description
+|Set number number of occurrences in "C_<field>" field, if "C" flag defined in
+view. If flag not defined, then call succeeds but value is ignored. See
+Bvsetoccur(3).. 
+|Returns
+|UBF error in case of error (nil on SUCCEED)
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVSizeof()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVSizeof() (int64, UBFError)
+|Description
+|Get structure size in bytes for given TypedVIEW object. See Bvsizeof(3).. 
+|Returns
+|ret (number of view bytes (if no error)), UBFError in case of error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.GetBuf()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) GetBuf() *ATMIBuf
+|Description
+|Return The ATMI buffer to caller. 
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.TpRealloc()
+[cols="h,5a"]
+|===
+|Function
+|func (v *TypedVIEW) TpRealloc(size int64) ATMIError
+|Description
+|. 
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.TpVIEWToJSON()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError)
+|Description
+|Convert given VIEW buffer to JSON block, see tpviewtojson(3) C call Output
+string is automatically allocated. 
+|Returns
+|JSON string (if converted ok), ATMIError in case of failure.
 |Applies
 |XATMI client and server
 |===

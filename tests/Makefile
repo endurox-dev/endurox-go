@@ -8,6 +8,7 @@ all:
 	$(MAKE) -C 07_basic_durable_queue
 	$(MAKE) -C 08_logging
 	$(MAKE) -C 09_return_manual_buffer
+	$(MAKE) -C 10_views
 
 clean:
 	$(MAKE) -C 01_basic_ubf_call clean
@@ -18,4 +19,5 @@ clean:
 	$(MAKE) -C 07_basic_durable_queue clean
 	$(MAKE) -C 08_logging clean
 	$(MAKE) -C 09_return_manual_buffer
+	$(MAKE) -C 10_views
 
