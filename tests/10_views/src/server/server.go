@@ -11,22 +11,21 @@ const (
 	FAIL    = -1
 )
 
-var M_counter int = 0
+var M_prev int16 = -1
 var M_ret int
 var M_ac *atmi.ATMICtx
 
 func assertEqual(a interface{}, b interface{}, message string) {
-        aa:= fmt.Sprintf("%v", a)
-        bb:= fmt.Sprintf("%v", b)
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
 
-        if aa == bb {
-                return
-        }
-        msg2:= fmt.Sprintf("%v != %v", a, b)
-        M_ac.TpLogError("%s: %s", message, msg2)
-        M_ret = FAIL
+	if aa == bb {
+		return
+	}
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+	M_ac.TpLogError("%s: %s", message, msg2)
+	M_ret = FAIL
 }
-
 
 //TEST1 service
 //Read the value of the T_STRING_FLD, alloc new buffer and set T_STRING2_FLD
@@ -46,7 +45,6 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	//Return to the caller
 	defer func() {
-		M_counter++
 		if SUCCEED == M_ret {
 			ac.TpReturn(atmi.TPSUCCESS, 0, v, 0)
 		} else {
@@ -58,8 +56,14 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	//Test the values received
 	////////////////////////////////////////////////////////////////////////
 	tshort1, errV := v.BVGetInt16("tshort1", 0, 0)
-	assertEqual(tshort1, M_counter, "tshort1")
 	assertEqual(errV, nil, "tshort1 -> errV")
+
+	if M_prev == tshort1 {
+		ac.TpLogError("Short match prev: %d vs %d", M_prev,
+			 tshort1)
+		M_ret = FAIL
+		return
+	}
 
 	tint2, errV := v.BVGetInt("tint2", 1, 0)
 	assertEqual(tint2, 123456789, "tint2")
@@ -84,7 +88,7 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	b := []byte{0, 1, 2, 3, 4, 5}
 
 	tcarray2, errV := v.BVGetByteArr("tcarray2", 0, 0)
-	for i:=0; i<5; i++ {
+	for i := 0; i < 5; i++ {
 		assertEqual(tcarray2[i], b[i], "tcarray2")
 	}
 	//assertEqual(tcarray2, b, "tcarray2")
@@ -100,13 +104,12 @@ func TEST1(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	tshort2_2, errV := v.BVGetInt16("tshort2", 1, atmi.BVACCESS_NOTNULL)
 	assertEqual(tshort2_2, 0, "tshort2")
 	assertEqual(errV.Code(), atmi.BNOTPRES, "tshort2_2 -> must not be present"+
-			" with atmi.BVACCESS_NOTNULL")
+		" with atmi.BVACCESS_NOTNULL")
 
 	_, errV = v.BVGetInt16("tshortX", 1, atmi.BVACCESS_NOTNULL)
 	assertEqual(errV.Code(), atmi.BNOCNAME, "tshortX")
 
-
-	v, err = ac.NewVIEW("MYVIEW2", 0);
+	v, err = ac.NewVIEW("MYVIEW2", 0)
 	if err != nil {
 		ac.TpLogError("Failed to cast to view: %s", err.Error())
 		M_ret = FAIL

@@ -548,7 +548,7 @@ func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError) {
 //JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
 //occurrences.
 //@return UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
-func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
+func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError) {
 
 	c_buffer := C.CString(buffer)
 	defer C.free(unsafe.Pointer(c_buffer))
@@ -560,7 +560,7 @@ func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, UBFError) {
 	var ret *C.char
 
 	if ret = C.Otpjsontoview(&ac.c_ctx, c_view_ptr, c_buffer); ret == nil {
-		return nil, ac.NewUBFError()
+		return nil, ac.NewATMIError()
 	}
 
 	var atmiBuf ATMIBuf
