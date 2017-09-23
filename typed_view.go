@@ -565,6 +565,7 @@ func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError) {
 
 	var atmiBuf ATMIBuf
 	atmiBuf.C_ptr = ret
+	atmiBuf.Ctx = ac
 	view := C.GoString(c_view_ptr)
 	len, errA := ac.BVSizeof(view)
 
@@ -614,11 +615,7 @@ func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 
 }
 
-//TODO: Iter func..
-// Declare wrapper for Bvnext_state_t
-//int Bvnext (Bvnext_state_t *state, char *view, char *cname,
-//                            int *fldtype, BFLDOCC *maxocc, long *dim_size);
-
+//Iterate over the view structure
 func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, int64, UBFError) {
 
 	var c_view *C.char = nil

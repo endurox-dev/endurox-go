@@ -30,6 +30,7 @@ func assertEqual(a interface{}, b interface{}, message string) {
 	M_ret = FAIL
 }
 
+const test_count = 100
 //Binary main entry
 func main() {
 
@@ -41,7 +42,7 @@ func main() {
 	}()
 
 	//Test the service call with view setup
-	for i := 0; i < 10 && SUCCEED == M_ret; i++ {
+	for i := 0; i <test_count && SUCCEED == M_ret; i++ {
 
 		ac, err := atmi.NewATMICtx()
 		M_ac = ac
@@ -157,7 +158,7 @@ func main() {
 		//runtime.GC()
 	}
 
-	for i:=0; i<10000 && SUCCEED==M_ret; i++ {
+	for i:=0; i < test_count && SUCCEED==M_ret; i++ {
 
 		//Test view 2 json and vice versa...
 		ac, err := atmi.NewATMICtx()
@@ -216,34 +217,26 @@ func main() {
 			"VIEW2JSON with NULLs")
 
 		//Restore VIEW from this json
-		ac.TpLogInfo("HERE!");
 		v, err:=ac.TpJSONToVIEW(strj)
-
-		ac.TpLogInfo("HERE2!");
-
 		if nil != err {
-
-			ac.TpLogInfo("HERE2.1!");
-
 			ac.TpLogError("Failed to convert JSON to VIEW, ATMI Error %s",
 				err.Error())
 			M_ret = FAIL
 			return
 		}
-
-		ac.TpLogInfo("HERE2.2 ret %d %v!", M_ret, v);
-
-		//ttstring1, errB := v.BVGetString("ttstring0", 0, 0)
-
-		ac.TpLogInfo("HERE2.3 ret %d!", M_ret);
-
-		//assertEqual(ttstring1, "TEST JSON", "ttstring1 !!!")
-		//assertEqual(errB, nil, "ttstring1 -> errB")
-
-		ac.TpLogInfo("HERE3 ret %d!", M_ret);
+		ttstring1, errB:=v.BVGetString("ttstring1", 0, 0)
+		assertEqual(errB, nil, "ttstring1 -> errB")
+		assertEqual(ttstring1, "TEST JSON", "ttstring1 !!!")
 
 		ac.TpTerm()
 		ac.FreeATMICtx()
 	}
+
+	//TODO: Test of:
+	// func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, int, int64, UBFError) {
+	// func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
+	// func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
+	// func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
+	// func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) {
 
 }
