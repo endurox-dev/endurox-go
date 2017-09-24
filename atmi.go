@@ -1372,3 +1372,37 @@ func (ac *ATMICtx) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb TypedB
 func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64) ATMIError {
 	return ac.tp_enq_deq(qspace, qname, ctl, tb, flags, false)
 }
+
+//Have some common testing functinos (used by Enduro/X modules)
+//@param a Paramter a to test
+//@param b Paramter b to test (compare with a)
+//@param message additional error message
+func (ac *ATMICtx) TpPanicAssertEqual(a interface{}, b interface{}, message string) {
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
+
+	if aa == bb {
+		return
+	}
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+
+	panic(fmt.Sprintf("TpPanicAssertEqual: %s: %s", message, msg2))
+
+}
+
+//Have some common testing functinos (used by Enduro/X modules)
+//@param a Paramter a to test
+//@param b Paramter b to test (compare with a)
+//@param message additional error message
+func (ac *ATMICtx) TpPanicAssertNotEqual(a interface{}, b interface{}, message string) {
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
+
+	if aa != bb {
+		return
+	}
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+
+	panic(fmt.Sprintf("TpPanicAssertNotEqual: %s: %s", message, msg2))
+
+}
