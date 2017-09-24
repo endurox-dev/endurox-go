@@ -804,20 +804,19 @@ func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
 	}
-	//Check the types
-	if err == nil {
-		switch tb.(type) {
-		case *TypedVIEW:
-			if v, ok := tb.(*TypedVIEW); ok {
-				itype := ""
-				_, errA := ac.TpTypes(buf, &itype, &v.view)
 
-				if nil != err && nil != errA {
-					err = errA
-				}
+	//Check the types
+	switch tb.(type) {
+	case *TypedVIEW:
+		if v, ok := tb.(*TypedVIEW); ok {
+			itype := ""
+			_, errA := ac.TpTypes(buf, &itype, &v.view)
+
+			if nil != err && nil != errA {
+				err = errA
 			}
-			break
 		}
+		break
 	}
 
 	C.free(unsafe.Pointer(c_svc))
