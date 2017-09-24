@@ -1377,7 +1377,7 @@ func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb TypedB
 //@param a Paramter a to test
 //@param b Paramter b to test (compare with a)
 //@param message additional error message
-func (ac *ATMICtx) TpPanicAssertEqual(a interface{}, b interface{}, message string) {
+func (ac *ATMICtx) TpAssertEqualPanic(a interface{}, b interface{}, message string) {
 	aa := fmt.Sprintf("%v", a)
 	bb := fmt.Sprintf("%v", b)
 
@@ -1394,7 +1394,7 @@ func (ac *ATMICtx) TpPanicAssertEqual(a interface{}, b interface{}, message stri
 //@param a Paramter a to test
 //@param b Paramter b to test (compare with a)
 //@param message additional error message
-func (ac *ATMICtx) TpPanicAssertNotEqual(a interface{}, b interface{}, message string) {
+func (ac *ATMICtx) TpAssertNotEqualPanic(a interface{}, b interface{}, message string) {
 	aa := fmt.Sprintf("%v", a)
 	bb := fmt.Sprintf("%v", b)
 
@@ -1404,5 +1404,39 @@ func (ac *ATMICtx) TpPanicAssertNotEqual(a interface{}, b interface{}, message s
 	msg2 := fmt.Sprintf("%v != %v", a, b)
 
 	panic(fmt.Sprintf("TpPanicAssertNotEqual: %s: %s", message, msg2))
+
+}
+
+//Have some common testing functinos (used by Enduro/X modules)
+//@param a Paramter a to test
+//@param b Paramter b to test (compare with a)
+//@param message additional error message
+func (ac *ATMICtx) TpAssertEqualError(a interface{}, b interface{}, message string) error {
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
+
+	if aa == bb {
+		return nil
+	}
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+
+	return fmt.Errorf("TpPanicAssertEqual: %s: %s", message, msg2)
+
+}
+
+//Have some common testing functinos (used by Enduro/X modules)
+//@param a Paramter a to test
+//@param b Paramter b to test (compare with a)
+//@param message additional error message
+func (ac *ATMICtx) TpAssertNotEqualError(a interface{}, b interface{}, message string) error {
+	aa := fmt.Sprintf("%v", a)
+	bb := fmt.Sprintf("%v", b)
+
+	if aa != bb {
+		return nil
+	}
+	msg2 := fmt.Sprintf("%v != %v", a, b)
+
+	return fmt.Errorf("TpAssertNotEqualError: %s: %s", message, msg2)
 
 }
