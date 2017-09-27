@@ -1,15 +1,12 @@
 package main
 
 import (
+	"C"
 	"atmi"
 	"fmt"
-	//"runtime"
-	//http "net/http"
-	//_ "net/http/pprof"
 	"os"
 	"strconv"
 	"unsafe"
-	"C"
 )
 
 const (
@@ -33,6 +30,59 @@ func assertEqual(a interface{}, b interface{}, message string) {
 }
 
 const test_count = 10000
+
+//Test View copy function
+func test_BVCpy(ac *atmi.ATMICtx) error {
+
+	src, errA := ac.NewVIEW("MYVIEW1", 0)
+
+	if errA != nil {
+		ac.TpLogError("ATMI Error %s", errA.Error())
+		return fmt.Errorf("ATMI Error %s", errA.Error())
+	}
+
+	dst, errA := ac.NewVIEW("MYVIEW1", 0)
+
+	if errA != nil {
+		ac.TpLogError("ATMI Error %s", errA.Error())
+		return fmt.Errorf("ATMI Error %s", errA.Error())
+	}
+
+	if errB := src.BVChg("tstring0", 2, "HELLO ENDURO"); nil != errB {
+		ac.TpLogError("VIEW Error: %s", errB.Error())
+		return fmt.Errorf("ATMI Error %s", errB.Error())
+	}
+
+	sz, errB := src.BVCpy(dst)
+
+	if nil != errB {
+		ac.TpLogError("VIEW Error, failed to copy: %s", errB.Error())
+		return fmt.Errorf("VIEW Error, failed to copy: %s", errB.Error())
+	}
+
+	if sz <= 0 {
+		ac.TpLogError("Invalid copy size: %d", sz)
+		return fmt.Errorf("Invalid copy size: %d", sz)
+	}
+
+	str, errB := dst.BVGetString("tstring0", 2, 0)
+
+	if errB != nil {
+		ac.TpLogError("Failed to BVGetString: %s", errB.Error())
+		return fmt.Errorf("Failed to BVGetString: %s", errB.Error())
+	}
+
+	expected := "HELLO ENDURO"
+	if str != expected {
+		ac.TpLogError("Failed to test BVCpy - data no tcopied: [%s], expected [%s]",
+			str, expected)
+		return fmt.Errorf("Failed to test BVCpy - data no tcopied: [%s], expected [%s]",
+			str, expected)
+	}
+
+	return nil
+}
+
 //Binary main entry
 func main() {
 
@@ -44,22 +94,27 @@ func main() {
 	}()
 
 	//Test the service call with view setup
-	for i := 0; i <test_count && SUCCEED == M_ret; i++ {
+	for i := 0; i < test_count && SUCCEED == M_ret; i++ {
 
 		ac, err := atmi.NewATMICtx()
 		M_ac = ac
 
 		if nil != err {
-			fmt.Errorf("Failed to allocate cotnext!", err)
+			fmt.Errorf("Failed to allocate context!", err)
 			M_ret = FAIL
 			return
 		}
 
 		buf, err := ac.NewVIEW("MYVIEW1", 0)
-		//		buf, err := ac.NewUBF(1024)
 
 		if err != nil {
 			ac.TpLogError("ATMI Error %s", err.Error())
+			M_ret = FAIL
+			return
+		}
+
+		//Test view copy
+		if err := test_BVCpy(ac); nil != err {
 			M_ret = FAIL
 			return
 		}
@@ -160,7 +215,7 @@ func main() {
 		//runtime.GC()
 	}
 
-	for i:=0; i < test_count && SUCCEED==M_ret; i++ {
+	for i := 0; i < test_count && SUCCEED == M_ret; i++ {
 
 		//Test view 2 json and vice versa...
 		ac, err := atmi.NewATMICtx()
@@ -219,14 +274,14 @@ func main() {
 			"VIEW2JSON with NULLs")
 
 		//Restore VIEW from this json
-		v, err:=ac.TpJSONToVIEW(strj)
+		v, err := ac.TpJSONToVIEW(strj)
 		if nil != err {
 			ac.TpLogError("Failed to convert JSON to VIEW, ATMI Error %s",
 				err.Error())
 			M_ret = FAIL
 			return
 		}
-		ttstring1, errB:=v.BVGetString("ttstring1", 0, 0)
+		ttstring1, errB := v.BVGetString("ttstring1", 0, 0)
 		assertEqual(errB, nil, "ttstring1 -> errB")
 		assertEqual(ttstring1, "TEST JSON", "ttstring1 !!!")
 
@@ -235,7 +290,7 @@ func main() {
 	}
 
 	//Test of BVNext
-	for i:=0; i<test_count && SUCCEED==M_ret; i++ {
+	for i := 0; i < test_count && SUCCEED == M_ret; i++ {
 		//Test view 2 json and vice versa...
 		ac, err := atmi.NewATMICtx()
 		M_ac = ac
@@ -256,7 +311,7 @@ func main() {
 
 		var state atmi.BVNextState
 
-		ret, cname, fldtyp, maxocc, dim_size, errU :=buf.BVNext(&state, true)
+		ret, cname, fldtyp, maxocc, dim_size, errU := buf.BVNext(&state, true)
 
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttshort1", "BVNext 1: Expect: ttshort1")
@@ -266,7 +321,7 @@ func main() {
 		assertEqual(dim_size, unsafe.Sizeof(s1), "BVNext 1: sizeof short")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttlong1", "BVNext 1: Expect: ttlong1")
 		assertEqual(fldtyp, atmi.BFLD_LONG, "BVNext 1: Expect: BFLD_LONG")
@@ -275,7 +330,7 @@ func main() {
 		assertEqual(dim_size, unsafe.Sizeof(l1), "BVNext 1: sizeof long")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttchar1", "BVNext 1: Expect: ttchar1")
 		assertEqual(fldtyp, atmi.BFLD_CHAR, "BVNext 1: Expect: BFLD_CHAR")
@@ -284,7 +339,7 @@ func main() {
 		assertEqual(dim_size, unsafe.Sizeof(c1), "BVNext 1: sizeof char")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttfloat1", "BVNext 1: Expect: ttfloat1")
 		assertEqual(fldtyp, atmi.BFLD_FLOAT, "BVNext 1: Expect: BFLD_FLOAT")
@@ -293,7 +348,7 @@ func main() {
 		assertEqual(dim_size, unsafe.Sizeof(f1), "BVNext 1: sizeof float")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttdouble1", "BVNext 1: Expect: ttdouble1")
 		assertEqual(fldtyp, atmi.BFLD_DOUBLE, "BVNext 1: Expect: BFLD_DOUBLE")
@@ -302,8 +357,7 @@ func main() {
 		assertEqual(dim_size, unsafe.Sizeof(d1), "BVNext 1: sizeof double")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttstring1", "BVNext 1: Expect: ttstring1")
 		assertEqual(fldtyp, atmi.BFLD_STRING, "BVNext 1: Expect: BFLD_STRING")
@@ -311,7 +365,7 @@ func main() {
 		assertEqual(dim_size, 15, "BVNext 1: sizeof string")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(1, ret, "BVNext 1: have next")
 		assertEqual(cname, "ttcarray1", "BVNext 1: Expect: ttcarray1")
 		assertEqual(fldtyp, atmi.BFLD_CARRAY, "BVNext 1: Expect: BFLD_CARRAY")
@@ -319,7 +373,7 @@ func main() {
 		assertEqual(dim_size, 10, "BVNext 1: sizeof carray")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil")
 
-		ret, cname, fldtyp, maxocc, dim_size, errU =buf.BVNext(&state, false)
+		ret, cname, fldtyp, maxocc, dim_size, errU = buf.BVNext(&state, false)
 		assertEqual(0, ret, "BVNext 1: have next (EOF)")
 		assertEqual(errU, nil, "BVNext 1: Expect: error nil on EOF")
 
@@ -328,7 +382,7 @@ func main() {
 	}
 
 	//Test of BVSizeof
-	for i:=0; i<test_count && SUCCEED==M_ret; i++ {
+	for i := 0; i < test_count && SUCCEED == M_ret; i++ {
 		//Test view 2 json and vice versa...
 		ac, err := atmi.NewATMICtx()
 		M_ac = ac
@@ -365,15 +419,14 @@ func main() {
 			return
 		}
 
-		assertEqual(bvsizof_buf, bvsizof_atmi, "bvsizof_atmi/UBF");
+		assertEqual(bvsizof_buf, bvsizof_atmi, "bvsizof_atmi/UBF")
 
 		ac.TpTerm()
 		ac.FreeATMICtx()
 	}
 
-
 	//Test occurrances
-	for i:=0; i<test_count && SUCCEED==M_ret; i++ {
+	for i := 0; i < test_count && SUCCEED == M_ret; i++ {
 		//Test view 2 json and vice versa...
 		ac, err := atmi.NewATMICtx()
 		M_ac = ac
@@ -394,7 +447,7 @@ func main() {
 			return
 		}
 
-		erru:=buf.BVSetOccur("tchar2", 3)
+		erru := buf.BVSetOccur("tchar2", 3)
 
 		if erru != nil {
 			ac.TpLogError("UBF Error %s", erru.Error())
@@ -403,16 +456,15 @@ func main() {
 		}
 
 		ret, maxocc, realocc, dim_size, fldtype, errU := buf.BVOccur("tchar2")
-		assertEqual(ret, 3, "BVOccur ret");
-		assertEqual(maxocc, 5, "BVOccur maxocc");
-		assertEqual(realocc, 0, "BVOccur realocc");
-		assertEqual(dim_size, 1, "BVOccur dim_size");
-		assertEqual(fldtype, atmi.BFLD_CHAR, "BVOccur fldtype");
-		assertEqual(errU, nil, "BVOccur errU");
-
+		assertEqual(ret, 3, "BVOccur ret")
+		assertEqual(maxocc, 5, "BVOccur maxocc")
+		assertEqual(realocc, 0, "BVOccur realocc")
+		assertEqual(dim_size, 1, "BVOccur dim_size")
+		assertEqual(fldtype, atmi.BFLD_CHAR, "BVOccur fldtype")
+		assertEqual(errU, nil, "BVOccur errU")
 
 		//Test errors
-		errU =buf.BVSetOccur("tchar2", 6)
+		errU = buf.BVSetOccur("tchar2", 6)
 
 		if errU == nil {
 			ac.TpLogError("Error must be set!")
@@ -420,8 +472,7 @@ func main() {
 			return
 		}
 
-		assertEqual(errU.Code(), atmi.BEINVAL, "BVOccur TPEINVAL must be set");
-
+		assertEqual(errU.Code(), atmi.BEINVAL, "BVOccur TPEINVAL must be set")
 
 		ret, maxocc, realocc, dim_size, fldtype, errU = buf.BVOccur("tchar7")
 
@@ -431,13 +482,11 @@ func main() {
 			return
 		}
 
-		assertEqual(errU.Code(), atmi.BNOCNAME, "BVOccur BNOCNAME must be set");
+		assertEqual(errU.Code(), atmi.BNOCNAME, "BVOccur BNOCNAME must be set")
 
 		ac.TpTerm()
 		ac.FreeATMICtx()
 	}
-
-
 
 	//TODO: Test of:
 	// func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {

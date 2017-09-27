@@ -99,9 +99,9 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 			" expected VIEW, got [%s]", itype))
 	}
 
-    ac.TpLogInfo("Got View: %s", subtype);
+	ac.TpLogInfo("Got View: %s", subtype)
 
-    buf.view = subtype
+	buf.view = subtype
 	buf.Buf = abuf
 
 	return &buf, nil
@@ -394,7 +394,7 @@ func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError {
 			c_view, c_cname, C.BFLDOCC(occ),
 			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))),
 			0, BFLD_LONG); ret != SUCCEED {
-				return u.Buf.Ctx.NewUBFError()
+			return u.Buf.Ctx.NewUBFError()
 		}
 
 	case float32:
@@ -657,10 +657,29 @@ func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, in
 
 }
 
+//Copy view content to another view
+//@param dst destination view to copy to, must be atleast in size of view
+//@return bytes copied, UBF error (or nil)
+func (u *TypedVIEW) BVCpy(dst *TypedVIEW) (int64, UBFError) {
+
+	c_view := C.CString(u.view)
+	defer C.free(unsafe.Pointer(c_view))
+
+	ret := C.OBvcpy(&u.Buf.Ctx.c_ctx, (*C.char)(unsafe.Pointer(dst.Buf.C_ptr)),
+		(*C.char)(unsafe.Pointer(u.Buf.C_ptr)), c_view)
+
+	if FAIL == ret {
+		return int64(ret), u.Buf.Ctx.NewUBFError()
+	}
+
+	return int64(ret), nil
+
+}
+
 //Return view name
 //@return view name
 func (u *TypedVIEW) BVName() string {
-        return u.view
+	return u.view
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
