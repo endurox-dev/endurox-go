@@ -1392,6 +1392,66 @@ here.
 |XATMI client and server
 |===
 
+==== ATMICtx.TpAssertEqualError()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpAssertEqualError(a interface{}, b interface{}, message
+string) error
+|Description
+|Have some common testing functinos (used by Enduro/X modules). 
+*a* is Paramter a to test. 
+*b* is Paramter b to test (compare with a). 
+*message* is additional error message. 
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpAssertEqualPanic()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpAssertEqualPanic(a interface{}, b interface{}, message
+string)
+|Description
+|Have some common testing functinos (used by Enduro/X modules). 
+*a* is Paramter a to test. 
+*b* is Paramter b to test (compare with a). 
+*message* is additional error message. 
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpAssertNotEqualError()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpAssertNotEqualError(a interface{}, b interface{}, message
+string) error
+|Description
+|Have some common testing functinos (used by Enduro/X modules). 
+*a* is Paramter a to test. 
+*b* is Paramter b to test (compare with a). 
+*message* is additional error message. 
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpAssertNotEqualPanic()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpAssertNotEqualPanic(a interface{}, b interface{}, message
+string)
+|Description
+|Have some common testing functinos (used by Enduro/X modules). 
+*a* is Paramter a to test. 
+*b* is Paramter b to test (compare with a). 
+*message* is additional error message. 
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMICtx.TpBegin()
 [cols="h,5a"]
 |===
@@ -3068,6 +3128,20 @@ specified typed in view with best possible converstion.
 |XATMI client and server
 |===
 
+==== TypedVIEW.BVCpy()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVCpy(dst *TypedVIEW) (int64, UBFError)
+|Description
+|Copy view content to another view. 
+*dst* is destination view to copy to, must be atleast in size of view. 
+|Returns
+|bytes copied, UBF error (or nil)
+|Applies
+|XATMI client and server
+|===
+
 ==== TypedVIEW.BVGetByte()
 [cols="h,5a"]
 |===
@@ -3216,6 +3290,19 @@ report as BNOTPRES error instead) or 0 (returns NULL values if view field is
 set to). 
 |Returns
 |string val,	 UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedVIEW.BVName()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedVIEW) BVName() string
+|Description
+|Return view name. 
+|Returns
+|view name
 |Applies
 |XATMI client and server
 |===
