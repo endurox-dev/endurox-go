@@ -1364,7 +1364,7 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 
 	if ret := C.Otpubftojson(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		(*C.char)(unsafe.Pointer(c_buffer)), C.int(ret_size)); ret != 0 {
-		return "", u.Buf.Ctx.NewUBFError()
+		return "", u.Buf.Ctx.NewATMIError()
 	}
 
 	return C.GoString((*C.char)(c_buffer)), nil
