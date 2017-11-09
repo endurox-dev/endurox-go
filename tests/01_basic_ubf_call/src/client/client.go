@@ -66,10 +66,10 @@ func main() {
 	}
 
 	//Run some bigger message tests
-	fmt.Printf("Message size: %d", atmi.ATMIMsgSizeMax())
+	fmt.Printf("Message size: %d\n", atmi.ATMIMsgSizeMax())
 	if atmi.ATMIMsgSizeMax() > 68000 {
 		for i := 0; i < 10000; i++ {
-			var testdata [1024 * 1024]byte
+			testdata :=make([]byte, 1024*1024)
 			ac, err := atmi.NewATMICtx()
 
 			if nil != err {
@@ -92,7 +92,7 @@ func main() {
 
 			//Set one field for call
 			if err := buf.BChg(ubftab.T_CARRAY_FLD, 0, testdata); nil != err {
-				fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+				fmt.Printf("! ATMI Error %d:[%s]\n", err.Code(), err.Message())
 				ret = FAIL
 				goto out
 			}
@@ -100,6 +100,14 @@ func main() {
 			//Call the server
 			if _, err := ac.TpCall("BIGMSG", buf, 0); nil != err {
 				fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+				ret = FAIL
+				goto out
+			}
+
+			testdata, err = buf.BGetByteArr(ubftab.T_CARRAY_FLD, 0)
+
+            if nil != err {
+				fmt.Printf("! Failed to get rsp: ATMI Error %d:[%s]\n", err.Code(), err.Message())
 				ret = FAIL
 				goto out
 			}

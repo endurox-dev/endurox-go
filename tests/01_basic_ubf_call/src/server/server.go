@@ -65,6 +65,7 @@ func BIGMSG(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	//Print the buffer to stdout
 	//fmt.Println("Incoming request:")
 	//ub.TpLogPrintUBF(atmi.LOG_DEBUG, "Incoming request:")
+    ac.TpLogInfo("BIGMSG got call!");
 
 	//Set some field
 	testdata, err := ub.BGetByteArr(ubftab.T_CARRAY_FLD, 0)
@@ -84,6 +85,14 @@ func BIGMSG(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		}
 
 		testdata[i] = byte((i + 2) % 255)
+	}
+
+    ac.TpLogInfo("About to test test data!")
+
+	if err := ub.BChg(ubftab.T_CARRAY_FLD, 0, testdata); err != nil {
+		ac.TpLogError("TESTERROR ! Bchg() 2 Got error: %d:[%s]", err.Code(), err.Message())
+		ret = FAIL
+		goto out
 	}
 
 out:
