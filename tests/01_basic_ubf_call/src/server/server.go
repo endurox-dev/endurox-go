@@ -54,11 +54,58 @@ out:
 	return
 }
 
+//BIGMSG service
+func BIGMSG(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
+
+	ret := SUCCEED
+
+	//Get UBF Handler
+	ub, _ := ac.CastToUBF(&svc.Data)
+
+	//Print the buffer to stdout
+	//fmt.Println("Incoming request:")
+	//ub.TpLogPrintUBF(atmi.LOG_DEBUG, "Incoming request:")
+
+	//Set some field
+	testdata, err := ub.BGetByteArr(ubftab.T_CARRAY_FLD, 0)
+
+	if err != nil {
+		fmt.Printf("Bchg() Got error: %d:[%s]\n", err.Code(), err.Message())
+		ret = FAIL
+		goto out
+	}
+
+	for i := 0; i < len(testdata); i++ {
+		if testdata[i] != byte((i+1)%255) {
+			ac.TpLogError("TESTERROR: Error at index %d expected %d got: %d",
+				i, (i+2)%255, testdata[i])
+			ret = FAIL
+			goto out
+		}
+
+		testdata[i] = byte((i + 2) % 255)
+	}
+
+out:
+	//Return to the caller
+	if SUCCEED == ret {
+		ac.TpReturn(atmi.TPSUCCESS, 0, ub, 0)
+	} else {
+		ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
+	}
+	return
+}
+
 //Server init
 func Init(ac *atmi.ATMICtx) int {
 
 	//Advertize TESTSVC
 	if err := ac.TpAdvertise("TESTSVC", "TESTSVC", TESTSVC); err != nil {
+		fmt.Println(err)
+		return atmi.FAIL
+	}
+
+	if err := ac.TpAdvertise("BIGMSG", "BIGMSG", BIGMSG); err != nil {
 		fmt.Println(err)
 		return atmi.FAIL
 	}

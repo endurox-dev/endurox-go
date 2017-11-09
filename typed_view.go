@@ -270,8 +270,8 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, U
 //@return string val,	 UBF error
 func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBFError) {
 	var c_len C.BFLDLEN
-	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-	c_len = ATMI_MSG_MAX_SIZE
+	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+	c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 	if nil == c_val {
 		return "", NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -304,8 +304,8 @@ func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBF
 //@return byte array val,	 UBF error
 func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UBFError) {
 	var c_len C.BFLDLEN
-	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-	c_len = ATMI_MSG_MAX_SIZE
+	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+	c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 	if nil == c_val {
 		return nil, NewCustomUBFError(BEUNIX, "Cannot alloc memory")

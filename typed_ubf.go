@@ -42,6 +42,7 @@ package atmi
 #include <oubf.h>
 #include <oatmi.h>
 #include <sys_unix.h>
+#include <ndrstandard.h>
 
 
 //Get the UBF Error code
@@ -49,15 +50,15 @@ static int WrapBerror(TPCONTEXT_T *p_ctx) {
 	return OBerror(p_ctx);
 }
 
-#define ATMI_MSG_MAX_SIZE	65536
+//#define ATMI_MSG_MAX_SIZE	65536
 
 //Get the value with buffer allocation
 static char * c_Bget_str (UBFH * p_ub, BFLDID bfldid, BFLDOCC occ,
 					BFLDLEN *len, int *err_code)
 {
-	char *ret = malloc(ATMI_MSG_MAX_SIZE);
+	char *ret = malloc(NDRX_MSGSIZEMAX);
 
-	*len = ATMI_MSG_MAX_SIZE;
+	*len = NDRX_MSGSIZEMAX;
 	*err_code = 0;
 
 	if (NULL==ret)
@@ -245,6 +246,12 @@ var exprfuncmap map[string]UBFExprFunc //callback mapping for UBF expression fun
 ///////////////////////////////////////////////////////////////////////////////////
 // UBF API
 ///////////////////////////////////////////////////////////////////////////////////
+
+//Max message size
+//@return buffer size configured by Enduro/X, min 64K
+func ATMIMsgSizeMax() int64 {
+	return int64(C.ndrx_msgsizemax())
+}
 
 //Get the field len
 //@param fldid	Field ID
@@ -487,8 +494,8 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 		return float64(c_val), nil
 	case BFLD_STRING:
 		var c_len C.BFLDLEN
-		c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-		c_len = ATMI_MSG_MAX_SIZE
+		c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+		c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 		if nil == c_val {
 			return nil, NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -505,8 +512,8 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 
 	case BFLD_CARRAY:
 		var c_len C.BFLDLEN
-		c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-		c_len = ATMI_MSG_MAX_SIZE
+		c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+		c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 		if nil == c_val {
 			return nil, NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -616,8 +623,8 @@ func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError) {
 //@return string val, UBF error
 func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError) {
 	var c_len C.BFLDLEN
-	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-	c_len = ATMI_MSG_MAX_SIZE
+	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+	c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 	if nil == c_val {
 		return "", NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -639,8 +646,8 @@ func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError) {
 //@return string val, UBF error
 func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError) {
 	var c_len C.BFLDLEN
-	c_val := C.malloc(ATMI_MSG_MAX_SIZE)
-	c_len = ATMI_MSG_MAX_SIZE
+	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
+	c_len = C.BFLDLEN(ATMIMsgSizeMax())
 
 	if nil == c_val {
 		return nil, NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -1083,8 +1090,8 @@ func (u *TypedUBF) TpLogPrintUBF(lev int, title string) {
 //@return Printed buffer, UBF error
 func (u *TypedUBF) BSprint() (string, UBFError) {
 
-	c_val := C.calloc(ATMI_MSG_MAX_SIZE, 10)
-	c_len := C.size_t(ATMI_MSG_MAX_SIZE * 10)
+	c_val := C.calloc(C.size_t(ATMIMsgSizeMax()), 10)
+	c_len := C.size_t(C.size_t(ATMIMsgSizeMax()) * 10)
 
 	if nil == c_val {
 		return "", NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -1145,8 +1152,8 @@ func (u *TypedUBF) BExtRead(s string) UBFError {
 //@return printed expresion string, ubf error
 func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError) {
 
-	c_val := C.calloc(ATMI_MSG_MAX_SIZE, 10)
-	c_len := C.size_t(ATMI_MSG_MAX_SIZE * 10)
+	c_val := C.calloc(C.size_t(ATMIMsgSizeMax()), 10)
+	c_len := C.size_t(C.size_t(ATMIMsgSizeMax()) * 10)
 
 	if nil == c_val {
 		return "", NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -1174,8 +1181,8 @@ func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError) {
 //@return serialized bytes, UBF error
 func (u *TypedUBF) BWrite() ([]byte, UBFError) {
 
-	c_val := C.calloc(ATMI_MSG_MAX_SIZE, 1)
-	c_len := C.size_t(ATMI_MSG_MAX_SIZE)
+	c_val := C.calloc(C.size_t(ATMIMsgSizeMax()), 1)
+	c_len := C.size_t(C.size_t(ATMIMsgSizeMax()))
 
 	if nil == c_val {
 		return nil, NewCustomUBFError(BEUNIX, "Cannot alloc memory")
@@ -1378,3 +1385,4 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 func (u *TypedUBF) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
+

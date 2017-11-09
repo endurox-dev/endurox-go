@@ -356,10 +356,11 @@ const (
 
 /*
  * Max message size (int bytes)
- */
+
 const (
 	ATMI_MSG_MAX_SIZE = 65536
 )
+*/
 
 /*
  * TPQCTL.flags flags
