@@ -360,6 +360,8 @@ const (
 const (
 	ATMI_MSG_MAX_SIZE = 65536
 )
+
+Replaced with atmi.ATMIMsgSizeMax()!
 */
 
 /*
@@ -540,6 +542,12 @@ type TypedBuffer interface {
 //Have inteface to base ATMI buffer
 func (u *ATMIBuf) GetBuf() *ATMIBuf {
 	return u
+}
+
+//Max message size
+//@return buffer size configured by Enduro/X, min 64K
+func ATMIMsgSizeMax() int64 {
+        return int64(C.ndrx_msgsizemax())
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

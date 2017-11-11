@@ -50,8 +50,6 @@ static int WrapBerror(TPCONTEXT_T *p_ctx) {
 	return OBerror(p_ctx);
 }
 
-//#define ATMI_MSG_MAX_SIZE	65536
-
 //Get the value with buffer allocation
 static char * c_Bget_str (UBFH * p_ub, BFLDID bfldid, BFLDOCC occ,
 					BFLDLEN *len, int *err_code)
@@ -246,12 +244,6 @@ var exprfuncmap map[string]UBFExprFunc //callback mapping for UBF expression fun
 ///////////////////////////////////////////////////////////////////////////////////
 // UBF API
 ///////////////////////////////////////////////////////////////////////////////////
-
-//Max message size
-//@return buffer size configured by Enduro/X, min 64K
-func ATMIMsgSizeMax() int64 {
-	return int64(C.ndrx_msgsizemax())
-}
 
 //Get the field len
 //@param fldid	Field ID
