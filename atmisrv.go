@@ -102,12 +102,13 @@ static void _GO_SVC_ENTRY (TPSVCINFO *p_svc)
 	//Pass the current context
 	TPCONTEXT_T ctx;
 
-        NDRX_LOG(log_debug, "_GO_SVC_ENTRY entry- getting context, current ATMI context: %p", G_atmi_tls);
+    NDRX_LOG(log_debug, "_GO_SVC_ENTRY entry- getting context, current ATMI context: %p", G_atmi_tls);
 
 	//Get the context
 	tpgetctxt(&ctx, 0);
 
-        NDRX_LOG(log_debug, "_GO_SVC_ENTRY got context %p, dispatching call to GO space", ctx);
+    NDRX_LOG(log_debug, "_GO_SVC_ENTRY got context %p, dispatching call to GO space "
+            "name: [%s] fname: [%s]", ctx, p_svc->name, p_svc->fname);
 
 	//Call the service entry
 	go_cb_dispatch_call(ctx, p_svc, p_svc->name, p_svc->fname, p_svc->cltid.clientdata);
