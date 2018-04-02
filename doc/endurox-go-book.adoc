@@ -704,6 +704,19 @@ Section lists API functions in following levels:
 === ATMI Package functions
 Enduro/X package functions. ATMI Context is initiated by this package.
 
+==== atmi.ATMIMsgSizeMax()
+[cols="h,5a"]
+|===
+|Function
+|func ATMIMsgSizeMax() int64
+|Description
+|Max message size. 
+|Returns
+|buffer size configured by Enduro/X, min 64K
+|Applies
+|XATMI client and server
+|===
+
 ==== atmi.MakeATMICtx()
 [cols="h,5a"]
 |===
@@ -2548,6 +2561,25 @@ can contain the array of elements (occurrences).
 *ival* is Input value. 
 |Returns
 |UBF Error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedUBF.BAddFast()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedUBF) BAddFast(bfldid int, ival interface{}, loc *BFldLocInfo,
+first bool) UBFError
+|Description
+|Fast add of filed to buffer (assuming buffer not changed and adding the same
+type of field. NOTE ! Types must be matched with UBF field type. 
+*bfldid* is field id to add. 
+*ival* is value to add. 
+*loc* is location data (last saved or new data) - initialized by first flag. 
+*first* is set to true, if 'loc' is not inialised. 
+|Returns
+|UBF error or nil
 |Applies
 |XATMI client and server
 |===
