@@ -871,11 +871,10 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 	buf := tb.GetBuf()
 
 	ret := C.Otpgetrply(&ac.c_ctx, &c_cd, &buf.C_ptr, &buf.C_len, C.long(flags))
-
+	*cd = int(c_cd)
+	
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
-	} else {
-		*cd = int(c_cd)
 	}
 
 	return int(ret), err

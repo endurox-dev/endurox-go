@@ -107,6 +107,12 @@ static void go_Btreefree(char *ptr)
     tpfreectxt(c);
 }
 
+//Reset location infos
+static void reset_loc_info(Bfld_loc_info_t *loc)
+{
+	memset((void *)&loc, 0, sizeof(Bfld_loc_info_t));
+}
+
 */
 import "C"
 import (
@@ -181,6 +187,11 @@ func (u *TypedUBF) GetBuf() *ATMIBuf {
 //Compiled Expression Tree
 type ExprTree struct {
 	c_ptr *C.char
+}
+
+//Field location infos
+type BFldLocInfo struct {
+	loc C.Bfld_loc_info_t
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -667,6 +678,164 @@ func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError) {
 //@return UBF Error
 func (u *TypedUBF) BChg(bfldid int, occ int, ival interface{}) UBFError {
 	return u.BChgCombined(bfldid, occ, ival, false)
+}
+
+//Fast add of filed to buffer (assuming buffer not changed and adding the same
+//type of field. NOTE ! Types must be matched with UBF field type
+//@param bfldid field id to add
+//@param ival value to add
+//@param loc location data (last saved or new data) - initialized by first flag
+//@param first set to true, if 'loc' is not inialised
+//@return UBF error or nil
+func (u *TypedUBF) BAddFast(bfldid int, ival interface{}, loc *BFldLocInfo, first bool) UBFError {
+
+	if nil == loc {
+		return NewCustomUBFError(BEINVAL, "loc cannot be nil!")
+	}
+
+	if first {
+		C.reset_loc_info(&loc.loc)
+	}
+
+	fldtyp := u.GetBuf().Ctx.BFldType(bfldid)
+
+	switch ival.(type) {
+	case int8,
+		int16,
+		uint8,
+		uint16:
+
+		//Validate type code
+		var val int16
+
+		if BFLD_SHORT != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_SHORT got: %d",
+				fldtyp))
+		}
+
+		switch ival.(type) {
+		case int8:
+			val = int16(ival.(int8))
+		case int16:
+			val = int16(ival.(int16))
+		case uint8:
+			val = int16(ival.(uint8))
+		case uint16:
+			val = int16(ival.(uint16))
+		}
+
+		c_val := C.short(val)
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+
+		break
+
+	case int32,
+		int,
+		uint,
+		int64,
+		uint32,
+		uint64:
+		/* Cast the value to integer... */
+		var val int64
+
+		if BFLD_LONG != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_LONG got: %d",
+				fldtyp))
+		}
+
+		switch ival.(type) {
+		case int:
+			val = int64(ival.(int))
+		case int32:
+			val = int64(ival.(int32))
+		case int64:
+			val = int64(ival.(int64))
+		case uint:
+			val = int64(ival.(uint))
+		case uint32:
+			val = int64(ival.(uint32))
+		case uint64:
+			val = int64(ival.(uint64))
+		}
+		c_val := C.long(val)
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+
+	case float32:
+
+		if BFLD_FLOAT != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_FLOAT got: %d",
+				fldtyp))
+		}
+
+		fval := ival.(float32)
+		c_val := C.float(fval)
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+	case float64:
+
+		if BFLD_DOUBLE != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_DOUBLE got: %d",
+				fldtyp))
+		}
+
+		dval := ival.(float64)
+		c_val := C.double(dval)
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), 0, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+
+	case string:
+
+		if BFLD_STRING != fldtyp && BFLD_CHAR != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_STRING or "+
+				"BFLD_CHAR but got: %d",
+				fldtyp))
+		}
+
+		str := ival.(string)
+		c_val := C.CString(str)
+		defer C.free(unsafe.Pointer(c_val))
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			c_val, 0, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+
+	case []byte:
+
+		if BFLD_CARRAY != fldtyp {
+			return NewCustomUBFError(BEINVAL, fmt.Sprintf("expected BFLD_CARRAY or "+
+				"BFLD_CHAR but got: %d",
+				fldtyp))
+		}
+
+		arr := ival.([]byte)
+		c_len := C.BFLDLEN(len(arr))
+		c_arr := (*C.char)(unsafe.Pointer(&arr[0]))
+
+		if ret := C.OBaddfast(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
+			c_arr, c_len, &loc.loc); ret != SUCCEED {
+			return u.Buf.Ctx.NewUBFError()
+		}
+	default:
+		/* TODO: Possibly we could take stuff from println to get string val... */
+		return NewCustomUBFError(BEINVAL, "Cannot determine field type")
+	}
+
+	return nil
 }
 
 //Add field to buffer
@@ -1377,4 +1546,3 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 func (u *TypedUBF) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
-
