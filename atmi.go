@@ -330,9 +330,14 @@ const (
 	TPCONV        = 0x00000400
 	TPSENDONLY    = 0x00000800
 	TPRECVONLY    = 0x00001000
-	TPTRANSUSPEND = 0x00040000 /* Suspend current transaction */
+	TPTRANSUSPEND = 0x00040000 /* Suspend current transaction          */
 	TPSOFTTIMEOUT = 0x00080000 /* Software time-out, translated to XATMI timeout for caller */
-	TPSOFTNOENT   = 0x00100000 /* No service entry */
+	TPSOFTNOENT   = 0x00100000 /* No service entry                     */
+    TPNOAUTBUF    = 0x00200000 /* Don't restore autbuf in srv context  */
+    TPREGEXMATCH  = 0x00800000 /* Use regular expressoins for match    */
+    TPNOCACHELOOK = 0x01000000 /* Do not lookup cache                  */
+    TPNOCACHEADD  = 0x02000000 /* Do not save data to cache            */
+    TPNOCACHEDDATA= 0x04000000 /* Do not use cached data               */
 )
 
 /*
