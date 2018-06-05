@@ -1,9 +1,10 @@
 package atmi
-/* 
+
+/*
 ** Unified Buffer Format (UBF) marshal/unmarshal to/from structures
 **
 ** @file typed_ubf_tag.go
-** 
+**
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, Mavimax, Ltd. All Rights Reserved.
@@ -11,7 +12,7 @@ package atmi
 ** GPL or Mavimax's license for commercial use.
 ** -----------------------------------------------------------------------------
 ** GPL license:
-** 
+**
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; either version 2 of the License, or (at your option) any later
@@ -29,13 +30,12 @@ package atmi
 ** A commercial use license is available from Mavimax, Ltd
 ** contact@mavimax.com
 ** -----------------------------------------------------------------------------
-*/
-
+ */
 
 import "reflect"
 import "fmt"
 
-// Unmarshal the value
+// Unmarshal the value (UBF -> struct)
 func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 	rvv *reflect.Value, fldid int) UBFError {
 
@@ -155,7 +155,7 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 	return nil
 }
 
-// Unmarshal the value
+// Unmarshal the value (Struct -> UBF)
 func (u *TypedUBF) marshalValue(p *reflect.StructField,
 	rvv *reflect.Value, fldid int) UBFError {
 
@@ -276,16 +276,17 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 	return nil
 }
 
+//TODO: Add versions like UnmarshalOcc and MarshalOcc.
+
 //Copy the specified fields to the local structure
-//according to the `ubf'
+//according to the `ubf' (i.e. take fields from UBF and copy to v structure).
 //@param v  local struct
 //@return UBF error
 func (u *TypedUBF) Unmarshal(v interface{}) UBFError {
 	return u._marshal(false, v)
 }
 
-//Copy the specified fields to the local structure
-//Copy the local struct to UBF
+//Copy the structur in v struct to UBF
 //@param v  local struct
 //@return UBF error
 func (u *TypedUBF) Marshal(v interface{}) UBFError {
