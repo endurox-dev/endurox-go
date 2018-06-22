@@ -91,8 +91,9 @@ func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 		buf.Buf = ptr
 
 		/* Copy off the bytes to C buf */
-		cpyGo2C(buf.Buf.C_ptr, b)
+		/* cpyGo2C(buf.Buf.C_ptr, b) - optimizations */
 		buf.Buf.C_len = C.long(len(b))
+                C.c_copy_data_to_c(buf.Buf.C_ptr, unsafe.Pointer(&b[0]), buf.Buf.C_len);
 		buf.Buf.TpSetCtxt(ac)
 
 		return &buf, nil
