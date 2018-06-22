@@ -44,6 +44,17 @@ void * c_get_void_ptr(char * ptr)
 	return (void *)ptr;
 }
 
+int c_copy_data_to_go(const void *go_data, char *c_data, long nbytes)
+{
+        memcpy((char *)go_data, c_data, nbytes);
+}
+
+int c_copy_data_to_c(char *c_data, const void *go_data, long nbytes)
+{
+        memcpy(c_data, go_data, nbytes);
+}
+
+
 */
 import "C"
 import "unsafe"
@@ -58,11 +69,16 @@ func (u *TypedCarray) GetBuf() *ATMIBuf {
 	return u.Buf
 }
 
+/*
+
+22/06/2018 - benchmark optimisations
 func cpyGo2C(c *C.char, b []byte) {
 	for i := 0; i < len(b); i++ {
 		*(*C.char)(unsafe.Pointer(uintptr(C.c_get_void_ptr(c)) + uintptr(i))) = C.char(b[i])
 	}
 }
+
+*/
 
 //Allocate new string buffer
 //@param s - source string
@@ -95,9 +111,14 @@ func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (*TypedCarray, ATMIError) {
 func (s *TypedCarray) GetBytes() []byte {
 	b := make([]byte, s.Buf.C_len)
 
+/*
+        22/06/2018 - benchmark optimisations
 	for i := 0; i < len(b); i++ {
 		b[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(C.c_get_void_ptr(s.Buf.C_ptr)) + uintptr(i))))
 	}
+*/
+        C.c_copy_data_to_go(unsafe.Pointer(&b[0]), s.Buf.C_ptr, s.Buf.C_len)
+
 	return b
 
 }
@@ -111,12 +132,14 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 		return err
 	} else {
 		if cur_size >= new_size {
-			cpyGo2C(s.Buf.C_ptr, b)
+			/* cpyGo2C(s.Buf.C_ptr, b) */
+                        C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
 			s.Buf.C_len = C.long(new_size)
 		} else if err := s.Buf.TpRealloc(new_size); nil != err {
 			return err
 		} else {
-			cpyGo2C(s.Buf.C_ptr, b)
+			/* cpyGo2C(s.Buf.C_ptr, b)*/
+                        C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
 			s.Buf.C_len = C.long(new_size)
 		}
 	}
