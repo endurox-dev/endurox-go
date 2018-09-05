@@ -3059,9 +3059,26 @@ caller can do anything it wants with the string output.
 |Function
 |func (u *TypedUBF) Marshal(v interface{}) UBFError
 |Description
-|Copy the specified fields to the local structure Copy the local struct to UBF.
-
+|Copy the structur in v struct to UBF. 
 *v* is local struct. 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedUBF.MarshalSingle()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedUBF) MarshalSingle(v interface{}, occ int) UBFError
+|Description
+|Copy the structur in v struct to UBF. 
+*v* is local struct. 
+*occ* is single occurrence to marshal to UBF, i.e. single struct arrays
+occurrence	to copy to UBF. Applies only to structure array elements. In
+case of occurrence   is set which is out of the bounds of the array, the error
+will be generated as	    BEINVAL. 
 |Returns
 |UBF error
 |Applies
@@ -3132,8 +3149,26 @@ infos in case of error is found in 'ubf' and 'ndrx' facility logs.
 |Function
 |func (u *TypedUBF) Unmarshal(v interface{}) UBFError
 |Description
-|Copy the specified fields to the local structure according to the `ubf'. 
+|Copy the specified fields to the local structure according to the `ubf' (i.e.
+take fields from UBF and copy to v structure).. 
 *v* is local struct. 
+|Returns
+|UBF error
+|Applies
+|XATMI client and server
+|===
+
+==== TypedUBF.UnmarshalSingle()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedUBF) UnmarshalSingle(v interface{}, occ int) UBFError
+|Description
+|Copy the specified fields to the local structure according to the `ubf' (i.e.
+take fields from UBF and copy to v structure).. 
+*v* is local struct. 
+*occ* is single occurrence in UBF to copy to either simple structure elements  
+or array elements. If copied to array, then it goes to first array element.. 
 |Returns
 |UBF error
 |Applies
