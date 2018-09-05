@@ -97,7 +97,14 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 	case reflect.Slice:
 		occ, _ := u.BOccur(fldid)
 		if occ > 0 {
-			x := reflect.MakeSlice(p.Type, occ, occ)
+
+			capac := occ
+
+			if FAIL != occOne {
+				capac = 1
+			}
+
+			x := reflect.MakeSlice(p.Type, capac, capac)
 
 			switch p.Type.Elem().Kind() {
 			case reflect.Int,
@@ -117,7 +124,12 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 
 				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetInt64(fldid, i); err == nil {
-						x.Index(i).SetInt(v)
+						if FAIL == occOne {
+							x.Index(i).SetInt(v)
+						} else {
+							x.Index(0).SetInt(v)
+						}
+
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
@@ -138,7 +150,11 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 
 				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetInt64(fldid, i); err == nil {
-						x.Index(i).SetUint(uint64(v))
+						if FAIL == occOne {
+							x.Index(i).SetUint(uint64(v))
+						} else {
+							x.Index(0).SetUint(uint64(v))
+						}
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
@@ -156,7 +172,12 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 
 				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetFloat64(fldid, i); err == nil {
-						x.Index(i).SetFloat(v)
+						if FAIL == occOne {
+							x.Index(i).SetFloat(v)
+						} else {
+							x.Index(0).SetFloat(v)
+						}
+
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
@@ -173,7 +194,11 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 
 				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetString(fldid, i); err == nil {
-						x.Index(i).SetString(v)
+						if FAIL == occOne {
+							x.Index(i).SetString(v)
+						} else {
+							x.Index(0).SetString(v)
+						}
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
@@ -200,7 +225,12 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 							for j := 0; j < val_len; j++ {
 								y.Index(j).SetUint(uint64(v[j]))
 							}
-							x.Index(i).Set(y)
+
+							if FAIL == occOne {
+								x.Index(i).Set(y)
+							} else {
+								x.Index(0).Set(y)
+							}
 						}
 					}
 					rvv.FieldByName(p.Name).Set(x)
@@ -267,6 +297,16 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 		}
 	case reflect.Slice:
 		occ := rvv.FieldByName(p.Name).Len()
+
+		if occOne != FAIL {
+			if occOne >= occ {
+				return NewCustomUBFError(BEINVAL,
+					fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+						"bounds, tot occs: %d (valid range %d..%d",
+						occOne, occ, 0, occ-1))
+			}
+		}
+
 		if occ > 0 {
 			x := reflect.MakeSlice(p.Type, occ, occ)
 
@@ -278,27 +318,20 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				reflect.Int64:
 				//fmt.Printf("Slice array... of int ...\n")
 
-				occStart := 0
-				occStop := occ
-
-				if FAIL != occOne {
-					occStart = occOne
-					occStop = occOne + 1
-				}
-
-				if occStop > occ {
-					return NewCustomUBFError(BEINVAL,
-						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
-							"bounds, max occ: %d",
-							occStop, occ))
-				}
-
-				for i := occStart; i < occStop; i++ {
-					if err := u.BChg(fldid, i,
-						rvv.FieldByName(p.Name).Index(i).Int()); err != nil {
+				if occOne == FAIL {
+					for i := 0; i < occ; i++ {
+						if err := u.BChg(fldid, i,
+							rvv.FieldByName(p.Name).Index(i).Int()); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := u.BChg(fldid, 0,
+						rvv.FieldByName(p.Name).Index(occOne).Int()); err != nil {
 						return err
 					}
 				}
+
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.Uint,
 				reflect.Uint8,
@@ -307,24 +340,16 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				reflect.Uint64:
 				//fmt.Printf("Slice array... of uint ...\n")
 
-				occStart := 0
-				occStop := occ
-
-				if FAIL != occOne {
-					occStart = occOne
-					occStop = occOne + 1
-				}
-
-				if occStop > occ {
-					return NewCustomUBFError(BEINVAL,
-						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
-							"bounds, max occ: %d",
-							occStop, occ))
-				}
-
-				for i := occStart; i < occStop; i++ {
-					if err := u.BChg(fldid, i,
-						rvv.FieldByName(p.Name).Index(i).Uint()); err != nil {
+				if occOne == FAIL {
+					for i := 0; i < occ; i++ {
+						if err := u.BChg(fldid, i,
+							rvv.FieldByName(p.Name).Index(i).Uint()); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := u.BChg(fldid, 0,
+						rvv.FieldByName(p.Name).Index(occOne).Uint()); err != nil {
 						return err
 					}
 				}
@@ -332,48 +357,34 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 			case reflect.Float32,
 				reflect.Float64:
 				//fmt.Printf("Slice array... of float64 ...\n")
-				occStart := 0
-				occStop := occ
 
-				if FAIL != occOne {
-					occStart = occOne
-					occStop = occOne + 1
-				}
-
-				if occStop > occ {
-					return NewCustomUBFError(BEINVAL,
-						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
-							"bounds, max occ: %d",
-							occStop, occ))
-				}
-
-				for i := occStart; i < occStop; i++ {
-					if err := u.BChg(fldid, i,
-						rvv.FieldByName(p.Name).Index(i).Float()); err != nil {
+				if occOne == FAIL {
+					for i := 0; i < occ; i++ {
+						if err := u.BChg(fldid, i,
+							rvv.FieldByName(p.Name).Index(i).Float()); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := u.BChg(fldid, 0,
+						rvv.FieldByName(p.Name).Index(occOne).Float()); err != nil {
 						return err
 					}
 				}
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.String:
 				//fmt.Printf("Slice array... of string ...\n")
-				occStart := 0
-				occStop := occ
 
-				if FAIL != occOne {
-					occStart = occOne
-					occStop = occOne + 1
-				}
-
-				if occStop > occ {
-					return NewCustomUBFError(BEINVAL,
-						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
-							"bounds, max occ: %d",
-							occStop, occ))
-				}
-
-				for i := occStart; i < occStop; i++ {
-					if err := u.BChg(fldid, i,
-						rvv.FieldByName(p.Name).Index(i).String()); err != nil {
+				if occOne == FAIL {
+					for i := 0; i < occ; i++ {
+						if err := u.BChg(fldid, i,
+							rvv.FieldByName(p.Name).Index(i).String()); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := u.BChg(fldid, 0,
+						rvv.FieldByName(p.Name).Index(occOne).String()); err != nil {
 						return err
 					}
 				}
@@ -382,24 +393,17 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				if reflect.Uint8 == p.Type.Elem().Elem().Kind() {
 					//fmt.Printf("C_ARRAY support...\n")
 
-					occStart := 0
-					occStop := occ
+					if occOne == FAIL {
 
-					if FAIL != occOne {
-						occStart = occOne
-						occStop = occOne + 1
-					}
-
-					if occStop > occ {
-						return NewCustomUBFError(BEINVAL,
-							fmt.Sprintf("Invalid occurrence requested: %d - out of "+
-								"bounds, max occ: %d",
-								occStop, occ))
-					}
-
-					for i := occStart; i < occStop; i++ {
-						if err := u.BChg(fldid, i,
-							rvv.FieldByName(p.Name).Index(i).Bytes()); err != nil {
+						for i := 0; i < occ; i++ {
+							if err := u.BChg(fldid, i,
+								rvv.FieldByName(p.Name).Index(i).Bytes()); err != nil {
+								return err
+							}
+						}
+					} else {
+						if err := u.BChg(fldid, 0,
+							rvv.FieldByName(p.Name).Index(occOne).Bytes()); err != nil {
 							return err
 						}
 					}
@@ -443,7 +447,7 @@ func (u *TypedUBF) Marshal(v interface{}) UBFError {
 //according to the `ubf' (i.e. take fields from UBF and copy to v structure).
 //@param v  local struct
 //@param occ single occurrence in UBF to copy to either simple structure elements
-//	or array elements.
+//	or array elements. If copied to array, then it goes to first array element.
 //@return UBF error
 func (u *TypedUBF) UnmarshalSingle(v interface{}, occ int) UBFError {
 	return u._marshal(false, v, occ)

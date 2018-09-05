@@ -88,89 +88,13 @@ func async_main() {
 			return
 		}
 
-		if err := buf.BChg(ubftab.T_CHAR_FLD, 0, 65); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		if err := loadbufferdata(buf); nil != err {
+			fmt.Printf("async_main: Unexpected Failed to set UBF data: %d:[%s]\n",
+				err.Code(), err.Message())
 			ret = FAIL
 			return
 		}
 
-		if err := buf.BChg(ubftab.T_CHAR_FLD, 1, 66); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_SHORT_FLD, 0, 32000); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_SHORT_FLD, 1, 32001); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_LONG_FLD, 0, 9999999101); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_LONG_FLD, 1, 9999999102); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_FLOAT_FLD, 0, 9.11); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_FLOAT_FLD, 1, 9.22); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_DOUBLE_FLD, 0, 999999910.888); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_DOUBLE_FLD, 1, 999999910.999); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_STRING_FLD, 0, "HELLO STRING 1"); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_STRING_FLD, 1, "HELLO STRING 2"); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_CARRAY_FLD, 0, b1); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
-
-		if err := buf.BChg(ubftab.T_CARRAY_FLD, 1, b2); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-			ret = FAIL
-			return
-		}
 		////////////////////////////////////////////////////////////////////////
 		// Do the Unmarshal & test the values
 		////////////////////////////////////////////////////////////////////////
@@ -382,17 +306,29 @@ func async_main() {
 
 func main() {
 
+	//Set some test data...
+	M_b1 = []byte{0, 1, 2, 3}
+
+	M_b2 = []byte{4, 3, 2, 1, 0}
+
 	// you can also add these one at
 	// a time if you need to
-	M_ret = make(chan int, 10)
-	M_wg.Add(10)
+
 	// Have some core dumps...
 	C.signal(11, nil)
 
+	M_ret = make(chan int, 20)
+	M_wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go async_main()
 	}
+	M_wg.Wait()
 
+	fmt.Printf("One tests...\n")
+	M_wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go async_main_one()
+	}
 	M_wg.Wait()
 
 	i := 0
@@ -403,7 +339,7 @@ func main() {
 			os.Exit(-1)
 		}
 		//For some reason the for loop does not terminate by it self..
-		if i >= 10 {
+		if i >= 20 {
 			break
 		}
 	}
