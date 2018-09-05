@@ -9,10 +9,10 @@ import (
 	"atmi"
 	"bytes"
 	"fmt"
-	"sync"
-	"runtime"
-	"ubftab"
 	"os"
+	"runtime"
+	"sync"
+	"ubftab"
 )
 
 const (
@@ -50,15 +50,15 @@ var M_wg sync.WaitGroup
 //Binary main entry
 func async_main() {
 
-        C.signal(11, nil);
+	C.signal(11, nil)
 
 	ret := SUCCEED
 
 	//Close the ATMI session at exit.
 	defer func() {
-                M_wg.Done()
-                M_ret <- ret
-        }()
+		M_wg.Done()
+		M_ret <- ret
+	}()
 
 	//Have some loop for memory leak checks...
 	for i := 0; i < 100; i++ {
@@ -382,31 +382,31 @@ func async_main() {
 
 func main() {
 
-        // you can also add these one at
-        // a time if you need to
-        M_ret = make(chan int, 10)
-        M_wg.Add(10)
-        // Have some core dumps...
-        C.signal(11, nil);
+	// you can also add these one at
+	// a time if you need to
+	M_ret = make(chan int, 10)
+	M_wg.Add(10)
+	// Have some core dumps...
+	C.signal(11, nil)
 
-        for i := 0; i < 10; i++ {
-                go async_main()
-        }
+	for i := 0; i < 10; i++ {
+		go async_main()
+	}
 
-        M_wg.Wait()
+	M_wg.Wait()
 
-	i:=0
-        for ret := range M_ret {
-                fmt.Println(ret)
+	i := 0
+	for ret := range M_ret {
+		fmt.Println(ret)
 		i++
-                if ret == FAIL {
-                        os.Exit(-1)
-                }
+		if ret == FAIL {
+			os.Exit(-1)
+		}
 		//For some reason the for loop does not terminate by it self..
-		if i>= 10 {
+		if i >= 10 {
 			break
 		}
-        }
+	}
 
-        os.Exit(0)
+	os.Exit(0)
 }

@@ -11,7 +11,7 @@
  * GPL or Mavimax's license for commercial use.
  * -----------------------------------------------------------------------------
  * GPL license:
- * 
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
  * Foundation; either version 3 of the License, or (at your option) any later
@@ -36,8 +36,9 @@ import "reflect"
 import "fmt"
 
 // Unmarshal the value (UBF -> struct)
+//@param occOne single field occurrence, if not FAIL, for unmarshalling
 func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
-	rvv *reflect.Value, fldid int) UBFError {
+	rvv *reflect.Value, fldid int, occOne int) UBFError {
 
 	//fmt.Printf("Field: [%s] Type: [%s]/%s Tag: [%s] %s -> %T\n",
 	//		p.Name, p.Type, p.Type.Name(), p.Tag.Get("ubf"), p.Type.Kind(), p)
@@ -49,27 +50,48 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 		reflect.Int32,
 		reflect.Int64:
 		//fmt.Printf("This is int...\n")
-		if v, err := u.BGetInt64(fldid, 0); err == nil {
+
+		if FAIL == occOne {
+			occOne = 0
+		}
+
+		if v, err := u.BGetInt64(fldid, occOne); err == nil {
 			rvv.FieldByName(p.Name).SetInt(v)
 		}
+
 	case reflect.Uint,
 		reflect.Uint8,
 		reflect.Uint16,
 		reflect.Uint32,
 		reflect.Uint64:
 		//fmt.Printf("This is uint...\n")
-		if v, err := u.BGetInt64(fldid, 0); err == nil {
+
+		if FAIL == occOne {
+			occOne = 0
+		}
+
+		if v, err := u.BGetInt64(fldid, occOne); err == nil {
 			rvv.FieldByName(p.Name).SetUint(uint64(v))
 		}
 	case reflect.Float32,
 		reflect.Float64:
 		//fmt.Printf("This is float32/64...\n")
-		if v, err := u.BGetFloat64(fldid, 0); err == nil {
+
+		if FAIL == occOne {
+			occOne = 0
+		}
+
+		if v, err := u.BGetFloat64(fldid, occOne); err == nil {
 			rvv.FieldByName(p.Name).SetFloat(v)
 		}
 	case reflect.String:
 		//fmt.Printf("This is string...\n")
-		if v, err := u.BGetString(fldid, 0); err == nil {
+
+		if FAIL == occOne {
+			occOne = 0
+		}
+
+		if v, err := u.BGetString(fldid, occOne); err == nil {
 			rvv.FieldByName(p.Name).SetString(v)
 		}
 	case reflect.Slice:
@@ -84,7 +106,16 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 				reflect.Int32,
 				reflect.Int64:
 				//fmt.Printf("Slice array... of int ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetInt64(fldid, i); err == nil {
 						x.Index(i).SetInt(v)
 					}
@@ -96,7 +127,16 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 				reflect.Uint32,
 				reflect.Uint64:
 				//fmt.Printf("Slice array... of uint ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetInt64(fldid, i); err == nil {
 						x.Index(i).SetUint(uint64(v))
 					}
@@ -105,7 +145,16 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 			case reflect.Float32,
 				reflect.Float64:
 				//fmt.Printf("Slice array... of float64 ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetFloat64(fldid, i); err == nil {
 						x.Index(i).SetFloat(v)
 					}
@@ -113,7 +162,16 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.String:
 				//fmt.Printf("Slice array... of string ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if v, err := u.BGetString(fldid, i); err == nil {
 						x.Index(i).SetString(v)
 					}
@@ -122,7 +180,16 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 			case reflect.Slice:
 				if reflect.Uint8 == p.Type.Elem().Elem().Kind() {
 					//fmt.Printf("C_ARRAY support...\n")
-					for i := 0; i < occ; i++ {
+
+					occStart := 0
+					occStop := occ
+
+					if FAIL != occOne {
+						occStart = occOne
+						occStop = occOne + 1
+					}
+
+					for i := occStart; i < occStop; i++ {
 						if v, err := u.BGetByteArr(fldid, i); err == nil {
 							//x.Index(i).Set(v)
 
@@ -155,9 +222,11 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 	return nil
 }
 
-// Unmarshal the value (Struct -> UBF)
+// Marshal the value (Struct -> UBF)
+//@param occOne optional occurrence (if not FAIL) used for single field occurrences
+// applies to arrays only.
 func (u *TypedUBF) marshalValue(p *reflect.StructField,
-	rvv *reflect.Value, fldid int) UBFError {
+	rvv *reflect.Value, fldid int, occOne int) UBFError {
 
 	//fmt.Printf("Field: [%s] Type: [%s]/%s Tag: [%s] %s -> %T\n",
 	//		p.Name, p.Type, p.Type.Name(), p.Tag.Get("ubf"), p.Type.Kind(), p)
@@ -208,7 +277,23 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				reflect.Int32,
 				reflect.Int64:
 				//fmt.Printf("Slice array... of int ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				if occStop > occ {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+							"bounds, max occ: %d",
+							occStop, occ))
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if err := u.BChg(fldid, i,
 						rvv.FieldByName(p.Name).Index(i).Int()); err != nil {
 						return err
@@ -221,7 +306,23 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				reflect.Uint32,
 				reflect.Uint64:
 				//fmt.Printf("Slice array... of uint ...\n")
-				for i := 0; i < occ; i++ {
+
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				if occStop > occ {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+							"bounds, max occ: %d",
+							occStop, occ))
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if err := u.BChg(fldid, i,
 						rvv.FieldByName(p.Name).Index(i).Uint()); err != nil {
 						return err
@@ -231,7 +332,22 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 			case reflect.Float32,
 				reflect.Float64:
 				//fmt.Printf("Slice array... of float64 ...\n")
-				for i := 0; i < occ; i++ {
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				if occStop > occ {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+							"bounds, max occ: %d",
+							occStop, occ))
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if err := u.BChg(fldid, i,
 						rvv.FieldByName(p.Name).Index(i).Float()); err != nil {
 						return err
@@ -240,7 +356,22 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				rvv.FieldByName(p.Name).Set(x)
 			case reflect.String:
 				//fmt.Printf("Slice array... of string ...\n")
-				for i := 0; i < occ; i++ {
+				occStart := 0
+				occStop := occ
+
+				if FAIL != occOne {
+					occStart = occOne
+					occStop = occOne + 1
+				}
+
+				if occStop > occ {
+					return NewCustomUBFError(BEINVAL,
+						fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+							"bounds, max occ: %d",
+							occStop, occ))
+				}
+
+				for i := occStart; i < occStop; i++ {
 					if err := u.BChg(fldid, i,
 						rvv.FieldByName(p.Name).Index(i).String()); err != nil {
 						return err
@@ -251,7 +382,22 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 				if reflect.Uint8 == p.Type.Elem().Elem().Kind() {
 					//fmt.Printf("C_ARRAY support...\n")
 
-					for i := 0; i < occ; i++ {
+					occStart := 0
+					occStop := occ
+
+					if FAIL != occOne {
+						occStart = occOne
+						occStop = occOne + 1
+					}
+
+					if occStop > occ {
+						return NewCustomUBFError(BEINVAL,
+							fmt.Sprintf("Invalid occurrence requested: %d - out of "+
+								"bounds, max occ: %d",
+								occStop, occ))
+					}
+
+					for i := occStart; i < occStop; i++ {
 						if err := u.BChg(fldid, i,
 							rvv.FieldByName(p.Name).Index(i).Bytes()); err != nil {
 							return err
@@ -283,14 +429,35 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 //@param v  local struct
 //@return UBF error
 func (u *TypedUBF) Unmarshal(v interface{}) UBFError {
-	return u._marshal(false, v)
+	return u._marshal(false, v, FAIL)
 }
 
 //Copy the structur in v struct to UBF
 //@param v  local struct
 //@return UBF error
 func (u *TypedUBF) Marshal(v interface{}) UBFError {
-	return u._marshal(true, v)
+	return u._marshal(true, v, FAIL)
+}
+
+//Copy the specified fields to the local structure
+//according to the `ubf' (i.e. take fields from UBF and copy to v structure).
+//@param v  local struct
+//@param occ single occurrence in UBF to copy to either simple structure elements
+//	or array elements.
+//@return UBF error
+func (u *TypedUBF) UnmarshalSingle(v interface{}, occ int) UBFError {
+	return u._marshal(false, v, occ)
+}
+
+//Copy the structur in v struct to UBF
+//@param v  local struct
+//@param occ single occurrence to marshal to UBF, i.e. single struct arrays occurrence
+//	to copy to UBF. Applies only to structure array elements. In case of occurrence
+//  is set which is out of the bounds of the array, the error will be generated as
+//	BEINVAL
+//@return UBF error
+func (u *TypedUBF) MarshalSingle(v interface{}, occ int) UBFError {
+	return u._marshal(true, v, occ)
 }
 
 //Copy the specified fields to the local structure
@@ -298,8 +465,9 @@ func (u *TypedUBF) Marshal(v interface{}) UBFError {
 //according to the `ubf'
 //@param is_marshal true -> marshal mode, false -> unmarshal mode
 //@param v  local struct
+//@param occ occurrence to marshal/unmarshal
 //@return UBF error
-func (u *TypedUBF) _marshal(is_marshal bool, v interface{}) UBFError {
+func (u *TypedUBF) _marshal(is_marshal bool, v interface{}, occ int) UBFError {
 
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -326,11 +494,11 @@ func (u *TypedUBF) _marshal(is_marshal bool, v interface{}) UBFError {
 			if p.Tag.Get("ubf") != "" {
 				if fldid, _ := u.Buf.Ctx.BFldId(p.Tag.Get("ubf")); fldid != BBADFLDID {
 					if is_marshal {
-						if err := u.marshalValue(&p, &rvv, fldid); nil != err {
+						if err := u.marshalValue(&p, &rvv, fldid, occ); nil != err {
 							return err
 						}
 					} else {
-						if err := u.unmarshalValue(&p, &rvv, fldid); nil != err {
+						if err := u.unmarshalValue(&p, &rvv, fldid, occ); nil != err {
 							return err
 						}
 					}
