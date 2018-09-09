@@ -1,7 +1,7 @@
 /*
-** UBF testing
+** Test buffer printing routines
 **
-** @file client.go
+** @file bprint.go
 ** -----------------------------------------------------------------------------
 ** Enduro/X Middleware Platform for Distributed Transaction Processing
 ** Copyright (C) 2015, ATR Baltic, Ltd. All Rights Reserved.
@@ -38,17 +38,11 @@ import "C"
 import (
 	"atmi"
 	"fmt"
-	"os"
 	"ubftab"
 )
 
-const (
-	SUCCEED = 0
-	FAIL    = -1
-)
-
 //Perform fast add tests
-func test_Baddfast() error {
+func test_BprintStr() error {
 
 	for i := 0; i < 10000; i++ {
 
@@ -230,6 +224,29 @@ func test_Baddfast() error {
 
 		buf.BPrint()
 
+		//Now transfer the buffer to string
+
+		str, err := buf.BPrintStr()
+
+		if nil != err {
+			return fmt.Errorf("Failed to print to str: %s\n", err.Error())
+		}
+
+		fmt.Printf("Got string: [%s]\n", str)
+
+		//Reset buffer
+		buf, err = ac.NewUBF(1024)
+
+		if err != nil {
+			return fmt.Errorf("Failed to realloc %d:[%s]\n", err.Code(), err.Message())
+		}
+
+		err = buf.BExtRead(str)
+
+		if nil != err {
+			return fmt.Errorf("Failed to extread str [%s]: %s\n", str, err.Error())
+		}
+
 		res, err := buf.BQBoolEv("T_SHORT_FLD[0]==5 && T_SHORT_FLD[1]==7 && T_SHORT_FLD[2]==8 && " +
 			"T_LONG_2_FLD[0]==5777 && T_LONG_2_FLD[1]==7888 && T_LONG_2_FLD[2]==-8999 && " +
 			"T_CHAR_FLD[0]=='C' && T_CHAR_FLD[1]=='X' && T_CHAR_FLD[2]=='a' && " +
@@ -248,26 +265,4 @@ func test_Baddfast() error {
 	}
 
 	return nil
-}
-
-func main() {
-
-	haveErr := false
-	// Have some core dumps...
-	C.signal(11, nil)
-
-	if err := test_Baddfast(); nil != err {
-		fmt.Printf("test_Baddfast failed: %s\n", err.Error())
-		haveErr = true
-	}
-
-	if err := test_BprintStr(); nil != err {
-		fmt.Printf("test_BprintStr failed: %s\n", err.Error())
-		haveErr = true
-	}
-
-	if haveErr {
-		os.Exit(-1)
-	}
-	os.Exit(0)
 }

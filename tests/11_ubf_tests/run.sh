@@ -18,9 +18,13 @@ client
 
 ret=$?
 
-echo "Test OK"
+if [[ $ret -eq 0 ]]; then
+	echo "Test OK"
+else
+	echo "Test failed"
+fi
 
 # shutdown the app server
 xadmin stop -c -y
 
-exit $?
+exit $ret

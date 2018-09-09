@@ -11,7 +11,7 @@
  * GPL or Mavimax's license for commercial use.
  * -----------------------------------------------------------------------------
  * GPL license:
- * 
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
  * Foundation; either version 3 of the License, or (at your option) any later
@@ -35,10 +35,13 @@ package atmi
 /*
 #cgo pkg-config: atmisrvinteg
 
+#include <errno.h>
 #include <xatmi.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ubf.h>
+#include <ndebug.h>
+#include <odebug.h>
 #include <oubf.h>
 #include <oatmi.h>
 #include <sys_unix.h>
@@ -113,6 +116,92 @@ static void reset_loc_info(Bfld_loc_info_t *loc)
 	memset((void *)&loc, 0, sizeof(Bfld_loc_info_t));
 }
 
+typedef struct bfprintcb_data bfprintcb_data_t;
+struct bfprintcb_data
+{
+	TPCONTEXT_T *p_ctx;
+	char *buf;
+	long cur_offset;
+	long size;
+};
+
+//Callback for writting data to
+//@param buffer output buffer to write
+//@param datalen printed data including EOS
+//@param dataptr1 custom data pointer, in this case bfprintcb_data_t
+//@return EXSUCCEED/EXFAIL
+static int bfprintcb_writef(char *buffer, long datalen, void *dataptr1)
+{
+	int ret = EXSUCCEED;
+
+	bfprintcb_data_t *data = (bfprintcb_data_t *)dataptr1;
+
+	//-1 for skipping the EOS
+	if (datalen > (data->size - data->cur_offset)-1)
+	{
+		OUBF_LOG(data->p_ctx, log_error, "Output buffer full: free %ld, new data: %ld",
+			(long)((data->size - data->cur_offset)-1), datalen);
+		EXFAIL_OUT(ret);
+	}
+
+	//now copy off the data
+
+	if (data->cur_offset>0)
+	{
+		data->cur_offset--;
+	}
+
+	memcpy(data->buf + data->cur_offset, buffer, datalen);
+
+	data->cur_offset+=datalen;
+
+out:
+
+	return ret;
+}
+
+//Print UBF buffer to allocated string
+//@param p_ctx ATMI Context
+//@param p_ub buffer to print
+//@return ptr to C allocate string with print data terminated with EOS
+//	or NULL in case of error.
+static char * BPrintStrC(TPCONTEXT_T *p_ctx, UBFH * p_ub)
+{
+	bfprintcb_data_t data;
+
+	memset(&data, 0, sizeof(data));
+
+	//Allocate the buffer, so lets allocate some heavy buffer for the string..
+	//Also note that while we do not use the buffer, the good os actually won't
+	//allocate any real resources. Thus I guess no problem here
+	//just a virtual memory...
+
+	data.size = Bsizeof(p_ub) * MAXTIDENT;
+	data.buf = malloc(data.size);
+	data.p_ctx = p_ctx;
+
+	if (NULL==data.buf)
+	{
+		int err = errno;
+		OUBF_LOG(p_ctx, log_error, "Failed to allocate %ld bytes for print buffer: %s",
+				data.size, strerror(err));
+
+		goto out;
+	}
+
+	if (EXSUCCEED!=OBfprintcb(p_ctx, p_ub, bfprintcb_writef, (char *)&data))
+	{
+		int err = errno;
+		OUBF_LOG(p_ctx, log_error, "Failed to print to buffer / callback fail!");
+		free(data.buf);
+		data.buf = NULL;
+		goto out;
+	}
+
+out:
+
+	return data.buf;
+}
 */
 import "C"
 import (
@@ -1277,6 +1366,28 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 	}
 
 	return C.GoString((*C.char)(c_val)), nil
+}
+
+//Print UBF buffer to string. The output string buffer at C side is composed
+//as UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size
+//is used for purpuse so that Go developer can used extended buffer size in case
+//if there is no free space (returned error BEUNIX)
+//@returns BPrint format string or "" in case of error. Second argument is
+//	UBF error set in case of error, else it is nil
+func (u *TypedUBF) BPrintStr() (string, UBFError) {
+
+	c_str := C.BPrintStrC(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
+
+	if nil != c_str {
+
+		str := C.GoString(c_str)
+		C.free(unsafe.Pointer(c_str))
+
+		return str, nil
+	}
+
+	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
+		"either insufficient memory or other error. See UBF logs.")
 }
 
 //Read the bufer content from string
