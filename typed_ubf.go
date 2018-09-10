@@ -125,6 +125,8 @@ struct bfprintcb_data
 	long size;
 };
 
+#if 0
+- only for Enduro/X 6+
 //Callback for writting data to
 //@param buffer output buffer to write
 //@param datalen printed data including EOS
@@ -202,6 +204,7 @@ out:
 
 	return data.buf;
 }
+#endif
 */
 import "C"
 import (
@@ -1368,6 +1371,8 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 	return C.GoString((*C.char)(c_val)), nil
 }
 
+/*
+- For enduro/X 6
 //Print UBF buffer to string. The output string buffer at C side is composed
 //as UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size
 //is used for purpuse so that Go developer can used extended buffer size in case
@@ -1389,6 +1394,7 @@ func (u *TypedUBF) BPrintStr() (string, UBFError) {
 	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
 		"either insufficient memory or other error. See UBF logs.")
 }
+*/
 
 //Read the bufer content from string
 //@param s String buffer representation
