@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"os"
 	"ubftab"
+	"runtime"
 )
 
 const (
@@ -244,6 +245,8 @@ func test_Baddfast() error {
 		if !res {
 			return fmt.Errorf("Expected expression to be true, but got false!")
 		}
+
+		runtime.GC()
 
 	}
 

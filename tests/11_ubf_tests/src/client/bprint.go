@@ -39,12 +39,13 @@ import (
 	"atmi"
 	"fmt"
 	"ubftab"
+	"runtime"
 )
 
 //Perform fast add tests
 func test_BprintStr() error {
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 
 		ac, err := atmi.NewATMICtx()
 
@@ -261,6 +262,8 @@ func test_BprintStr() error {
 		if !res {
 			return fmt.Errorf("Expected expression to be true, but got false!")
 		}
+
+		runtime.GC()
 
 	}
 
