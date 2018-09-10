@@ -1277,7 +1277,8 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 	return nil
 }
 
-//Return field name in string
+//Return type descriptor of the field - string format.
+//possible values: short, long, char, float, double, string, carray
 //@param bfldid field ID
 //@return field type, UBF error
 func (u *TypedUBF) BType(bfldid int) (string, UBFError) {
