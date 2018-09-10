@@ -226,7 +226,7 @@ func test_BprintStr() error {
 
 		//Now transfer the buffer to string
 
-		str, err := buf.BPrintStr()
+		str, err := buf.BSprint()
 
 		if nil != err {
 			return fmt.Errorf("Failed to print to str: %s\n", err.Error())
