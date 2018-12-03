@@ -45,12 +45,12 @@ void * c_get_void_ptr(char * ptr)
 	return (void *)ptr;
 }
 
-int c_copy_data_to_go(const void *go_data, char *c_data, long nbytes)
+void c_copy_data_to_go(const void *go_data, char *c_data, long nbytes)
 {
         memcpy((char *)go_data, c_data, nbytes);
 }
 
-int c_copy_data_to_c(char *c_data, const void *go_data, long nbytes)
+void c_copy_data_to_c(char *c_data, const void *go_data, long nbytes)
 {
         memcpy(c_data, go_data, nbytes);
 }
@@ -94,7 +94,7 @@ func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 		/* Copy off the bytes to C buf */
 		/* cpyGo2C(buf.Buf.C_ptr, b) - optimizations */
 		buf.Buf.C_len = C.long(len(b))
-                C.c_copy_data_to_c(buf.Buf.C_ptr, unsafe.Pointer(&b[0]), buf.Buf.C_len);
+        C.c_copy_data_to_c(buf.Buf.C_ptr, unsafe.Pointer(&b[0]), buf.Buf.C_len);
 		buf.Buf.TpSetCtxt(ac)
 
 		return &buf, nil
@@ -135,7 +135,7 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 	} else {
 		if cur_size >= new_size {
 			/* cpyGo2C(s.Buf.C_ptr, b) */
-                        C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
+            C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
 			s.Buf.C_len = C.long(new_size)
 		} else if err := s.Buf.TpRealloc(new_size); nil != err {
 			return err
