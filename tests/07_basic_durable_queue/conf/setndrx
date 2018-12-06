@@ -98,8 +98,14 @@ export NDRX_XA_RES_ID=1
 export NDRX_XA_OPEN_STR="$NDRX_APPHOME/var/qspace1"
 export NDRX_XA_CLOSE_STR=$NDRX_XA_OPEN_STR
 # Static registration:
-export NDRX_XA_DRIVERLIB=libndrxxaqdisks.so
-export NDRX_XA_RMLIB=libndrxxaqdisk.so
+if [ "$(uname)" == "Darwin" ]; then
+	export NDRX_XA_DRIVERLIB=libndrxxaqdisks.dylib
+	export NDRX_XA_RMLIB=libndrxxaqdisk.dylib
+else
+
+	export NDRX_XA_DRIVERLIB=libndrxxaqdisks.so
+	export NDRX_XA_RMLIB=libndrxxaqdisk.so
+fi
 export NDRX_XA_LAZY_INIT=1
 
 # vim: set ts=4 sw=4 et smartindent:
