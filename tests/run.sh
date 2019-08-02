@@ -45,6 +45,7 @@ run_test "08_logging"
 run_test "09_return_manual_buffer"
 run_test "10_views"
 run_test "11_ubf_tests"
+run_test "12_tpimportexp"
 
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"
 
