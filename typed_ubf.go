@@ -565,7 +565,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 		}
 		return int16(c_val), nil
 	case BFLD_LONG:
-		var c_val C.short
+		var c_val C.long
 		if ret := C.OBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()
