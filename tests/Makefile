@@ -10,6 +10,7 @@ all:
 	$(MAKE) -C 09_return_manual_buffer
 	$(MAKE) -C 10_views
 	$(MAKE) -C 11_ubf_tests
+	$(MAKE) -C 12_tpimportexp
 
 clean:
 	$(MAKE) -C 01_basic_ubf_call clean
@@ -19,7 +20,8 @@ clean:
 	$(MAKE) -C 06_ubf_marshal clean
 	$(MAKE) -C 07_basic_durable_queue clean
 	$(MAKE) -C 08_logging clean
-	$(MAKE) -C 09_return_manual_buffer
-	$(MAKE) -C 10_views
-	$(MAKE) -C 11_ubf_tests
+	$(MAKE) -C 09_return_manual_buffer clean
+	$(MAKE) -C 10_views clean
+	$(MAKE) -C 11_ubf_tests clean
+	$(MAKE) -C 12_tpimportexp clean
 
