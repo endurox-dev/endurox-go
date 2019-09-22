@@ -11,6 +11,7 @@ popd
 
 # Start the enduro/x app server (which will boot the our server executable)
 
+xadmin down -y
 xadmin start -y
 rm /tmp/09_CLIENT.log 2>/dev/null
 
