@@ -6,23 +6,28 @@
 /* -----------------------------------------------------------------------------
  * Enduro/X Middleware Platform for Distributed Transaction Processing
  * Copyright (C) 2009-2016, ATR Baltic, Ltd. All Rights Reserved.
- * Copyright (C) 2017-2018, Mavimax, Ltd. All Rights Reserved.
+ * Copyright (C) 2017-2019, Mavimax, Ltd. All Rights Reserved.
  * This software is released under one of the following licenses:
- * AGPL or Mavimax's license for commercial use.
+ * LGPL or Mavimax's license for commercial use.
+ * See LICENSE file for full text.
+ *
+ * C (as designed by Dennis Ritchie and later authors) language code is licensed
+ * under Enduro/X Modified GNU Affero General Public License, version 3.
+ * See LICENSE_C file for full text.
  * -----------------------------------------------------------------------------
- * AGPL license:
- * 
+ * LGPL license:
+ *
  * This program is free software; you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License, version 3 as published
+ * the terms of the GNU Lesser General Public License, version 3 as published
  * by the Free Software Foundation;
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Affero General Public License, version 3
+ * PARTICULAR PURPOSE. See the GNU Lesser General Public License, version 3
  * for more details.
  *
- * You should have received a copy of the GNU Affero General Public License along 
- * with this program; if not, write to the Free Software Foundation, Inc., 
+ * You should have received a copy of the Lesser General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * -----------------------------------------------------------------------------
@@ -319,25 +324,25 @@ const (
  * flag bits for C language xatmi routines
  */
 const (
-	TPNOBLOCK     = 0x00000001
-	TPSIGRSTRT    = 0x00000002
-	TPNOREPLY     = 0x00000004
-	TPNOTRAN      = 0x00000008
-	TPTRAN        = 0x00000010
-	TPNOTIME      = 0x00000020
-	TPGETANY      = 0x00000080
-	TPNOCHANGE    = 0x00000100
-	TPCONV        = 0x00000400
-	TPSENDONLY    = 0x00000800
-	TPRECVONLY    = 0x00001000
-	TPTRANSUSPEND = 0x00040000 /* Suspend current transaction          */
-	TPSOFTTIMEOUT = 0x00080000 /* Software time-out, translated to XATMI timeout for caller */
-	TPSOFTNOENT   = 0x00100000 /* No service entry                     */
-	TPNOAUTBUF    = 0x00200000 /* Don't restore autbuf in srv context  */
-	TPREGEXMATCH  = 0x00800000 /* Use regular expressoins for match    */
-	TPNOCACHELOOK = 0x01000000 /* Do not lookup cache                  */
-	TPNOCACHEADD  = 0x02000000 /* Do not save data to cache            */
-	TPNOCACHEDDATA= 0x04000000 /* Do not use cached data               */
+	TPNOBLOCK      = 0x00000001
+	TPSIGRSTRT     = 0x00000002
+	TPNOREPLY      = 0x00000004
+	TPNOTRAN       = 0x00000008
+	TPTRAN         = 0x00000010
+	TPNOTIME       = 0x00000020
+	TPGETANY       = 0x00000080
+	TPNOCHANGE     = 0x00000100
+	TPCONV         = 0x00000400
+	TPSENDONLY     = 0x00000800
+	TPRECVONLY     = 0x00001000
+	TPTRANSUSPEND  = 0x00040000 /* Suspend current transaction          */
+	TPSOFTTIMEOUT  = 0x00080000 /* Software time-out, translated to XATMI timeout for caller */
+	TPSOFTNOENT    = 0x00100000 /* No service entry                     */
+	TPNOAUTBUF     = 0x00200000 /* Don't restore autbuf in srv context  */
+	TPREGEXMATCH   = 0x00800000 /* Use regular expressoins for match    */
+	TPNOCACHELOOK  = 0x01000000 /* Do not lookup cache                  */
+	TPNOCACHEADD   = 0x02000000 /* Do not save data to cache            */
+	TPNOCACHEDDATA = 0x04000000 /* Do not use cached data               */
 )
 
 /*
@@ -469,6 +474,21 @@ const (
 	NELIMIT     = 10 /* Limit reached */
 )
 
+/**
+ * Enduro/X extensions
+ */
+const (
+	TPEX_NOCHANGE = 0x00000004 /**< Reject tpimport with error if 	*/
+	TPEX_STRING   = 0x00000008 /**< Export buffer in base64 format 		*/
+)
+
+/**
+ * Multi contexting defines
+ */
+const (
+	TPNULLCONTEXT = 0 /**< NULL Context */
+)
+
 /*
  * Transaction ID type
  */
@@ -527,6 +547,8 @@ type TPQCTL struct {
 
 //ATMI buffer
 type ATMIBuf struct {
+	gcoff int
+
 	C_ptr *C.char
 	//We will need some API for length & buffer setting
 	//Probably we need a wrapper for lenght function
@@ -549,10 +571,16 @@ func (u *ATMIBuf) GetBuf() *ATMIBuf {
 	return u
 }
 
+//Do nothing, to trick the GC
+func (u *ATMIBuf) Nop() int {
+	u.gcoff++
+	return u.gcoff
+}
+
 //Max message size
 //@return buffer size configured by Enduro/X, min 64K
 func ATMIMsgSizeMax() int64 {
-        return int64(C.ndrx_msgsizemax())
+	return int64(C.ndrx_msgsizemax())
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -872,7 +900,7 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 
 	ret := C.Otpgetrply(&ac.c_ctx, &c_cd, &buf.C_ptr, &buf.C_len, C.long(flags))
 	*cd = int(c_cd)
-	
+
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
 	}
@@ -1452,4 +1480,65 @@ func (ac *ATMICtx) TpAssertNotEqualError(a interface{}, b interface{}, message s
 	return fmt.Errorf("TpAssertNotEqualError: %s: %s", message, msg2)
 
 }
+
+//Export the buffer to JSON format.
+//@param tb TypecdTyped buffer
+//@param flags 0 (JSON text) or TPEX_STRING (export in base64 format)
+func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
+
+	var err ATMIError
+	buf := tb.GetBuf()
+	c_str_buf := C.malloc(C.size_t(ATMIMsgSizeMax() * 2))
+	c_str_buf_ptr := (*C.char)(unsafe.Pointer(c_str_buf))
+	defer C.free(unsafe.Pointer(c_str_buf))
+	c_len := C.long(ATMIMsgSizeMax() * 2)
+
+	//WELL! go might be too agressive, if it loads in the function call
+	//the buf object and for the caller tb/buf is last used in the block
+	//the GC might start to kill the buf, thus meaning it will corrupt the
+	//UBF buffer object while C is processing !!!!!!!!
+	//Thus needs to lock buf somehow while we are in the C
+	if ret := C.Otpexport(&ac.c_ctx, buf.C_ptr, buf.C_len, c_str_buf_ptr, &c_len,
+		C.long(flags)); ret != SUCCEED {
+		err = ac.NewATMIError()
+	}
+
+	//Have buffer usage after C, avoid GC during the C call, if this is last
+	//buffer use
+	buf.Nop()
+
+	if nil != err {
+		return "", err
+	}
+
+	return C.GoString(c_str_buf_ptr), nil
+
+}
+
+//Import the UBF buffer from the json string which is exported by TpExport
+//The tb TypedBuffer will be updated according to incoming data
+//@param jsondata json string data according to texport(3)
+//@param tb typed buffer where to install the incoming buffer
+//@param flags TPEX_STRING if decode as base64, TPEX_NOCHANGE do not change tb format
+//	if buffer type is different
+func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIError {
+
+	var err ATMIError
+	buf := tb.GetBuf()
+
+	c_jsondata := C.CString(jsondata)
+	defer C.free(unsafe.Pointer(c_jsondata))
+
+	if ret := C.Otpimport(&ac.c_ctx, c_jsondata, C.long(0), &buf.C_ptr, &buf.C_len,
+		C.long(flags)); ret != SUCCEED {
+		err = ac.NewATMIError()
+	}
+
+	buf.Nop()
+
+	//Have buffer usage after C, avoid GC during the C call
+
+	return err
+}
+
 /* vim: set ts=4 sw=4 et smartindent: */

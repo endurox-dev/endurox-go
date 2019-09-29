@@ -6,23 +6,28 @@
 /* -----------------------------------------------------------------------------
  * Enduro/X Middleware Platform for Distributed Transaction Processing
  * Copyright (C) 2009-2016, ATR Baltic, Ltd. All Rights Reserved.
- * Copyright (C) 2017-2018, Mavimax, Ltd. All Rights Reserved.
+ * Copyright (C) 2017-2019, Mavimax, Ltd. All Rights Reserved.
  * This software is released under one of the following licenses:
- * AGPL or Mavimax's license for commercial use.
+ * LGPL or Mavimax's license for commercial use.
+ * See LICENSE file for full text.
+ *
+ * C (as designed by Dennis Ritchie and later authors) language code is licensed
+ * under Enduro/X Modified GNU Affero General Public License, version 3.
+ * See LICENSE_C file for full text.
  * -----------------------------------------------------------------------------
- * AGPL license:
- * 
+ * LGPL license:
+ *
  * This program is free software; you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License, version 3 as published
+ * the terms of the GNU Lesser General Public License, version 3 as published
  * by the Free Software Foundation;
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Affero General Public License, version 3
+ * PARTICULAR PURPOSE. See the GNU Lesser General Public License, version 3
  * for more details.
  *
- * You should have received a copy of the GNU Affero General Public License along 
- * with this program; if not, write to the Free Software Foundation, Inc., 
+ * You should have received a copy of the Lesser General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * -----------------------------------------------------------------------------
@@ -560,7 +565,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 		}
 		return int16(c_val), nil
 	case BFLD_LONG:
-		var c_val C.short
+		var c_val C.long
 		if ret := C.OBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()

@@ -11,16 +11,21 @@ popd
 
 # Start the enduro/x app server (which will boot the our server executable)
 
-xadmin down -y
 xadmin start -y
-rm /tmp/09_CLIENT.log 2>/dev/null
 
 # should print some hello world
-client 
+#valgrind --tool=memcheck --leak-check=yes client
+client
 
-RET=$?
+ret=$?
+
+if [[ $ret -eq 0 ]]; then
+	echo "Test OK"
+else
+	echo "Test failed"
+fi
 
 # shutdown the app server
 xadmin stop -c -y
 
-exit $?
+exit $ret
