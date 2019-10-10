@@ -45,7 +45,29 @@ func main() {
 
 		//Set one field for call
 		if err := buf.BChg(ubftab.T_CARRAY_FLD, 0, "HELLO FROM CLIENT"); nil != err {
-			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+			fmt.Printf("UBF Error %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			goto out
+		}
+		//test that we can run zero lenght byte arrays
+		var nulbuf []byte
+		if err := buf.BChg(ubftab.T_CARRAY_2_FLD, 0, nulbuf); nil != err {
+			fmt.Printf("UBF Error %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			goto out
+		}
+
+		//Get zero len array
+		nulout, err := buf.BGetByteArr(ubftab.T_CARRAY_2_FLD, 0)
+
+		if nil != err {
+			fmt.Printf("Failed to get 0len array %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			goto out
+		}
+
+		if  len(nulout) != 0 {
+			fmt.Printf("nulout not 0: %d\n", len(nulout))
 			ret = FAIL
 			goto out
 		}
@@ -99,14 +121,14 @@ func main() {
 
 			//Call the server
 			if _, err := ac.TpCall("BIGMSG", buf, 0); nil != err {
-				fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+				fmt.Printf("ATMI Error BIGMSG %d:[%s]\n", err.Code(), err.Message())
 				ret = FAIL
 				goto out
 			}
 
 			testdata, err = buf.BGetByteArr(ubftab.T_CARRAY_FLD, 0)
 
-            if nil != err {
+			if nil != err {
 				fmt.Printf("! Failed to get rsp: ATMI Error %d:[%s]\n", err.Code(), err.Message())
 				ret = FAIL
 				goto out

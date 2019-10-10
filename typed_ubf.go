@@ -1045,7 +1045,15 @@ func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add bo
 	case []byte:
 		arr := ival.([]byte)
 		c_len := C.BFLDLEN(len(arr))
-		c_arr := (*C.char)(unsafe.Pointer(&arr[0]))
+		var c_arr *C.char
+
+        if c_len > 0 {
+		    c_arr = (*C.char)(unsafe.Pointer(&arr[0]))
+        } else {
+            dumdata :=[...]byte{0x0}
+            // set some pointer..., not used really as len is 0, but we need some ptr
+		    c_arr = (*C.char)(unsafe.Pointer(&dumdata[0]))
+        }
 
 		if do_add {
 			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),

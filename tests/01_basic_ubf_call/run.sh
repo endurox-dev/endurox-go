@@ -15,7 +15,7 @@ xadmin start -y
 rm /tmp/01_CLIENT.log 2>/dev/null
 
 # should print some hello world
-client | tee test.out
+client > /tmp/01_CLIENT.log
 
 RET=$?
 
