@@ -35,7 +35,15 @@ run_test () {
         fi
 }
 
-run_test "01_basic_ubf_call"
+UNAME=`uname`
+
+# Not for freebsd - bigmsg test issues - stack size only 2M for threads
+# wait for 7.1 Enduro/X for dynamic buffer
+# allocation
+if [ "X$UNAME" != "XFreeBSD" ]; then
+	run_test "01_basic_ubf_call"
+fi
+
 run_test "02_basic_string_call"
 run_test "03_basic_carray_call"
 run_test "05_basic_json_call"
