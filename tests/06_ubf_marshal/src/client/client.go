@@ -131,14 +131,14 @@ func async_main() {
 		}
 
 		//LONG
-		if s.LongTest != 9999999101 {
+		if s.LongTest != 199101 {
 			fmt.Printf("s.LongTest invalid value!\n")
 			ret = FAIL
 			return
 		}
 
-		if len(s.LongArrayTest) != 2 || s.LongArrayTest[0] != 9999999101 ||
-			s.LongArrayTest[1] != 9999999102 {
+		if len(s.LongArrayTest) != 2 || s.LongArrayTest[0] != 199101 ||
+			s.LongArrayTest[1] != 199102 {
 			fmt.Printf("s.LongArrayTest invalid value!\n")
 			ret = FAIL
 			return
@@ -159,14 +159,14 @@ func async_main() {
 		}
 
 		//FLOAT64
-		if s.Float64Test-999999910.888 > 0.0001 {
+		if s.Float64Test-19910.888 > 0.0001 {
 			fmt.Printf("s.Float64Test invalid value!\n")
 			ret = FAIL
 			return
 		}
 
-		if len(s.Float64ArrayTest) != 2 || s.Float64ArrayTest[0]-999999910.888 > 0.0001 ||
-			s.Float64ArrayTest[1]-999999910.999 > 0.0001 {
+		if len(s.Float64ArrayTest) != 2 || s.Float64ArrayTest[0]-19910.888 > 0.0001 ||
+			s.Float64ArrayTest[1]-19910.999 > 0.0001 {
 			fmt.Printf("s.Float64ArrayTest invalid value!\n")
 			ret = FAIL
 			return
@@ -235,7 +235,7 @@ func async_main() {
 		}
 
 		//LONG
-		if res, err := buf2.BQBoolEv("T_LONG_FLD==9999999101 && T_LONG_FLD[1]==9999999102"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_LONG_FLD==199101 && T_LONG_FLD[1]==199102"); !res || nil != err {
 			if nil != err {
 				fmt.Printf("long: Expression failed: %s\n", err.Error())
 				ret = FAIL
@@ -261,7 +261,7 @@ func async_main() {
 		}
 
 		//DOUBLE
-		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD==999999910.888 && T_DOUBLE_FLD[1]==999999910.999"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD==19910.888 && T_DOUBLE_FLD[1]==19910.999"); !res || nil != err {
 			if nil != err {
 				fmt.Printf("double: Expression failed: %s\n", err.Error())
 				ret = FAIL

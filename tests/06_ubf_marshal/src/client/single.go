@@ -41,12 +41,12 @@ func loadbufferdata(buf *atmi.TypedUBF) atmi.ATMIError {
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_LONG_FLD, 0, 9999999101); nil != err {
+	if err := buf.BChg(ubftab.T_LONG_FLD, 0, 199101); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_LONG_FLD, 1, 9999999102); nil != err {
+	if err := buf.BChg(ubftab.T_LONG_FLD, 1, 199102); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
@@ -61,12 +61,12 @@ func loadbufferdata(buf *atmi.TypedUBF) atmi.ATMIError {
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 0, 999999910.888); nil != err {
+	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 0, 19910.888); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 1, 999999910.999); nil != err {
+	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 1, 19910.999); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
@@ -180,13 +180,13 @@ func async_main_one() {
 		}
 
 		//LONG
-		if s.LongTest != 9999999102 {
+		if s.LongTest != 199102 {
 			fmt.Printf("s.LongTest invalid value!\n")
 			ret = FAIL
 			return
 		}
 
-		if len(s.LongArrayTest) != 1 || s.LongArrayTest[0] != 9999999102 {
+		if len(s.LongArrayTest) != 1 || s.LongArrayTest[0] != 199102 {
 			fmt.Printf("s.LongArrayTest invalid value!\n")
 			ret = FAIL
 			return
@@ -206,13 +206,13 @@ func async_main_one() {
 		}
 
 		//FLOAT64
-		if s.Float64Test-999999910.999 > 0.0001 {
+		if s.Float64Test-19910.999 > 0.0001 {
 			fmt.Printf("s.Float64Test invalid value!\n")
 			ret = FAIL
 			return
 		}
 
-		if len(s.Float64ArrayTest) != 1 || s.Float64ArrayTest[0]-999999910.999 > 0.0001 {
+		if len(s.Float64ArrayTest) != 1 || s.Float64ArrayTest[0]-19910.999 > 0.0001 {
 			fmt.Printf("s.Float64ArrayTest invalid value!\n")
 			ret = FAIL
 			return
@@ -301,7 +301,7 @@ func async_main_one() {
 		}
 
 		//LONG
-		if res, err := buf2.BQBoolEv("T_LONG_FLD[0]==9999999102"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_LONG_FLD[0]==199102"); !res || nil != err {
 			if nil != err {
 				fmt.Printf("long: Expression failed: %s\n", err.Error())
 				ret = FAIL
@@ -327,7 +327,7 @@ func async_main_one() {
 		}
 
 		//DOUBLE
-		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD[0]==999999910.999"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD[0]==19910.999"); !res || nil != err {
 			if nil != err {
 				fmt.Printf("double: Expression failed: %s\n", err.Error())
 				ret = FAIL
