@@ -1541,4 +1541,13 @@ func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIEr
 	return err
 }
 
+//Return size of long. Used to detect running platform
+//Basically all int64 APIs used by ATMI package will
+//resolve from Enduro/X point of view this count of bytes.
+//@return number of bytes in "long" data type
+func ExSizeOfLong() int {
+
+    return C.EX_SIZEOF_LONG
+}
+
 /* vim: set ts=4 sw=4 et smartindent: */
