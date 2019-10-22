@@ -38,12 +38,12 @@ func loadbufferdata(buf *atmi.TypedUBF) atmi.ATMIError {
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_LONG_FLD, 0, 9999999101); nil != err {
+	if err := buf.BChg(ubftab.T_LONG_FLD, 0, 199101); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_LONG_FLD, 1, 9999999102); nil != err {
+	if err := buf.BChg(ubftab.T_LONG_FLD, 1, 199102); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
@@ -58,12 +58,12 @@ func loadbufferdata(buf *atmi.TypedUBF) atmi.ATMIError {
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 0, 999999910.888); nil != err {
+	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 0, 19910.888); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}
 
-	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 1, 999999910.999); nil != err {
+	if err := buf.BChg(ubftab.T_DOUBLE_FLD, 1, 19910.999); nil != err {
 		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
 		return err
 	}

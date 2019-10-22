@@ -882,6 +882,17 @@ and binary buffer.
 |XATMI client and server
 |===
 
+==== ATMIBuf.Nop()
+[cols="h,5a"]
+|===
+|Function
+|func (u *ATMIBuf) Nop() int
+|Description
+|Do nothing, to trick the GC. 
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMIBuf.TpRealloc()
 [cols="h,5a"]
 |===
@@ -1618,6 +1629,19 @@ TypedBuffer, flags int64) ATMIError
 |XATMI client and server
 |===
 
+==== ATMICtx.TpExport()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError)
+|Description
+|Export the buffer to JSON format.. 
+*tb* is TypecdTyped buffer. 
+*flags* is 0 (JSON text) or TPEX_STRING (export in base64 format). 
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMICtx.TpExtAddB4PollCB()
 [cols="h,5a"]
 |===
@@ -1785,6 +1809,23 @@ ATMIError)
 |Get cluster node id. 
 |Returns
 |Node Id
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpImport()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64)
+ATMIError
+|Description
+|Import the UBF buffer from the json string which is exported by TpExport The
+tb TypedBuffer will be updated according to incoming data. 
+*jsondata* is json string data according to texport(3). 
+*tb* is typed buffer where to install the incoming buffer. 
+*flags* is TPEX_STRING if decode as base64, TPEX_NOCHANGE do not change tb
+format	     if buffer type is different. 
 |Applies
 |XATMI client and server
 |===
@@ -2922,6 +2963,23 @@ iteration state internally.
 |XATMI client and server
 |===
 
+==== TypedUBF.BPrintStr()
+[cols="h,5a"]
+|===
+|Function
+|func (u *TypedUBF) BPrintStr() (string, UBFError)
+|Description
+|Print UBF buffer to string. The output string buffer at C side is composed as
+UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size is
+used for purpuse so that Go developer can used extended buffer size in case if
+there is no free space (returned error BEUNIX). 
+|Returns
+|s BPrint format string or "" in case of error. Second argument is	UBF
+error set in case of error, else it is nil
+|Applies
+|XATMI client and server
+|===
+
 ==== TypedUBF.BProj()
 [cols="h,5a"]
 |===
@@ -2995,7 +3053,8 @@ caller can do anything it wants with the string output.
 |Function
 |func (u *TypedUBF) BType(bfldid int) (string, UBFError)
 |Description
-|Return field name in string. 
+|Return type descriptor of the field - string format. possible values: short,
+long, char, float, double, string, carray. 
 *bfldid* is field ID. 
 |Returns
 |field type, UBF error

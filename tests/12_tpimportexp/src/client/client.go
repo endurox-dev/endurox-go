@@ -125,7 +125,7 @@ func async_main() {
 		}
 
 		//LONG
-		if res, err := buf2.BQBoolEv("T_LONG_FLD==9999999101 && T_LONG_FLD[1]==9999999102"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_LONG_FLD==199101 && T_LONG_FLD[1]==199102"); !res || nil != err {
 			if nil != err {
 				ac.TpLogError("ERROR ! long: Expression failed: %s", err.Error())
 				ret = FAIL
@@ -151,7 +151,7 @@ func async_main() {
 		}
 
 		//DOUBLE
-		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD==999999910.888 && T_DOUBLE_FLD[1]==999999910.999"); !res || nil != err {
+		if res, err := buf2.BQBoolEv("T_DOUBLE_FLD==19910.888 && T_DOUBLE_FLD[1]==19910.999"); !res || nil != err {
 			if nil != err {
 				ac.TpLogError("ERROR ! double: Expression failed: %s", err.Error())
 				ret = FAIL

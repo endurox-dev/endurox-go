@@ -35,6 +35,11 @@ run_test () {
         fi
 }
 
+UNAME=`uname`
+
+# Not for freebsd - bigmsg test issues - stack size only 2M for threads
+# wait for 7.1 Enduro/X for dynamic buffer - currently ignore TPEINVAL when BIGMSG call fails
+# allocation
 run_test "01_basic_ubf_call"
 run_test "02_basic_string_call"
 run_test "03_basic_carray_call"

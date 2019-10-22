@@ -121,7 +121,13 @@ func main() {
 
 			//Call the server
 			if _, err := ac.TpCall("BIGMSG", buf, 0); nil != err {
+				//RPI and others, ignore big fails when message size unavailable
+				if err.Code() == atmi.TPEINVAL {
+					continue
+				}
+
 				fmt.Printf("ATMI Error BIGMSG %d:[%s]\n", err.Code(), err.Message())
+
 				ret = FAIL
 				goto out
 			}
