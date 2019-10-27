@@ -297,7 +297,33 @@ func async_main() {
 			return
 		}
 
-		fmt.Println("Marshal tests ok...\n")
+		//Print buffer ...
+
+		bufs, _ := buf2.BSprint()
+
+		//Check the buffer string printed..
+		exp_val := "T_SHORT_FLD\t32000\n" +
+			"T_SHORT_FLD\t32001\n" +
+			"T_LONG_FLD\t199101\n" +
+			"T_LONG_FLD\t199102\n" +
+			"T_CHAR_FLD\tA\n" +
+			"T_CHAR_FLD\tB\n" +
+			"T_FLOAT_FLD\t9.11000\n" +
+			"T_FLOAT_FLD\t9.22000\n" +
+			"T_DOUBLE_FLD\t19910.888000\n" +
+			"T_DOUBLE_FLD\t19910.999000\n" +
+			"T_STRING_FLD\tHELLO STRING 1\n" +
+			"T_STRING_FLD\tHELLO STRING 2\n" +
+			"T_CARRAY_FLD\t\\00\\01\\02\\03\n" +
+			"T_CARRAY_FLD\t\\04\\03\\02\\01\\00\n"
+
+		if bufs != exp_val {
+			fmt.Printf("BSprint failed: expected [%s] vs got [%s]\n", exp_val, bufs)
+			ret = FAIL
+			return
+		}
+
+		fmt.Printf("Marshal tests ok...\n")
 
 		runtime.GC()
 	}

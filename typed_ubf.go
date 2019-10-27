@@ -130,14 +130,13 @@ struct bfprintcb_data
 	long size;
 };
 
-#if 0
-- only for Enduro/X 6+
 //Callback for writting data to
 //@param buffer output buffer to write
 //@param datalen printed data including EOS
 //@param dataptr1 custom data pointer, in this case bfprintcb_data_t
 //@return EXSUCCEED/EXFAIL
-static int bfprintcb_writef(char *buffer, long datalen, void *dataptr1)
+static int bfprintcb_writef(char **buffer, long datalen, void *dataptr1,
+	int *do_write, FILE *outf, BFLDID fid)
 {
 	int ret = EXSUCCEED;
 
@@ -158,7 +157,7 @@ static int bfprintcb_writef(char *buffer, long datalen, void *dataptr1)
 		data->cur_offset--;
 	}
 
-	memcpy(data->buf + data->cur_offset, buffer, datalen);
+	memcpy(data->buf + data->cur_offset, *buffer, datalen);
 
 	data->cur_offset+=datalen;
 
@@ -209,7 +208,7 @@ out:
 
 	return data.buf;
 }
-#endif
+
 */
 import "C"
 import (
@@ -1047,13 +1046,13 @@ func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add bo
 		c_len := C.BFLDLEN(len(arr))
 		var c_arr *C.char
 
-        if c_len > 0 {
-		    c_arr = (*C.char)(unsafe.Pointer(&arr[0]))
-        } else {
-            dumdata :=[...]byte{0x0}
-            // set some pointer..., not used really as len is 0, but we need some ptr
-		    c_arr = (*C.char)(unsafe.Pointer(&dumdata[0]))
-        }
+		if c_len > 0 {
+			c_arr = (*C.char)(unsafe.Pointer(&arr[0]))
+		} else {
+			dumdata := [...]byte{0x0}
+			// set some pointer..., not used really as len is 0, but we need some ptr
+			c_arr = (*C.char)(unsafe.Pointer(&dumdata[0]))
+		}
 
 		if do_add {
 			if ret := C.OCBadd(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
@@ -1352,6 +1351,8 @@ func (u *TypedUBF) TpLogPrintUBF(lev int, title string) {
 	return
 }
 
+/*
+Replaced with callback version with EX 6+
 //Alternative for Bfprint. Will return the output in string variable
 //So that caller can do anything it wants with the string output
 //@return Printed buffer, UBF error
@@ -1384,16 +1385,15 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 
 	return C.GoString((*C.char)(c_val)), nil
 }
+*/
 
-/*
-- For enduro/X 6
 //Print UBF buffer to string. The output string buffer at C side is composed
 //as UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size
 //is used for purpuse so that Go developer can used extended buffer size in case
 //if there is no free space (returned error BEUNIX)
 //@returns BPrint format string or "" in case of error. Second argument is
 //	UBF error set in case of error, else it is nil
-func (u *TypedUBF) BPrintStr() (string, UBFError) {
+func (u *TypedUBF) BSprint() (string, UBFError) {
 
 	c_str := C.BPrintStrC(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
 
@@ -1408,7 +1408,6 @@ func (u *TypedUBF) BPrintStr() (string, UBFError) {
 	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
 		"either insufficient memory or other error. See UBF logs.")
 }
-*/
 
 //Read the bufer content from string
 //@param s String buffer representation
@@ -1677,4 +1676,5 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 func (u *TypedUBF) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */
