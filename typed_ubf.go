@@ -1405,6 +1405,9 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 		return str, nil
 	}
 
+    //Avoid gc during the func call
+    u.GetBuf().Nop()
+
 	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
 		"either insufficient memory or other error. See UBF logs.")
 }
