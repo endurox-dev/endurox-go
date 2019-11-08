@@ -361,7 +361,10 @@ func go_cb_dispatch_call(ctx C.TPCONTEXT_T, p_svc *C.TPSVCINFO, name *C.char, fn
 
 //Continue main thread processing (go back to server polling)
 func (ac *ATMICtx) TpContinue() {
+
 	C.Otpcontinue(&ac.c_ctx)
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 }
 
 //We should pass here init & un-init functions...
@@ -370,6 +373,7 @@ func (ac *ATMICtx) TpContinue() {
 //@param uninitf	callback to un-init function
 //@return Enduro/X service exit code, ATMI Error
 func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError {
+
 	var err ATMIError
 	C.c_init()
 
@@ -401,6 +405,7 @@ func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError
 		C.free(unsafe.Pointer(arg))
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -410,6 +415,7 @@ func (ac *ATMICtx) TpRun(initf TPSrvInitFunc, uninitf TPSrvUninitFunc) ATMIError
 //@param fptr   Pointer to service function, signature "func FUNCNAME(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO)"
 //@return ATMI Error
 func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFunction) ATMIError {
+
 	var err ATMIError
 
 	if nil == fptr {
@@ -433,6 +439,7 @@ func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr TPServiceFu
 		funcmaps[funcname] = fptr
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -445,12 +452,16 @@ func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags int64) 
 
 	data := tb.GetBuf()
 
-        //mvitolin 07/03/2016 - tpreturn will free the any buffer (auto and manual) #100
-        if data.HaveFinalizer {
-                runtime.SetFinalizer(data, nil)
-        }
+	//mvitolin 07/03/2016 - tpreturn will free the any buffer (auto and manual) #100
+	if data.HaveFinalizer {
+		runtime.SetFinalizer(data, nil)
+	}
 
 	C.Otpreturn(&ac.c_ctx, C.int(rval), C.long(rcode), data.C_ptr, data.C_len, C.long(flags))
+
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 }
 
 //Forward the call to specified poller and return to Q poller
@@ -461,17 +472,18 @@ func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 
 	data := tb.GetBuf()
 
-        //mvitolin 07/03/2016 - tpforward will free the any buffer (auto and manual) #100
-        if data.HaveFinalizer {
-                runtime.SetFinalizer(data, nil)
-        }
+	//mvitolin 07/03/2016 - tpforward will free the any buffer (auto and manual) #100
+	if data.HaveFinalizer {
+		runtime.SetFinalizer(data, nil)
+	}
 
-
-	c_svc:=	C.CString(svc)
-
-	defer C.free(unsafe.Pointer(c_svc))
+	c_svc := C.CString(svc)
 
 	C.Otpforward(&ac.c_ctx, c_svc, data.C_ptr, data.C_len, C.long(flags))
+
+	C.free(unsafe.Pointer(c_svc))
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 
 }
 
@@ -479,6 +491,7 @@ func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 //@param	svcname	Service Name
 //@return ATMI Error
 func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError {
+
 	var err ATMIError
 	c_svcname := C.CString(svcname)
 
@@ -490,6 +503,8 @@ func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 	return err
 }
 
@@ -498,12 +513,14 @@ func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError {
 //@param flags	Flags
 //@return Number of subscriptions deleted, ATMI Error
 func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int, ATMIError) {
+
 	var err ATMIError
 	ret := C.Otpunsubscribe(&ac.c_ctx, C.long(subscription), C.long(flags))
 	if FAIL == ret {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int(ret), err
 }
 
@@ -514,6 +531,7 @@ func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int, ATMIErro
 //@param flags	Flags
 //@return Subscription id, ATMI Error
 func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, flags int64) (int64, ATMIError) {
+
 	var err ATMIError
 	ret := C.go_tpsubscribe(&ac.c_ctx, C.CString(eventexpr), C.CString(filter),
 		C.long(ctl.flags), C.CString(ctl.name1), C.CString(ctl.name2), C.long(flags))
@@ -522,12 +540,14 @@ func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL, fl
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int64(ret), err
 }
 
 //Get Server Call thread context data (free of *TPSRVCTXDATA must be done by user)
 //@return contect data, ATMI Error
 func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
+
 	var err ATMIError
 	var data *TPSRVCTXDATA
 	c_ptr := C.Otpsrvgetctxdata(&ac.c_ctx)
@@ -539,12 +559,14 @@ func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError) {
 		data.c_ptr = c_ptr
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return data, err
 }
 
 //Restore thread context data
 //@return ATMI Error
 func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
+
 	var err ATMIError
 	var ret C.int
 	if nil == data || nil == data.c_ptr {
@@ -560,21 +582,26 @@ func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError {
 	}
 
 out:
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Free the server context data
 //@param data	Context data block
 func (ac *ATMICtx) TpSrvFreeCtxData(data *TPSRVCTXDATA) {
+
 	if nil != data && nil != data.c_ptr {
 		C.free(unsafe.Pointer(data.c_ptr))
 	}
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 }
 
 //Remove the polling file descriptor
 //@param fd 		FD to poll on
 //@return ATMI Error
 func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError {
+
 	var err ATMIError
 	ret := C.Otpext_delpollerfd(&ac.c_ctx, C.int(fd))
 
@@ -582,6 +609,7 @@ func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -589,6 +617,7 @@ func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError {
 //@param cb	Callback function with "func(ctx *ATMICtx) int" signature
 //@return ATMI Error
 func (ac *ATMICtx) TpExtAddB4PollCB(cb TPB4PollCallback) ATMIError {
+
 	var err ATMIError
 
 	if nil == cb {
@@ -605,12 +634,14 @@ func (ac *ATMICtx) TpExtAddB4PollCB(cb TPB4PollCallback) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Delete before-doing-poll callback
 //@return ATMI Error
 func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError {
+
 	var err ATMIError
 	ret := C.Otpext_delb4pollcb(&ac.c_ctx)
 
@@ -618,6 +649,7 @@ func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -631,6 +663,7 @@ func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError {
 //@param cb 	Callback function with signature: "func(ctx *ATMICtx) int".
 //@return ATMI Error
 func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
+
 	var err ATMIError
 
 	if nil == cb {
@@ -646,12 +679,14 @@ func (ac *ATMICtx) TpExtAddPeriodCB(secs int, cb TPPeriodCallback) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Delete del periodic callback
 //@return ATMI Error
 func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError {
+
 	var err ATMIError
 	ret := C.Otpext_delperiodcb(&ac.c_ctx)
 
@@ -659,6 +694,7 @@ func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -679,6 +715,7 @@ func go_pollevent(ctx C.TPCONTEXT_T, fd C.int, events C.uint) C.int {
 //@param cb 	Callback func
 //@return ATMI Error
 func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb TPPollerFdCallback) ATMIError {
+
 	var err ATMIError
 
 	if nil == cb {
@@ -699,12 +736,20 @@ func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{}, cb 
 		funcpollers[fd] = cbblock
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Return server id
 //@return server_id
 func (ac *ATMICtx) TpGetSrvId() int {
-	return int(C.Otpgetsrvid(&ac.c_ctx))
+
+	ret := int(C.Otpgetsrvid(&ac.c_ctx))
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
+	return ret
+
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */

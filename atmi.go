@@ -1,5 +1,14 @@
 /**
  * @brief XATMI main package
+ * 	NOTES for finalizers! Note that if we pass from finalized object (typed ubf,
+ *	expression tree or ATMI Context) pointer to C, the and the function call
+ *	for the object is last in the object's go scope, the go might being to GC
+ *	the go object, while the C function have received pointer in args. Thus
+ *  C side in the middle of processing might get destructed object. e.g.
+ *  c_str := C.BPrintStrC(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
+ *  after enter in C.BPrintStrC(), the GC might kill the u object. Thus to avoid
+ *  this, we create a defered "no-op" call in the enter of go func. With "u.Buf.nop()"
+ *	at the end of the functions.
  *
  * @file atmi.go
  */
@@ -500,6 +509,7 @@ type TPTRANID struct {
  * ATMI Context object
  */
 type ATMICtx struct {
+	gcoff int //dummy counter tricking the gc to suspend while using object in c
 	c_ctx C.TPCONTEXT_T
 }
 
@@ -572,7 +582,7 @@ func (u *ATMIBuf) GetBuf() *ATMIBuf {
 }
 
 //Do nothing, to trick the GC
-func (u *ATMIBuf) Nop() int {
+func (u *ATMIBuf) nop() int {
 	u.gcoff++
 	return u.gcoff
 }
@@ -598,6 +608,12 @@ type ATMIError interface {
 	Error() string
 	Code() int
 	Message() string
+}
+
+//Do nothing, to trick the GC
+func (ac *ATMICtx) nop() int {
+	ac.gcoff++
+	return ac.gcoff
 }
 
 //Generate ATMI error, read the codes
@@ -771,6 +787,7 @@ func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx {
 //@param	 size		Buffer size request
 //@return 			ATMI Buffer, atmiError
 func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBuf, ATMIError) {
+
 	var buf ATMIBuf
 	var err ATMIError
 
@@ -792,6 +809,7 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	runtime.SetFinalizer(&buf, tpfree)
 	buf.HaveFinalizer = true
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return &buf, err
 }
 
@@ -804,6 +822,7 @@ func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx) {
 //@param buf		ATMI buffer
 //@return 		ATMI Error
 func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
+
 	var err ATMIError
 
 	buf.C_ptr = C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
@@ -812,17 +831,22 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 		err = buf.Ctx.NewATMIError()
 	}
 
+	buf.nop()
+
 	return err
 }
 
 //Initialize client
 //@return		ATMI Error
 func (ac *ATMICtx) TpInit() ATMIError {
+
 	var err ATMIError
 
 	if SUCCEED != C.go_tpinit(&ac.c_ctx) {
 		err = ac.NewATMIError()
 	}
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 
 	return err
 }
@@ -836,6 +860,7 @@ func (ac *ATMICtx) TpInit() ATMIError {
 // @param flags 	Flags to be used
 // @return atmiError
 func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
+
 	var err ATMIError
 	c_svc := C.CString(svc)
 
@@ -863,6 +888,7 @@ func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 
 	C.free(unsafe.Pointer(c_svc))
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int(ret), err
 }
 
@@ -885,6 +911,8 @@ func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIEr
 
 	C.free(unsafe.Pointer(c_svc))
 
+	buf.nop() //keep context until the end of the func, and only then allow gc
+	ac.nop()  //keep context until the end of the func, and only then allow gc
 	return int(ret), err
 }
 
@@ -893,6 +921,7 @@ func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIEr
 //@param buf	ATMI buffer
 //@param flags call flags
 func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIError) {
+
 	var err ATMIError
 	var c_cd C.int
 
@@ -905,6 +934,9 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 		err = ac.NewATMIError()
 	}
 
+	ac.nop()  //keep context until the end of the func, and only then allow gc
+	buf.nop() //keep context until the end of the func, and only then allow gc
+
 	return int(ret), err
 }
 
@@ -912,6 +944,7 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 //@param cd		Call descriptor
 //@return ATMI error
 func (ac *ATMICtx) TpCancel(cd int) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpcancel(&ac.c_ctx, C.int(cd))
@@ -919,6 +952,8 @@ func (ac *ATMICtx) TpCancel(cd int) ATMIError {
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
 	}
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 
 	return err
 }
@@ -929,6 +964,7 @@ func (ac *ATMICtx) TpCancel(cd int) ATMIError {
 //@param flags	Flags
 //@return		call descriptor (cd), ATMI error
 func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMIError) {
+
 	var err ATMIError
 	c_svc := C.CString(svc)
 
@@ -942,6 +978,9 @@ func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMI
 
 	C.free(unsafe.Pointer(c_svc))
 
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 	return int(ret), err
 }
 
@@ -949,6 +988,7 @@ func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int, ATMI
 //@param cd		Call Descriptor
 //@return ATMI Error
 func (ac *ATMICtx) TpDiscon(cd int) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpdiscon(&ac.c_ctx, C.int(cd))
@@ -956,6 +996,8 @@ func (ac *ATMICtx) TpDiscon(cd int) ATMIError {
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
 	}
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 
 	return err
 }
@@ -966,6 +1008,7 @@ func (ac *ATMICtx) TpDiscon(cd int) ATMIError {
 //@param revent		Return Event
 //@return			ATMI Error
 func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
+
 	var err ATMIError
 
 	c_revent := C.long(*revent)
@@ -980,6 +1023,8 @@ func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 
 	*revent = int64(c_revent)
 
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -989,6 +1034,7 @@ func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 //@param revent		Return Event
 //@return			ATMI Error
 func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) ATMIError {
+
 	var err ATMIError
 
 	c_revent := C.long(*revent)
@@ -1003,14 +1049,20 @@ func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 
 	*revent = int64(c_revent)
 
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Free the ATMI buffer
 //@param buf		ATMI buffer
 func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
+
 	C.Otpfree(&ac.c_ctx, buf.C_ptr)
 	buf.C_ptr = nil
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 }
 
 //Free the ATMI buffer (internal version, for finalizer)
@@ -1028,6 +1080,7 @@ func tpfree(buf *ATMIBuf) {
 //Commit global transaction
 //@param	 flags		flags for abort operation
 func (ac *ATMICtx) TpCommit(flags int64) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpcommit(&ac.c_ctx, C.long(flags))
@@ -1036,6 +1089,8 @@ func (ac *ATMICtx) TpCommit(flags int64) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 	return err
 }
 
@@ -1043,6 +1098,7 @@ func (ac *ATMICtx) TpCommit(flags int64) ATMIError {
 //@param	 flags		flags for abort operation (must be 0)
 //@return ATMI Error
 func (ac *ATMICtx) TpAbort(flags int64) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpabort(&ac.c_ctx, C.long(flags))
@@ -1051,12 +1107,15 @@ func (ac *ATMICtx) TpAbort(flags int64) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 	return err
 }
 
 //Open XA Sub-system
 //@return ATMI Error
 func (ac *ATMICtx) TpOpen() ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpopen(&ac.c_ctx)
@@ -1065,12 +1124,14 @@ func (ac *ATMICtx) TpOpen() ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 // Close XA Sub-system
 //@return ATMI Error
 func (ac *ATMICtx) TpClose() ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpclose(&ac.c_ctx)
@@ -1079,6 +1140,7 @@ func (ac *ATMICtx) TpClose() ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -1088,6 +1150,7 @@ func (ac *ATMICtx) TpGetLev() int {
 
 	ret := C.Otpgetlev(&ac.c_ctx)
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int(ret)
 }
 
@@ -1105,6 +1168,8 @@ func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
 	return err
 }
 
@@ -1113,6 +1178,7 @@ func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 //@param flags	Flags for suspend (must be 0)
 //@return 	ATMI Error
 func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpsuspend(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
@@ -1121,6 +1187,7 @@ func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
@@ -1129,6 +1196,7 @@ func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 //@param flags	Flags for tran resume (must be 0)
 //@return 	ATMI Error
 func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
+
 	var err ATMIError
 
 	ret := C.Otpresume(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
@@ -1137,13 +1205,17 @@ func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 		err = ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return err
 }
 
 //Get cluster node id
 //@return		Node Id
 func (ac *ATMICtx) TpGetnodeId() int64 {
+
 	ret := C.Otpgetnodeid(&ac.c_ctx)
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int64(ret)
 }
 
@@ -1157,6 +1229,7 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 	c_eventname := C.CString(eventname)
 
 	data := tb.GetBuf()
+
 	ret := C.Otppost(&ac.c_ctx, c_eventname, data.C_ptr, data.C_len, C.long(flags))
 
 	if FAIL == ret {
@@ -1165,6 +1238,8 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 
 	C.free(unsafe.Pointer(c_eventname))
 
+	data.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int(ret), err
 }
 
@@ -1176,6 +1251,7 @@ func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags int
 //@param subtype ptr to string to return sub-type (can be nil)
 //@return	Buffer lenght if no error or -1 if error, ATMI error
 func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64, ATMIError) {
+
 	var err ATMIError
 
 	/* we should allocat the fields there...  */
@@ -1208,6 +1284,8 @@ func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string) (int64,
 		C.free_string(c_subtype)
 	}
 
+	ptr.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int64(ret), err
 }
 
@@ -1224,11 +1302,13 @@ func (ptr *ATMIBuf) TpTypes(itype *string, subtype *string) (int64, ATMIError) {
 //Terminate the client
 //@return ATMI error
 func (ac *ATMICtx) TpTerm() ATMIError {
+
 	ret := C.Otpterm(&ac.c_ctx)
 	if SUCCEED != ret {
 		return ac.NewATMIError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return nil
 }
 
@@ -1241,6 +1321,7 @@ func (ac *ATMICtx) TpTerm() ATMIError {
 //@param is_enq		Is Enqueue? If not then dequeue
 //@return		ATMI error
 func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64, is_enq bool) ATMIError {
+
 	var err ATMIError
 
 	c_qspace := C.CString(qspace)
@@ -1321,6 +1402,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	c_ctl_exp_time := C.long(ctl.exp_time)
 
 	buf := tb.GetBuf()
+
 	var ret C.int
 	if is_enq {
 		ret = C.go_tpenqueue(&ac.c_ctx, c_qspace, c_qname, buf.C_ptr, buf.C_len, C.long(flags),
@@ -1387,6 +1469,9 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	if FAIL == ret {
 		err = ac.NewATMIError()
 	}
+
+	buf.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 
 	return err
 }
@@ -1488,6 +1573,7 @@ func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
 
 	var err ATMIError
 	buf := tb.GetBuf()
+
 	c_str_buf := C.malloc(C.size_t(ATMIMsgSizeMax() * 2))
 	c_str_buf_ptr := (*C.char)(unsafe.Pointer(c_str_buf))
 	defer C.free(unsafe.Pointer(c_str_buf))
@@ -1503,14 +1589,15 @@ func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
 		err = ac.NewATMIError()
 	}
 
-	//Have buffer usage after C, avoid GC during the C call, if this is last
-	//buffer use
-	buf.Nop()
-
 	if nil != err {
 		return "", err
 	}
 
+	//Have buffer usage after C, avoid GC during the C call, if this is last
+	//buffer use
+	buf.nop()
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return C.GoString(c_str_buf_ptr), nil
 
 }
@@ -1522,7 +1609,6 @@ func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
 //@param flags TPEX_STRING if decode as base64, TPEX_NOCHANGE do not change tb format
 //	if buffer type is different
 func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIError {
-
 	var err ATMIError
 	buf := tb.GetBuf()
 
@@ -1534,8 +1620,8 @@ func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIEr
 		err = ac.NewATMIError()
 	}
 
-	buf.Nop()
-
+	buf.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	//Have buffer usage after C, avoid GC during the C call
 
 	return err
@@ -1547,7 +1633,7 @@ func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIEr
 //@return number of bytes in "long" data type
 func ExSizeOfLong() int {
 
-    return C.EX_SIZEOF_LONG
+	return C.EX_SIZEOF_LONG
 }
 
 /* vim: set ts=4 sw=4 et smartindent: */

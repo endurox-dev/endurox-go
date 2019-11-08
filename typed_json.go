@@ -93,12 +93,17 @@ func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (*TypedJSON, ATMIError) {
 //Get the string value out from buffer
 //@return JSON value
 func (j *TypedJSON) GetJSONText() string {
-	return C.GoString(j.Buf.C_ptr)
+	ret := C.GoString(j.Buf.C_ptr)
+	j.Buf.nop()
+	return ret
 }
 
 //Get JSON bytes..
 func (j *TypedJSON) GetJSON() []byte {
-	return []byte(C.GoString(j.Buf.C_ptr))
+
+	ret := []byte(C.GoString(j.Buf.C_ptr))
+	j.Buf.nop()
+	return ret
 }
 
 //Set JSON bytes
@@ -109,6 +114,7 @@ func (j *TypedJSON) SetJSON(b []byte) ATMIError {
 //Set the string to the buffer
 //@param str 	JSON value
 func (j *TypedJSON) SetJSONText(gs string) ATMIError {
+
 	c_val := C.CString(gs)
 	defer C.free(unsafe.Pointer(c_val))
 
@@ -126,6 +132,8 @@ func (j *TypedJSON) SetJSONText(gs string) ATMIError {
 		}
 	}
 
+	j.Buf.nop()
+
 	return nil
 }
 
@@ -136,4 +144,5 @@ func (j *TypedJSON) SetJSONText(gs string) ATMIError {
 func (u *TypedJSON) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */

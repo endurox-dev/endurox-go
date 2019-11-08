@@ -92,12 +92,17 @@ func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (*TypedString, ATMIError) {
 //Get the string value out from buffer
 //@return String value
 func (s *TypedString) GetString() string {
-	return C.GoString(s.Buf.C_ptr)
+	ret := C.GoString(s.Buf.C_ptr)
+
+	s.Buf.nop()
+	return ret
+
 }
 
 //Set the string to the buffer
 //@param str 	String value
 func (s *TypedString) SetString(gs string) ATMIError {
+
 	c_val := C.CString(gs)
 	defer C.free(unsafe.Pointer(c_val))
 
@@ -115,6 +120,8 @@ func (s *TypedString) SetString(gs string) ATMIError {
 		}
 	}
 
+	s.Buf.nop()
+
 	return nil
 }
 
@@ -125,4 +132,5 @@ func (s *TypedString) SetString(gs string) ATMIError {
 func (u *TypedString) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */

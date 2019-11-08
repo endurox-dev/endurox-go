@@ -119,6 +119,7 @@ func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError) {
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return int16 val,	 UBF error
 func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFError) {
+
 	var c_val C.short
 
 	//char *view, char *cname
@@ -134,6 +135,9 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFEr
 		(*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return int16(c_val), nil
 }
 
@@ -144,6 +148,7 @@ func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16, UBFEr
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return int64 val,	 UBF error
 func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFError) {
+
 	var c_val C.long
 
 	//Get the view name
@@ -160,6 +165,9 @@ func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFEr
 		nil, BFLD_LONG, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return int64(c_val), nil
 }
 
@@ -170,6 +178,7 @@ func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64, UBFEr
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return int val,	 UBF error
 func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError) {
+
 	var c_val C.long
 
 	//Get the view name
@@ -186,6 +195,9 @@ func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError)
 		nil, BFLD_INT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return int(c_val), nil
 }
 
@@ -196,6 +208,7 @@ func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int, UBFError)
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return signle byte val, UBF error
 func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFError) {
+
 	var c_val C.char
 
 	//Get the view name
@@ -212,6 +225,9 @@ func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFErro
 		nil, BFLD_CHAR, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return byte(c_val), nil
 }
 
@@ -222,6 +238,7 @@ func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte, UBFErro
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return float val,	 UBF error
 func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32, UBFError) {
+
 	var c_val C.float
 
 	//Get the view name
@@ -238,6 +255,9 @@ func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32, U
 		nil, BFLD_FLOAT, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return float32(c_val), nil
 }
 
@@ -264,6 +284,9 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, U
 		nil, BFLD_DOUBLE, C.long(flags)); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return float64(c_val), nil
 }
 
@@ -274,6 +297,7 @@ func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64, U
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return string val,	 UBF error
 func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBFError) {
+
 	var c_len C.BFLDLEN
 	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
 	c_len = C.BFLDLEN(ATMIMsgSizeMax())
@@ -298,6 +322,8 @@ func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBF
 		return "", u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
+
 	return C.GoString((*C.char)(c_val)), nil
 }
 
@@ -308,6 +334,7 @@ func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string, UBF
 //report as BNOTPRES error instead) or 0 (returns NULL values if view field is set to)
 //@return byte array val,	 UBF error
 func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UBFError) {
+
 	var c_len C.BFLDLEN
 	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
 	c_len = C.BFLDLEN(ATMIMsgSizeMax())
@@ -338,6 +365,8 @@ func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte, UB
 	for i := 0; i < int(c_len); i++ {
 		g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
 	}
+
+	u.Buf.nop()
 
 	return g_val, nil
 }
@@ -446,6 +475,7 @@ func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError {
 		return NewCustomUBFError(BEINVAL, "Cannot determine field type")
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -479,6 +509,8 @@ func (u *TypedVIEW) BVOccur(cname string) (int, int, int, int64, int, UBFError) 
 		return 0, 0, 0, 0, 0, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
+
 	return int(c_ret), int(c_maxocc), int(c_realocc), int64(c_dim_size), int(c_fldtype), nil
 }
 
@@ -496,6 +528,8 @@ func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError) {
 		return FAIL, ac.NewUBFError()
 	}
 
+	ac.nop()
+
 	return int64(c_ret), nil
 }
 
@@ -512,6 +546,8 @@ func (u *TypedVIEW) BVSizeof() (int64, UBFError) {
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 
 	return int64(c_ret), nil
 }
@@ -533,6 +569,9 @@ func (u *TypedVIEW) BVSetOccur(cname string, occ int) UBFError {
 		c_view, c_cname, C.BFLDOCC(occ)); SUCCEED != ret {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return nil
 }
 
@@ -590,6 +629,8 @@ func (ac *ATMICtx) TpJSONToVIEW(buffer string) (*TypedVIEW, ATMIError) {
 	tv.Buf = &atmiBuf
 	tv.view = view
 
+	ac.nop()
+
 	return &tv, nil
 }
 
@@ -620,6 +661,8 @@ func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError) {
 		c_view, (*C.char)(unsafe.Pointer(c_buffer)), C.int(ret_size), C.long(flags)); ret != 0 {
 		return "", u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 
 	return C.GoString((*C.char)(c_buffer)), nil
 
@@ -657,6 +700,8 @@ func (u *TypedVIEW) BVNext(state *BVNextState, start bool) (int, string, int, in
 			int(c_maxocc), int64(c_dim_size), nil
 	}
 
+	u.Buf.nop()
+
 	//We have a failure
 	return -1, "", 0, 0, 0, u.Buf.Ctx.NewUBFError()
 
@@ -677,6 +722,9 @@ func (u *TypedVIEW) BVCpy(dst *TypedVIEW) (int64, UBFError) {
 		return int64(ret), u.Buf.Ctx.NewUBFError()
 	}
 
+	dst.Buf.nop()
+	u.Buf.nop()
+
 	return int64(ret), nil
 
 }
@@ -694,4 +742,5 @@ func (u *TypedVIEW) BVName() string {
 func (v *TypedVIEW) TpRealloc(size int64) ATMIError {
 	return v.Buf.TpRealloc(size)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */
