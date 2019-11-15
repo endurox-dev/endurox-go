@@ -408,6 +408,12 @@ func (u *TypedUBF) BProj(fldlist []int) UBFError {
 }
 
 //Make a project copy of the fields (leave only those in array)
+//The terminator in the fildlist array are not required. The list shall
+//contain fields only to copy. See *Bprojcpy(3)* for more details.
+//NOTE! The dest buffer is erased before copying new data to
+//@param dest is destination buffer
+//@param src is source buffer to copy from
+//@param fldlist list of fields to copy
 //@return UBF error
 func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int) UBFError {
 
@@ -1404,9 +1410,6 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 
 		return str, nil
 	}
-
-    //Avoid gc during the func call
-    u.GetBuf().Nop()
 
 	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
 		"either insufficient memory or other error. See UBF logs.")
