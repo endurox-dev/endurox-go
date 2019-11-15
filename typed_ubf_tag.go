@@ -254,6 +254,7 @@ func (u *TypedUBF) unmarshalValue(p *reflect.StructField,
 			fmt.Sprintf("%s - Unsupported field type!", p.Name))
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -427,11 +428,9 @@ func (u *TypedUBF) marshalValue(p *reflect.StructField,
 		return NewCustomUBFError(BEINVAL,
 			fmt.Sprintf("%s - Unsupported field type!", p.Name))
 	}
-
+	u.Buf.nop()
 	return nil
 }
-
-//TODO: Add versions like UnmarshalOcc and MarshalOcc.
 
 //Copy the specified fields to the local structure
 //according to the `ubf' (i.e. take fields from UBF and copy to v structure).
@@ -519,7 +518,8 @@ func (u *TypedUBF) _marshal(is_marshal bool, v interface{}, occ int) UBFError {
 			}
 		}
 	}
-
+	u.Buf.nop()
 	return nil
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */

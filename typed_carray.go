@@ -99,7 +99,7 @@ func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError) {
 		/* Copy off the bytes to C buf */
 		/* cpyGo2C(buf.Buf.C_ptr, b) - optimizations */
 		buf.Buf.C_len = C.long(len(b))
-        C.c_copy_data_to_c(buf.Buf.C_ptr, unsafe.Pointer(&b[0]), buf.Buf.C_len);
+		C.c_copy_data_to_c(buf.Buf.C_ptr, unsafe.Pointer(&b[0]), buf.Buf.C_len)
 		buf.Buf.TpSetCtxt(ac)
 
 		return &buf, nil
@@ -116,15 +116,18 @@ func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (*TypedCarray, ATMIError) {
 //Get the string value out from buffer
 //@return String value
 func (s *TypedCarray) GetBytes() []byte {
+
+	defer s.Buf.nop()
+
 	b := make([]byte, s.Buf.C_len)
 
-/*
-        22/06/2018 - benchmark optimisations
-	for i := 0; i < len(b); i++ {
-		b[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(C.c_get_void_ptr(s.Buf.C_ptr)) + uintptr(i))))
-	}
-*/
-        C.c_copy_data_to_go(unsafe.Pointer(&b[0]), s.Buf.C_ptr, s.Buf.C_len)
+	/*
+	           22/06/2018 - benchmark optimisations
+	   	for i := 0; i < len(b); i++ {
+	   		b[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(C.c_get_void_ptr(s.Buf.C_ptr)) + uintptr(i))))
+	   	}
+	*/
+	C.c_copy_data_to_go(unsafe.Pointer(&b[0]), s.Buf.C_ptr, s.Buf.C_len)
 
 	return b
 
@@ -138,18 +141,21 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 	if cur_size, err := s.Buf.Ctx.TpTypes(s.Buf, nil, nil); nil != err {
 		return err
 	} else {
+
 		if cur_size >= new_size {
 			/* cpyGo2C(s.Buf.C_ptr, b) */
-            C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
+			C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
 			s.Buf.C_len = C.long(new_size)
 		} else if err := s.Buf.TpRealloc(new_size); nil != err {
 			return err
 		} else {
 			/* cpyGo2C(s.Buf.C_ptr, b)*/
-                        C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size));
+			C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
 			s.Buf.C_len = C.long(new_size)
 		}
 	}
+
+	s.Buf.nop()
 
 	return nil
 }
@@ -161,4 +167,5 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 func (u *TypedCarray) TpRealloc(size int64) ATMIError {
 	return u.Buf.TpRealloc(size)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */

@@ -282,6 +282,9 @@ func (u *TypedUBF) GetBuf() *ATMIBuf {
 
 //Compiled Expression Tree
 type ExprTree struct {
+	//All object which have finalizer we need nop func to defer so that
+	//during the c call the GC does not collect the object...
+	gcoff int
 	c_ptr *C.char
 }
 
@@ -352,15 +355,25 @@ var exprfuncmap map[string]UBFExprFunc //callback mapping for UBF expression fun
 // UBF API
 ///////////////////////////////////////////////////////////////////////////////////
 
+//Do nothing, to trick the GC
+func (expr *ExprTree) nop() int {
+	expr.gcoff++
+	return expr.gcoff
+}
+
 //Get the field len
 //@param fldid	Field ID
 //@param occ 	Field occurance
 //@return 	FIeld len, UBF error
 func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError) {
+
 	ret := C.OBlen(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid), C.BFLDOCC(occ))
 	if FAIL == ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return int(ret), nil
 }
 
@@ -369,10 +382,14 @@ func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError) {
 //@param occ 	Field occurance
 //@return 	UBF error
 func (u *TypedUBF) BDel(bfldid int, occ int) UBFError {
+
 	ret := C.OBdel(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid), C.BFLDOCC(occ))
 	if FAIL == ret {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return nil
 }
 
@@ -403,6 +420,8 @@ func (u *TypedUBF) BProj(fldlist []int) UBFError {
 		(*C.BFLDID)(unsafe.Pointer(c_val))); ret != SUCCEED {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 
 	return nil
 }
@@ -440,6 +459,10 @@ func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int) UBFErr
 		return ac.NewUBFError()
 	}
 
+	dest.Buf.nop()
+	src.Buf.nop()
+	ac.nop()
+
 	return nil
 }
 
@@ -458,6 +481,8 @@ func (ac *ATMICtx) BFldId(fldnm string) (int, UBFError) {
 		return BBADFLDID, ac.NewUBFError()
 	}
 
+	ac.nop()
+
 	return int(ret), nil
 }
 
@@ -465,11 +490,14 @@ func (ac *ATMICtx) BFldId(fldnm string) (int, UBFError) {
 //@param bfldid Field ID
 //@return Field name (or "" if error), UBF error
 func (ac *ATMICtx) BFname(bfldid int) (string, UBFError) {
+
 	ret := C.OBfname(&ac.c_ctx, C.BFLDID(bfldid))
 
 	if nil == ret {
 		return "", ac.NewUBFError()
 	}
+
+	ac.nop()
 
 	return C.GoString(ret), nil
 }
@@ -479,11 +507,15 @@ func (ac *ATMICtx) BFname(bfldid int) (string, UBFError) {
 //@param occ 	Field occurance
 //@return 	true/false present/not present
 func (u *TypedUBF) BPres(bfldid int, occ int) bool {
+
 	ret := C.OBpres(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		C.BFLDID(bfldid), C.BFLDOCC(occ))
 	if 1 == ret {
 		return true
 	}
+
+	u.Buf.nop()
+
 	return false
 }
 
@@ -492,10 +524,16 @@ func (u *TypedUBF) BPres(bfldid int, occ int) bool {
 //@param src		Source UBF buffer
 //@return UBF error
 func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError {
+
 	if ret := C.OBcpy(&ac.c_ctx, (*C.UBFH)(unsafe.Pointer(dest.Buf.C_ptr)),
 		(*C.UBFH)(unsafe.Pointer(src.Buf.C_ptr))); SUCCEED != ret {
 		return ac.NewUBFError()
 	}
+
+	dest.Buf.nop()
+	src.Buf.nop()
+	ac.nop()
+
 	return nil
 }
 
@@ -520,6 +558,7 @@ func (u *TypedUBF) BNext(first bool) (int, int, UBFError) {
 		return FAIL, FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return int(fldid), int(occ), nil
 }
 
@@ -528,10 +567,15 @@ func (u *TypedUBF) BNext(first bool) (int, int, UBFError) {
 //@param ulen	lenght of the buffer
 //@return UBF error
 func (ac *ATMICtx) BInit(u *TypedUBF, ulen int64) UBFError {
+
 	if ret := C.OBinit(&ac.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		C.BFLDLEN(ulen)); SUCCEED != ret {
 		return ac.NewUBFError()
 	}
+
+	ac.nop()
+	u.Buf.nop()
+
 	return nil
 }
 
@@ -539,9 +583,13 @@ func (ac *ATMICtx) BInit(u *TypedUBF, ulen int64) UBFError {
 //@param size	Buffer size in bytes
 //@return UBF Handler, ATMI Error
 func (ac *ATMICtx) UBFAlloc(size int64) (TypedUBF, ATMIError) {
+
 	var err ATMIError
 	var buf TypedUBF
 	buf.Buf, err = ac.TpAlloc("UBF", "", size)
+
+	ac.nop()
+
 	return buf, err
 }
 
@@ -552,6 +600,9 @@ func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError) {
 	//TODO: Check the buffer type!
 	buf.Buf = abuf
 
+	abuf.nop()
+	ac.nop()
+
 	return &buf, nil
 }
 
@@ -560,6 +611,7 @@ func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError) {
 //@param occ	Occurrance
 //@return interface to value,	 UBF error
 func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
+
 	/* Determinte the type of the buffer */
 	switch u.Buf.Ctx.BFldType(bfldid) {
 	case BFLD_SHORT:
@@ -568,6 +620,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()
 		}
+		u.Buf.nop()
 		return int16(c_val), nil
 	case BFLD_LONG:
 		var c_val C.long
@@ -575,6 +628,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()
 		}
+		u.Buf.nop()
 		return int64(c_val), nil
 	case BFLD_CHAR: /* This is single byte... */
 		var c_val C.char
@@ -582,6 +636,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()
 		}
+		u.Buf.nop()
 		return byte(c_val), nil
 	case BFLD_FLOAT:
 		var c_val C.float
@@ -589,6 +644,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil); ret != SUCCEED {
 			return nil, u.Buf.Ctx.NewUBFError()
 		}
+		u.Buf.nop()
 		return float32(c_val), nil
 	case BFLD_DOUBLE:
 		var c_val C.double
@@ -613,6 +669,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			return nil, u.Buf.Ctx.NewUBFError()
 		}
 
+		u.Buf.nop()
 		return C.GoString((*C.char)(c_val)), nil
 
 	case BFLD_CARRAY:
@@ -637,6 +694,7 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 			g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
 		}
 
+		u.Buf.nop()
 		return g_val, nil
 
 	}
@@ -649,11 +707,14 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 //@param occ	Occurrance
 //@return int16 val,	 UBF error
 func (u *TypedUBF) BGetInt16(bfldid int, occ int) (int16, UBFError) {
+
 	var c_val C.short
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_SHORT); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return int16(c_val), nil
 }
 
@@ -662,11 +723,14 @@ func (u *TypedUBF) BGetInt16(bfldid int, occ int) (int16, UBFError) {
 //@param occ	Occurrance
 //@return int64 val,	 UBF error
 func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError) {
+
 	var c_val C.long
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_LONG); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return int64(c_val), nil
 }
 
@@ -675,11 +739,14 @@ func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError) {
 //@param occ	Occurrance
 //@return int64 val,	 UBF error
 func (u *TypedUBF) BGetInt(bfldid int, occ int) (int, UBFError) {
+
 	var c_val C.long
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_LONG); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return int(c_val), nil
 }
 
@@ -688,11 +755,14 @@ func (u *TypedUBF) BGetInt(bfldid int, occ int) (int, UBFError) {
 //@param occ	Occurrance
 //@return byte val, UBF error
 func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError) {
+
 	var c_val C.char
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_CHAR); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return byte(c_val), nil
 }
 
@@ -701,11 +771,14 @@ func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError) {
 //@param occ	Occurrance
 //@return float, UBF error
 func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError) {
+
 	var c_val C.float
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_FLOAT); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return float32(c_val), nil
 }
 
@@ -714,11 +787,14 @@ func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError) {
 //@param occ	Occurrance
 //@return double, UBF error
 func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError) {
+
 	var c_val C.double
 	if ret := C.OCBget(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid),
 		C.BFLDOCC(occ), (*C.char)(unsafe.Pointer(unsafe.Pointer(&c_val))), nil, BFLD_DOUBLE); ret != SUCCEED {
 		return 0, u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return float64(c_val), nil
 }
 
@@ -727,6 +803,7 @@ func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError) {
 //@param occ	Occurrance
 //@return string val, UBF error
 func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError) {
+
 	var c_len C.BFLDLEN
 	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
 	c_len = C.BFLDLEN(ATMIMsgSizeMax())
@@ -742,6 +819,7 @@ func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError) {
 		return "", u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return C.GoString((*C.char)(c_val)), nil
 }
 
@@ -750,6 +828,7 @@ func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError) {
 //@param occ	Occurrance
 //@return string val, UBF error
 func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError) {
+
 	var c_len C.BFLDLEN
 	c_val := C.malloc(C.size_t(ATMIMsgSizeMax()))
 	c_len = C.BFLDLEN(ATMIMsgSizeMax())
@@ -771,6 +850,7 @@ func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError) {
 		g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
 	}
 
+	u.Buf.nop()
 	return g_val, nil
 }
 
@@ -937,6 +1017,7 @@ func (u *TypedUBF) BAddFast(bfldid int, ival interface{}, loc *BFldLocInfo, firs
 		return NewCustomUBFError(BEINVAL, "Cannot determine field type")
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -945,6 +1026,7 @@ func (u *TypedUBF) BAddFast(bfldid int, ival interface{}, loc *BFldLocInfo, firs
 //@param ival Input value
 //@return UBF Error
 func (u *TypedUBF) BAdd(bfldid int, ival interface{}) UBFError {
+
 	return u.BChgCombined(bfldid, 0, ival, true)
 }
 
@@ -1087,6 +1169,7 @@ func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add bo
 		return NewCustomUBFError(BEINVAL, "Cannot determine field type")
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -1095,6 +1178,7 @@ func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add bo
 //@param	expr Expression string
 //@return Expression tree (ptr or nil on error), UBF error
 func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
+
 	c_str := C.CString(expr)
 
 	defer C.free(unsafe.Pointer(c_str))
@@ -1114,34 +1198,45 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 	//Deallocated, thus we need to have temp context free op.
 	runtime.SetFinalizer(&tree, btreeFree)
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return &tree, nil
 }
 
 //Free the expression buffer
 func (ac *ATMICtx) BTreeFree(tree *ExprTree) {
+
 	//Unset the finalizer
 	C.OBtreefree(&ac.c_ctx, tree.c_ptr)
 	tree.c_ptr = nil
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
+	tree.nop()
 }
 
 //Internal version (uses temp context)
 func btreeFree(tree *ExprTree) {
+
 	if nil != tree.c_ptr {
 		C.go_Btreefree(tree.c_ptr)
 		tree.c_ptr = nil
 	}
+
+	tree.nop()
 }
 
 //Test the expresion tree to current UBF buffer
 //@param tree	compiled expression tree
 //@return true (buffer matched expression) or false (buffer not matched expression)
 func (u *TypedUBF) BBoolEv(tree *ExprTree) bool {
+
 	c_ret := C.OBboolev(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), tree.c_ptr)
 
 	if 1 == c_ret {
 		return true
 	}
 
+	tree.nop()
+	u.Buf.nop()
 	return false
 }
 
@@ -1167,8 +1262,12 @@ func (u *TypedUBF) BQBoolEv(expr string) (bool, UBFError) {
 //@param tree	compiled expression tree
 //@return expression value
 func (u *TypedUBF) BFloatEv(tree *ExprTree) float64 {
+
 	c_ret := C.OBfloatev(&u.Buf.Ctx.c_ctx,
 		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), tree.c_ptr)
+
+	tree.nop()
+	u.Buf.nop()
 
 	return float64(c_ret)
 }
@@ -1178,11 +1277,13 @@ func (u *TypedUBF) BFloatEv(tree *ExprTree) float64 {
 //@param bfldid field number
 //@return field id or 0 if error, UBF error
 func (ac *ATMICtx) BMkFldId(fldtype int, bfldid int) (int, UBFError) {
+
 	c_ret := C.OBmkfldid(&ac.c_ctx, C.int(fldtype), C.BFLDID(bfldid))
 	if BBADFLDID == c_ret {
 		return BBADFLDID, ac.NewUBFError()
 	}
 
+	ac.nop() //keep context until the end of the func, and only then allow gc
 	return int(c_ret), nil
 }
 
@@ -1190,6 +1291,7 @@ func (ac *ATMICtx) BMkFldId(fldtype int, bfldid int) (int, UBFError) {
 //@param bfldid	Field ID
 //@return count (or -1 on error), UBF error
 func (u *TypedUBF) BOccur(bfldid int) (int, UBFError) {
+
 	c_ret := C.OBoccur(&u.Buf.Ctx.c_ctx,
 		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), C.BFLDID(bfldid))
 
@@ -1197,42 +1299,49 @@ func (u *TypedUBF) BOccur(bfldid int) (int, UBFError) {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return int(c_ret), nil
 }
 
 //Get the number of bytes used in UBF buffer
 //@return number of byptes used, UBF error
 func (u *TypedUBF) BUsed() (int64, UBFError) {
+
 	c_ret := C.OBused(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
 
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return int64(c_ret), nil
 }
 
 //Get the number of free bytes of UBF buffer
 //@return buffer free bytes, UBF error
 func (u *TypedUBF) BUnused() (int64, UBFError) {
+
 	c_ret := C.OBunused(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
 
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return int64(c_ret), nil
 }
 
 //Get the total buffer size
 //@return bufer size, UBF error
 func (u *TypedUBF) BSizeof() (int64, UBFError) {
+
 	c_ret := C.OBsizeof(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
 
 	if FAIL == c_ret {
 		return FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return int64(c_ret), nil
 }
 
@@ -1240,7 +1349,10 @@ func (u *TypedUBF) BSizeof() (int64, UBFError) {
 //@param bfldid field id
 //@return field type
 func (ac *ATMICtx) BFldType(bfldid int) int {
+
 	c_ret := C.OBfldtype(&ac.c_ctx, C.BFLDID(bfldid))
+
+	ac.nop()
 	return int(c_ret)
 }
 
@@ -1248,7 +1360,10 @@ func (ac *ATMICtx) BFldType(bfldid int) int {
 //@param bfldid field id
 //@return field number
 func (ac *ATMICtx) BFldNo(bfldid int) int {
+
 	c_ret := C.OBfldno(&ac.c_ctx, C.BFLDID(bfldid))
+
+	ac.nop()
 	return int(c_ret)
 }
 
@@ -1256,10 +1371,13 @@ func (ac *ATMICtx) BFldNo(bfldid int) int {
 //@param bfldid field ID
 //@return UBF error
 func (u *TypedUBF) BDelAll(bfldid int) UBFError {
+
 	if ret := C.OBdelall(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
 		C.BFLDID(bfldid)); SUCCEED != ret {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 	return nil
 }
 
@@ -1292,6 +1410,7 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 		return u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -1300,12 +1419,14 @@ func (u *TypedUBF) BDelete(fldlist []int) UBFError {
 //@param bfldid field ID
 //@return field type, UBF error
 func (u *TypedUBF) BType(bfldid int) (string, UBFError) {
+
 	ret := C.OBtype(&u.Buf.Ctx.c_ctx, C.BFLDID(bfldid))
 
 	if nil == ret {
 		return "", u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return C.GoString(ret), nil
 }
 
@@ -1319,6 +1440,11 @@ func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
 		(*C.UBFH)(unsafe.Pointer(src.Buf.C_ptr))); ret != SUCCEED {
 		return ac.NewUBFError()
 	}
+
+	ac.nop()
+	dest.Buf.nop()
+	src.Buf.nop()
+
 	return nil
 }
 
@@ -1327,20 +1453,30 @@ func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError {
 //@param src		source buffer
 //@return UBF error
 func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError {
+
 	if ret := C.OBconcat(&ac.c_ctx, (*C.UBFH)(unsafe.Pointer(dest.Buf.C_ptr)),
 		(*C.UBFH)(unsafe.Pointer(src.Buf.C_ptr))); ret != SUCCEED {
 		return ac.NewUBFError()
 	}
+
+	ac.nop()
+	dest.Buf.nop()
+	src.Buf.nop()
+
 	return nil
 }
 
 //Print the buffer to stdout
 //@return UBF error
 func (u *TypedUBF) BPrint() UBFError {
+
 	if ret := C.OBprint(&u.Buf.Ctx.c_ctx,
 		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr))); ret != SUCCEED {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
+
 	return nil
 }
 
@@ -1349,10 +1485,12 @@ func (u *TypedUBF) BPrint() UBFError {
 func (u *TypedUBF) TpLogPrintUBF(lev int, title string) {
 
 	c_title := C.CString(title)
-	defer C.free(unsafe.Pointer(c_title))
 
 	C.Otplogprintubf(&u.Buf.Ctx.c_ctx, C.int(lev), c_title,
 		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
+
+	C.free(unsafe.Pointer(c_title))
+	u.Buf.nop()
 
 	return
 }
@@ -1411,6 +1549,8 @@ func (u *TypedUBF) BSprint() (string, UBFError) {
 		return str, nil
 	}
 
+	u.Buf.nop()
+
 	return "", NewCustomUBFError(BEUNIX, "Failed to print UBF buffer to string, "+
 		"either insufficient memory or other error. See UBF logs.")
 }
@@ -1441,6 +1581,7 @@ func (u *TypedUBF) BExtRead(s string) UBFError {
 		return u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
@@ -1470,6 +1611,9 @@ func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError) {
 	defer C.fclose(f)
 
 	C.OBboolpr(&ac.c_ctx, tree.c_ptr, f)
+
+	ac.nop()
+	tree.nop()
 
 	return C.GoString((*C.char)(c_val)), nil
 }
@@ -1511,6 +1655,7 @@ func (u *TypedUBF) BWrite() ([]byte, UBFError) {
 		array[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
 	}
 
+	u.Buf.nop()
 	return array, nil
 }
 
@@ -1548,16 +1693,20 @@ func (u *TypedUBF) BRead(dump []byte) UBFError {
 		return u.Buf.Ctx.NewUBFError()
 	}
 
+	u.Buf.nop()
 	return nil
 }
 
 //Test C buffer for UBF format
 //@return TRUE - buffer is UBF, FALSE - not UBF
 func (u *TypedUBF) BIsUBF() bool {
+
 	c_ret := C.OBisubf(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)))
 	if 1 == c_ret {
 		return true
 	}
+
+	u.Buf.nop()
 	return false
 }
 
@@ -1577,6 +1726,7 @@ func go_expr_callback_proxy(buf *C.char, funcname *C.char) C.long {
 //@param f callback to function
 //@return UBF error
 func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
+
 	if nil == f || "" == funcname {
 		return NewCustomUBFError(BEINVAL, "func nil or func name empty!")
 	}
@@ -1591,6 +1741,7 @@ func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError {
 		exprfuncmap[funcname] = f
 	}
 
+	ac.nop()
 	return nil
 }
 
@@ -1609,6 +1760,7 @@ func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError) {
 		buf.Buf.Ctx = ac
 		return &buf, nil
 	}
+
 }
 
 //Converts string JSON buffer passed in 'buffer' to UBF buffer. This function will
@@ -1619,6 +1771,7 @@ func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError) {
 //occurrences.
 //@return UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
 func (u *TypedUBF) TpJSONToUBF(buffer string) UBFError {
+
 	size := int64(len(buffer))
 	sizeof, _ := u.BSizeof()
 	unused, _ := u.BUnused()
@@ -1642,6 +1795,8 @@ func (u *TypedUBF) TpJSONToUBF(buffer string) UBFError {
 		c_buffer); ret != 0 {
 		return u.Buf.Ctx.NewUBFError()
 	}
+
+	u.Buf.nop()
 
 	return nil
 }
@@ -1671,6 +1826,8 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 		return "", u.Buf.Ctx.NewATMIError()
 	}
 
+	u.Buf.nop()
+
 	return C.GoString((*C.char)(c_buffer)), nil
 
 }
@@ -1680,6 +1837,7 @@ func (u *TypedUBF) TpUBFToJSON() (string, ATMIError) {
 ///////////////////////////////////////////////////////////////////////////////////
 
 func (u *TypedUBF) TpRealloc(size int64) ATMIError {
+
 	return u.Buf.TpRealloc(size)
 }
 

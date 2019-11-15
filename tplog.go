@@ -98,6 +98,8 @@ func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int) A
 		C.Otplogdump(&ac.c_ctx, C.int(lev), c_comment, c_ptr, C.int(dumplen))
 	}
 
+	ac.nop()
+
 	return nil
 }
 
@@ -148,6 +150,8 @@ func (ac *ATMICtx) TpLogDumpDiff(lev int, comment string, ptr1 []byte, ptr2 []by
 
 		C.Otplogdumpdiff(&ac.c_ctx, C.int(lev), c_comment, c_ptr1, c_ptr2, C.int(difflen))
 	}
+	ac.nop()
+
 	return nil
 }
 
@@ -173,6 +177,9 @@ func (ac *ATMICtx) tpLog(lev int, format string, a ...interface{}) {
 
 		C.Otplogex(&ac.c_ctx, C.int(lev), c_file, C.long(line), c_msg)
 	}
+
+	ac.nop()
+
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -189,6 +196,9 @@ func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{}) {
 
 		C.Otplog(&ac.c_ctx, C.int(lev), c_msg)
 	}
+
+	ac.nop()
+
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage), internal ndrx only
@@ -205,6 +215,9 @@ func (ac *ATMICtx) ndrxLog(lev int, format string, a ...interface{}) {
 
 		C.Ondrxlog(&ac.c_ctx, C.int(lev), c_msg)
 	}
+
+	ac.nop()
+
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage), internal ubf only
@@ -220,6 +233,8 @@ func (ac *ATMICtx) ubfLog(lev int, format string, a ...interface{}) {
 
 		C.Oubflog(&ac.c_ctx, C.int(lev), c_msg)
 	}
+	ac.nop()
+
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -230,6 +245,7 @@ func (ac *ATMICtx) TpLogDebug(format string, a ...interface{}) {
 	if LOG_DEBUG <= int(C.debug_get_tp_level()) {
 		ac.tpLog(LOG_DEBUG, format, a...)
 	}
+
 }
 
 //Log the message to Enduro/X loggers (see tplog(3) manpage)
@@ -350,6 +366,8 @@ func (ac *ATMICtx) TpLogSetReqFileDirect(filename string) {
 	defer C.free(unsafe.Pointer(c_filename))
 
 	C.Otplogsetreqfile_direct(&ac.c_ctx, c_filename)
+
+	ac.nop()
 }
 
 //Set request file to log to (see tplogsetreqfile(3) manpage)
@@ -372,6 +390,7 @@ func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc st
 		err = ac.NewATMIError()
 	}
 
+	ac.nop()
 	return err
 }
 
@@ -394,6 +413,8 @@ func (ac *ATMICtx) TpLogGetBufReqFile(data TypedBuffer) (string, ATMIError) {
 		reqfile = C.GoString(c_reqfile_ptr)
 	}
 
+	ac.nop()
+
 	return reqfile, err
 }
 
@@ -408,6 +429,8 @@ func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError {
 	if SUCCEED != C.Otplogdelbufreqfile(&ac.c_ctx, buf.C_ptr) {
 		err = ac.NewATMIError()
 	}
+
+	buf.nop()
 
 	return err
 }
@@ -431,4 +454,5 @@ func (ac *ATMICtx) UserLog(format string, a ...interface{}) {
 
 	C.userlog_const(c_msg)
 }
+
 /* vim: set ts=4 sw=4 et smartindent: */
