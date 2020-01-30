@@ -427,6 +427,12 @@ func (u *TypedUBF) BProj(fldlist []int) UBFError {
 }
 
 //Make a project copy of the fields (leave only those in array)
+//The terminator in the fildlist array are not required. The list shall
+//contain fields only to copy. See *Bprojcpy(3)* for more details.
+//NOTE! The dest buffer is erased before copying new data to
+//@param dest is destination buffer
+//@param src is source buffer to copy from
+//@param fldlist list of fields to copy
 //@return UBF error
 func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int) UBFError {
 
