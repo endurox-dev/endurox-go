@@ -127,8 +127,9 @@ func (s *TypedCarray) GetBytes() []byte {
 	   		b[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(C.c_get_void_ptr(s.Buf.C_ptr)) + uintptr(i))))
 	   	}
 	*/
-	C.c_copy_data_to_go(unsafe.Pointer(&b[0]), s.Buf.C_ptr, s.Buf.C_len)
-
+	if s.Buf.C_len > 0 {
+		C.c_copy_data_to_go(unsafe.Pointer(&b[0]), s.Buf.C_ptr, s.Buf.C_len)
+	}
 	return b
 
 }
@@ -144,13 +145,19 @@ func (s *TypedCarray) SetBytes(b []byte) ATMIError {
 
 		if cur_size >= new_size {
 			/* cpyGo2C(s.Buf.C_ptr, b) */
-			C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
+
+			if new_size > 0 {
+				C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
+			}
+
 			s.Buf.C_len = C.long(new_size)
 		} else if err := s.Buf.TpRealloc(new_size); nil != err {
 			return err
 		} else {
 			/* cpyGo2C(s.Buf.C_ptr, b)*/
-			C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
+			if new_size > 0 {
+				C.c_copy_data_to_c(s.Buf.C_ptr, unsafe.Pointer(&b[0]), C.long(new_size))
+			}
 			s.Buf.C_len = C.long(new_size)
 		}
 	}

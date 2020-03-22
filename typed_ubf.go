@@ -209,6 +209,9 @@ out:
 	return data.buf;
 }
 
+extern void c_copy_data_to_go(const void *go_data, char *c_data, long nbytes);
+extern void c_copy_data_to_c(char *c_data, const void *go_data, long nbytes);
+
 */
 import "C"
 import (
@@ -690,8 +693,13 @@ func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError) {
 
 		g_val := make([]byte, c_len)
 
-		for i := 0; i < int(c_len); i++ {
-			g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+		/*
+			for i := 0; i < int(c_len); i++ {
+				g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+			}
+		*/
+		if c_len > 0 {
+			C.c_copy_data_to_go(unsafe.Pointer(&g_val[0]), (*C.char)(c_val), C.long(c_len))
 		}
 
 		u.Buf.nop()
@@ -846,8 +854,13 @@ func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError) {
 
 	g_val := make([]byte, c_len)
 
-	for i := 0; i < int(c_len); i++ {
-		g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+	/*
+		for i := 0; i < int(c_len); i++ {
+			g_val[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+		}
+	*/
+	if c_len > 0 {
+		C.c_copy_data_to_go(unsafe.Pointer(&g_val[0]), (*C.char)(c_val), C.long(c_len))
 	}
 
 	u.Buf.nop()
@@ -1651,8 +1664,13 @@ func (u *TypedUBF) BWrite() ([]byte, UBFError) {
 
 	var array = make([]byte, int(size))
 
-	for i := 0; i < int(size); i++ {
-		array[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+	/*
+		for i := 0; i < int(size); i++ {
+			array[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))))
+		}
+	*/
+	if size > 0 {
+		C.c_copy_data_to_go(unsafe.Pointer(&array[0]), (*C.char)(c_val), size)
 	}
 
 	u.Buf.nop()
@@ -1663,16 +1681,22 @@ func (u *TypedUBF) BWrite() ([]byte, UBFError) {
 //@return serialized bytes, UBF error
 func (u *TypedUBF) BRead(dump []byte) UBFError {
 
-	c_val := C.malloc(C.size_t(len(dump)))
-	c_len := C.size_t(len(dump))
+	lend := len(dump)
+	c_val := C.malloc(C.size_t(lend))
+	c_len := C.size_t(lend)
 
 	if nil == c_val {
 		return NewCustomUBFError(BEUNIX, "Cannot alloc memory")
 	}
 
 	//Copy stuff to C memory
-	for i := 0; i < len(dump); i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))) = C.char(dump[i])
+	/*
+		for i := 0; i < len(dump); i++ {
+			*(*C.char)(unsafe.Pointer(uintptr(c_val) + uintptr(i))) = C.char(dump[i])
+		}
+	*/
+	if lend > 0 {
+		C.c_copy_data_to_c((*C.char)(c_val), unsafe.Pointer(&dump[0]), C.long(lend))
 	}
 
 	c_mode := C.CString("rb")
