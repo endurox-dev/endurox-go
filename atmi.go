@@ -281,6 +281,33 @@ void go_tpfree(char *ptr)
 
 }
 
+//Read the return code from current ATMI context
+//@param p_ctx ATMI context
+//@param c_err C error is set
+//@return tpurcode (or 0 and error loaded)
+static long go_tpurcode(TPCONTEXT_T *p_ctx, int *c_err)
+{
+	long ret=0;
+	if (EXSUCCEED!=ndrx_tpsetctxt(*p_ctx, 0, CTXT_PRIV_ATMI|CTXT_PRIV_NSTD))
+	{
+		userlog("Failed to set ATMI context");
+		*c_err=EXTRUE;
+		goto out;
+	}
+	else
+	{
+		*c_err=EXFALSE;
+	}
+
+	ret=tpurcode;
+
+	//Move process back to NULL context
+	ndrx_tpsetctxt(TPNULLCONTEXT, 0L, CTXT_PRIV_ATMI|CTXT_PRIV_NSTD);
+
+out:
+	return ret;
+}
+
 */
 import "C"
 import "unsafe"
@@ -1634,6 +1661,24 @@ func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIEr
 func ExSizeOfLong() int {
 
 	return C.EX_SIZEOF_LONG
+}
+
+//Return user return code from last service call
+//(i.e. value from second argument of tpreturn - rcode)
+//@return tpurcode from ATMI context
+func (ac *ATMICtx) TpURCode() (int64, ATMIError) {
+
+	var c_err C.int
+	ret := int64(C.go_tpurcode(&ac.c_ctx, &c_err))
+
+	//mark the scope of ac
+	ac.nop()
+
+	if 1 == c_err {
+		return 0, ac.NewATMIError()
+	}
+
+	return ret, nil
 }
 
 /* vim: set ts=4 sw=4 et smartindent: */

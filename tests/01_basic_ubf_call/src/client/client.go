@@ -66,7 +66,7 @@ func main() {
 			goto out
 		}
 
-		if  len(nulout) != 0 {
+		if len(nulout) != 0 {
 			fmt.Printf("nulout not 0: %d\n", len(nulout))
 			ret = FAIL
 			goto out
@@ -75,6 +75,14 @@ func main() {
 		//Call the server
 		if _, err := ac.TpCall("TESTSVC", buf, 0); nil != err {
 			fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+			ret = FAIL
+			goto out
+		}
+
+		urcode, _ := ac.TpURCode()
+
+		if urcode != int64(i+1) {
+			fmt.Printf("Expeced UR code %d but got %d\n", i+1, urcode)
 			ret = FAIL
 			goto out
 		}
@@ -91,7 +99,7 @@ func main() {
 	fmt.Printf("Message size: %d\n", atmi.ATMIMsgSizeMax())
 	if atmi.ATMIMsgSizeMax() > 68000 {
 		for i := 0; i < 10000; i++ {
-			testdata :=make([]byte, 1024*1024)
+			testdata := make([]byte, 1024*1024)
 			ac, err := atmi.NewATMICtx()
 
 			if nil != err {

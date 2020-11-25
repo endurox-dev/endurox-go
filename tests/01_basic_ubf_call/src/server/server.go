@@ -12,6 +12,8 @@ const (
 	FAIL    = -1
 )
 
+var Murcode int64 = 0
+
 //TESTSVC service
 func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
@@ -44,12 +46,14 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		goto out
 	}
 
+	Murcode++
+
 out:
 	//Return to the caller
 	if SUCCEED == ret {
-		ac.TpReturn(atmi.TPSUCCESS, 0, ub, 0)
+		ac.TpReturn(atmi.TPSUCCESS, Murcode, ub, 0)
 	} else {
-		ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
+		ac.TpReturn(atmi.TPFAIL, Murcode, ub, 0)
 	}
 	return
 }
@@ -65,7 +69,7 @@ func BIGMSG(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	//Print the buffer to stdout
 	//fmt.Println("Incoming request:")
 	//ub.TpLogPrintUBF(atmi.LOG_DEBUG, "Incoming request:")
-    ac.TpLogInfo("BIGMSG got call!");
+	ac.TpLogInfo("BIGMSG got call!")
 
 	//Set some field
 	testdata, err := ub.BGetByteArr(ubftab.T_CARRAY_FLD, 0)
@@ -87,7 +91,7 @@ func BIGMSG(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		testdata[i] = byte((i + 2) % 255)
 	}
 
-    ac.TpLogInfo("About to test test data!")
+	ac.TpLogInfo("About to test test data!")
 
 	if err := ub.BChg(ubftab.T_CARRAY_FLD, 0, testdata); err != nil {
 		ac.TpLogError("TESTERROR ! Bchg() 2 Got error: %d:[%s]", err.Code(), err.Message())
