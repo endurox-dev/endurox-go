@@ -26,6 +26,10 @@ func main() {
 	//	log.Println(http.ListenAndServe("localhost:6060", nil))
 	//}()
 
+	var tpur2 map[int64]int
+
+	tpur2 = make(map[int64]int)
+
 	for i := 0; i < 10000; i++ {
 
 		ac, err := atmi.NewATMICtx()
@@ -79,10 +83,16 @@ func main() {
 			goto out
 		}
 
+
+		//This is between two servers
+		//Thus number shall not repeate two times
 		urcode, _ := ac.TpURCode()
 
-		if urcode != int64(i+1) {
-			fmt.Printf("Expeced UR code %d but got %d\n", i+1, urcode)
+		tpur2[urcode]++
+
+		if (tpur2[urcode] > 2) {
+			fmt.Printf("Expected urcode %d only twice, but got: %d\n",
+				urcode, tpur2[urcode])
 			ret = FAIL
 			goto out
 		}
