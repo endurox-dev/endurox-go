@@ -313,6 +313,7 @@ import "C"
 import "unsafe"
 import "fmt"
 import "runtime"
+import "encoding/base64"
 
 /*
  * SUCCEED/FAIL flags
@@ -561,21 +562,21 @@ type TPEVCTL struct {
  * Queue control structure
  */
 type TPQCTL struct {
-	flags        int64             /* indicates which of the values are set */
-	deq_time     int64             /* absolute/relative  time for dequeuing */
-	priority     int64             /* enqueue priority */
-	diagnostic   int64             /* indicates reason for failure */
-	diagmsg      string            /* diagnostic message */
-	msgid        [TMMSGIDLEN]byte  /* id of message before which to queue */
-	corrid       [TMCORRIDLEN]byte /* correlation id used to identify message */
-	replyqueue   string            /* queue name for reply message */
-	failurequeue string            /* queue name for failure message */
-	cltid        string            /* client identifier for originating client */
-	urcode       int64             /* application user-return code */
-	appkey       int64             /* application authentication client key */
-	delivery_qos int64             /* delivery quality of service  */
-	reply_qos    int64             /* reply message quality of service  */
-	exp_time     int64             /* expiration time  */
+	Flags        int64             /* indicates which of the values are set */
+	Deq_time     int64             /* absolute/relative  time for dequeuing */
+	Priority     int64             /* enqueue priority */
+	Diagnostic   int64             /* indicates reason for failure */
+	Diagmsg      string            /* diagnostic message */
+	Msgid        [TMMSGIDLEN]byte  /* id of message before which to queue */
+	Corrid       [TMCORRIDLEN]byte /* correlation id used to identify message */
+	Replyqueue   string            /* queue name for reply message */
+	Failurequeue string            /* queue name for failure message */
+	Cltid        string            /* client identifier for originating client */
+	Urcode       int64             /* application user-return code */
+	Appkey       int64             /* application authentication client key */
+	Delivery_qos int64             /* delivery quality of service  */
+	Reply_qos    int64             /* reply message quality of service  */
+	Exp_time     int64             /* expiration time  */
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1218,6 +1219,29 @@ func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 	return err
 }
 
+//Suspend transaction, return transaction ID as base64 encoded string
+//@param flags	Flags for suspend (must be 0)
+//@return 	ATMI Error
+func (ac *ATMICtx) TpSuspendString(flags int64) (string, ATMIError) {
+
+	var err ATMIError
+	var c_tptranid C.TPTRANID
+
+	ret := C.Otpsuspend(&ac.c_ctx, &c_tptranid, C.long(flags))
+
+	if SUCCEED != ret {
+		err = ac.NewATMIError()
+	}
+
+	const sz = int(unsafe.Sizeof(c_tptranid))
+	var tranidbytes []byte = (*(*[sz]byte)(unsafe.Pointer(&c_tptranid)))[:]
+
+	b64tid := base64.StdEncoding.EncodeToString([]byte(tranidbytes))
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
+	return b64tid, err
+}
+
 //Resume transaction
 //@param tranid	Transaction Id reference
 //@param flags	Flags for tran resume (must be 0)
@@ -1227,6 +1251,41 @@ func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 	var err ATMIError
 
 	ret := C.Otpresume(&ac.c_ctx, &tranid.c_tptranid, C.long(flags))
+
+	if SUCCEED != ret {
+		err = ac.NewATMIError()
+	}
+
+	ac.nop() //keep context until the end of the func, and only then allow gc
+	return err
+}
+
+//Resume transaction, where TID is encoded in base64 string
+//@param tidb64 Transaction Id reference (base64 encoded value)
+//@param flags	Flags for tran resume (must be 0)
+//@return 	ATMI Error
+func (ac *ATMICtx) TpResumeString(tidb64 string, flags int64) ATMIError {
+
+	var err ATMIError
+	var c_tptranid C.TPTRANID
+
+	//Decode the base64 value
+	tidbytes, errEnc := base64.StdEncoding.DecodeString(tidb64)
+
+	if nil != errEnc {
+		return NewCustomATMIError(TPEINVAL,
+			fmt.Sprintf("Failed to decode base64 tid [%s]: %s",
+				tidb64, errEnc.Error()))
+	}
+
+	//Check the lenght of the bytes, shall match size of tid
+	if len(tidbytes) != int(unsafe.Sizeof(c_tptranid)) {
+		return NewCustomATMIError(TPEINVAL,
+			fmt.Sprintf("Invalid TID [%s], expeced data len %d got %d",
+				tidb64, unsafe.Sizeof(c_tptranid), len(tidbytes)))
+	}
+
+	ret := C.Otpresume(&ac.c_ctx, (*C.TPTRANID)(unsafe.Pointer(&tidbytes[0])), C.long(flags))
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
@@ -1357,10 +1416,10 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	c_qname := C.CString(qname)
 	defer C.free(unsafe.Pointer(c_qname))
 
-	c_ctl_flags := C.long(ctl.flags)
-	c_ctl_deq_time := C.long(ctl.deq_time)
-	c_ctl_priority := C.long(ctl.priority)
-	c_ctl_diagnostic := C.long(ctl.diagnostic)
+	c_ctl_flags := C.long(ctl.Flags)
+	c_ctl_deq_time := C.long(ctl.Deq_time)
+	c_ctl_priority := C.long(ctl.Priority)
+	c_ctl_diagnostic := C.long(ctl.Diagnostic)
 	c_ctl_diagmsg := C.calloc(1, 256)
 	c_ctl_diagmsg_ptr := (*C.char)(unsafe.Pointer(c_ctl_diagmsg))
 	defer C.free(unsafe.Pointer(c_ctl_diagmsg))
@@ -1369,20 +1428,20 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	c_ctl_msgid_ptr := (*C.char)(unsafe.Pointer(c_ctl_msgid))
 	defer C.free(unsafe.Pointer(c_ctl_msgid))
 	for i := 0; i < TMMSGIDLEN; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))) = C.char(ctl.msgid[i])
+		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))) = C.char(ctl.Msgid[i])
 	}
 
 	c_ctl_corrid := C.malloc(TMCORRIDLEN)
 	c_ctl_corrid_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
 	defer C.free(unsafe.Pointer(c_ctl_corrid))
 	for i := 0; i < TMCORRIDLEN; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))) = C.char(ctl.corrid[i])
+		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))) = C.char(ctl.Corrid[i])
 	}
 
 	/* Allocate the buffer for reply q, because we might receive this on
 	   dequeue.
 	*/
-	c_ctl_replyqueue_tmp := C.CString(ctl.replyqueue)
+	c_ctl_replyqueue_tmp := C.CString(ctl.Replyqueue)
 	defer C.free(unsafe.Pointer(c_ctl_replyqueue_tmp))
 	c_ctl_replyqueue := C.malloc(TMQNAMELEN + 1)
 	c_ctl_replyqueue_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
@@ -1397,7 +1456,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	/* Allocate the buffer for failure q, because we might receive this on
 	   dequeue.
 	*/
-	c_ctl_failurequeue_tmp := C.CString(ctl.failurequeue)
+	c_ctl_failurequeue_tmp := C.CString(ctl.Failurequeue)
 	defer C.free(unsafe.Pointer(c_ctl_failurequeue_tmp))
 	c_ctl_failurequeue := C.malloc(TMQNAMELEN + 1)
 	c_ctl_failurequeue_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
@@ -1410,7 +1469,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	C.strcpy(c_ctl_failurequeue_ptr, c_ctl_failurequeue_tmp)
 
 	/* The same goes with client id... we might return it on dequeue */
-	c_ctl_cltid_tmp := C.CString(ctl.cltid)
+	c_ctl_cltid_tmp := C.CString(ctl.Cltid)
 	defer C.free(unsafe.Pointer(c_ctl_cltid_tmp))
 	c_ctl_cltid := C.malloc(TMQNAMELEN + 1)
 	c_ctl_cltid_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
@@ -1422,11 +1481,11 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	}
 	C.strcpy(c_ctl_cltid_ptr, c_ctl_cltid_tmp)
 
-	c_ctl_urcode := C.long(ctl.urcode)
-	c_ctl_appkey := C.long(ctl.appkey)
-	c_ctl_delivery_qos := C.long(ctl.delivery_qos)
-	c_ctl_reply_qos := C.long(ctl.reply_qos)
-	c_ctl_exp_time := C.long(ctl.exp_time)
+	c_ctl_urcode := C.long(ctl.Urcode)
+	c_ctl_appkey := C.long(ctl.Appkey)
+	c_ctl_delivery_qos := C.long(ctl.Delivery_qos)
+	c_ctl_reply_qos := C.long(ctl.Reply_qos)
+	c_ctl_exp_time := C.long(ctl.Exp_time)
 
 	buf := tb.GetBuf()
 
@@ -1468,30 +1527,30 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	}
 
 	/* transfer back to structure values we got... */
-	ctl.flags = int64(c_ctl_flags)
-	ctl.deq_time = int64(c_ctl_deq_time)
-	ctl.priority = int64(c_ctl_priority)
-	ctl.diagnostic = int64(c_ctl_diagnostic)
+	ctl.Flags = int64(c_ctl_flags)
+	ctl.Deq_time = int64(c_ctl_deq_time)
+	ctl.Priority = int64(c_ctl_priority)
+	ctl.Diagnostic = int64(c_ctl_diagnostic)
 
-	ctl.diagmsg = C.GoString(c_ctl_diagmsg_ptr)
+	ctl.Diagmsg = C.GoString(c_ctl_diagmsg_ptr)
 
 	for i := 0; i < TMMSGIDLEN; i++ {
-		ctl.msgid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))))
+		ctl.Msgid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))))
 	}
 
 	for i := 0; i < TMCORRIDLEN; i++ {
-		ctl.corrid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))))
+		ctl.Corrid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))))
 	}
 
-	ctl.replyqueue = C.GoString(c_ctl_replyqueue_ptr)
-	ctl.failurequeue = C.GoString(c_ctl_failurequeue_ptr)
-	ctl.cltid = C.GoString(c_ctl_cltid_ptr)
+	ctl.Replyqueue = C.GoString(c_ctl_replyqueue_ptr)
+	ctl.Failurequeue = C.GoString(c_ctl_failurequeue_ptr)
+	ctl.Cltid = C.GoString(c_ctl_cltid_ptr)
 
-	ctl.urcode = int64(c_ctl_urcode)
-	ctl.appkey = int64(c_ctl_appkey)
-	ctl.delivery_qos = int64(c_ctl_delivery_qos)
-	ctl.reply_qos = int64(c_ctl_reply_qos)
-	ctl.exp_time = int64(c_ctl_exp_time)
+	ctl.Urcode = int64(c_ctl_urcode)
+	ctl.Appkey = int64(c_ctl_appkey)
+	ctl.Delivery_qos = int64(c_ctl_delivery_qos)
+	ctl.Reply_qos = int64(c_ctl_reply_qos)
+	ctl.Exp_time = int64(c_ctl_exp_time)
 
 	if FAIL == ret {
 		err = ac.NewATMIError()
