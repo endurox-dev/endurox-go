@@ -1202,6 +1202,8 @@ func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 }
 
 //Suspend transaction
+//NOTE! The string tranid value is platform dependent - CPU Architecture and Data Model
+//e.g. ILP32, LP64, etc must not be mixed between suspends and resumes.
 //@param tranid	Transaction Id reference
 //@param flags	Flags for suspend (must be 0)
 //@return 	ATMI Error
@@ -1220,8 +1222,10 @@ func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 }
 
 //Suspend transaction, return transaction ID as base64 encoded string
+//NOTE! The string tid value is platform dependent - CPU Architecture and Data Model
+//e.g. ILP32, LP64, etc must not be mixed between suspends and resumes.
 //@param flags	Flags for suspend (must be 0)
-//@return 	ATMI Error
+//@return 	tid, ATMI Error
 func (ac *ATMICtx) TpSuspendString(flags int64) (string, ATMIError) {
 
 	var err ATMIError
@@ -1243,6 +1247,8 @@ func (ac *ATMICtx) TpSuspendString(flags int64) (string, ATMIError) {
 }
 
 //Resume transaction
+//NOTE! The string tranid value is platform dependent - CPU Architecture and Data Model
+//e.g. ILP32, LP64, etc must not be mixed between suspends and resumes.
 //@param tranid	Transaction Id reference
 //@param flags	Flags for tran resume (must be 0)
 //@return 	ATMI Error
@@ -1260,7 +1266,9 @@ func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError {
 	return err
 }
 
-//Resume transaction, where TID is encoded in base64 string
+//Resume transaction, where TID is encoded in base64 string.
+//NOTE! The string tid value is platform dependent - CPU Architecture and Data Model
+//e.g. ILP32, LP64, etc must not be mixed.
 //@param tidb64 Transaction Id reference (base64 encoded value)
 //@param flags	Flags for tran resume (must be 0)
 //@return 	ATMI Error
