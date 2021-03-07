@@ -380,6 +380,7 @@ const (
 	TPNOCACHELOOK  = 0x01000000 /* Do not lookup cache                  */
 	TPNOCACHEADD   = 0x02000000 /* Do not save data to cache            */
 	TPNOCACHEDDATA = 0x04000000 /* Do not use cached data               */
+    TPNOABORT      = 0x08000000 /* Do not abort global transaction if svc call failed */
 )
 
 /*
