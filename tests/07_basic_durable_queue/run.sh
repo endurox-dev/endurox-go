@@ -15,6 +15,7 @@ export NDRX_MSGSIZEMAX=100000
 
 # Start the enduro/x app server (which will boot the our server executable)
 
+xadmin down -y
 xadmin start -y
 
 # should print some hello world
