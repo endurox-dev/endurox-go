@@ -8,9 +8,9 @@
 #
 # cleanup any leftovers from previous cases
 #
-rm -rf var/prepared 2>/dev/null
-rm -rf var/committed 2>/dev/null
-rm -rf var/active 2>/dev/null
+rm -rf var/qspace1/prepared 2>/dev/null
+rm -rf var/qspace1/committed 2>/dev/null
+rm -rf var/qspace1/active 2>/dev/null
 
 pushd .
 cd conf

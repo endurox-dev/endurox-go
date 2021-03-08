@@ -29,7 +29,7 @@ func main() {
 	C.signal(11, nil)
 
 	//Have some loop for memory leak checks...
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 
 		var ac *atmi.ATMICtx
 		var err atmi.ATMIError
@@ -116,21 +116,23 @@ func main() {
 				return
 			}
 
-			testMessage = "Hello World from queue2"
+			for n := 0; n < 10; n++ {
+				testMessage = fmt.Sprintf("Hello World from queue %d %d %d", n, j, i)
 
-			buf, err = ac.NewString(testMessage)
+				buf, err = ac.NewString(testMessage)
 
-			if err != nil {
-				fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
-				ret = FAIL
-				return
-			}
+				if err != nil {
+					fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+					ret = FAIL
+					return
+				}
 
-			//Enqueue the string
-			if err := ac.TpEnqueue("QSPACE1", "MYQ1", &qctl, buf, 0); nil != err {
-				fmt.Printf("TpEnqueue() failed: ATMI Error %d:[%s]\n", err.Code(), err.Message())
-				ret = FAIL
-				return
+				//Enqueue the string
+				if err := ac.TpEnqueue("QSPACE1", "MYQ1", &qctl, buf, 0); nil != err {
+					fmt.Printf("TpEnqueue() failed: ATMI Error %d:[%s]\n", err.Code(), err.Message())
+					ret = FAIL
+					return
+				}
 			}
 
 			fmt.Printf("Enqueue OK (TX) \n")
@@ -248,22 +250,27 @@ func main() {
 					return
 				}
 
-				if err := ac.TpDequeue("QSPACE1", "MYQ1", &qctl, buf2, 0); nil != err {
-					fmt.Printf("TpDequeue() failed: ATMI Error %d:[%s]\n", err.Code(), err.Message())
-					ret = FAIL
-					return
-				}
+				for n := 0; n < 10; n++ {
 
-				//Print the output buffer
-				fmt.Printf("Dequeued message: [%s]\n", buf2.GetString())
+					testMessage = fmt.Sprintf("Hello World from queue %d %d %d", n, j, i)
 
-				if buf2.GetString() != testMessage {
-					fmt.Printf("ERROR ! Enqueued [%s] but dequeued [%s]\n",
-						testMessage, buf2.GetString())
-					ret = FAIL
-					return
+					if err := ac.TpDequeue("QSPACE1", "MYQ1", &qctl, buf2, 0); nil != err {
+						fmt.Printf("TpDequeue() failed: ATMI Error %d:[%s]\n", err.Code(), err.Message())
+						ret = FAIL
+						return
+					}
+
+					//Print the output buffer
+					fmt.Printf("Dequeued message: [%s]\n", buf2.GetString())
+
+					if buf2.GetString() != testMessage {
+						fmt.Printf("ERROR ! Enqueued [%s] but dequeued [%s]\n",
+							testMessage, buf2.GetString())
+						ret = FAIL
+						return
+					}
+					fmt.Printf("Message machged ok (2)!\n")
 				}
-				fmt.Printf("Message machged ok (2)!\n")
 
 			}
 
