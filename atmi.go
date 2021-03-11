@@ -403,6 +403,14 @@ const (
 )
 
 /*
+ * Transaction handling constants
+ */
+const (
+    TPTXCOMMITDLOG = 0x00000004 /**< Commit decision logged     */
+    TPTXNOOPTIM    = 0x00000100 /**< No known host optimization */
+
+)
+/*
  * Max message size (int bytes)
 
 const (
