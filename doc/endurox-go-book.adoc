@@ -169,12 +169,6 @@ collect2: error: ld returned 8 exit status
 Ensure that OBJECT_MODE is not set. As Go compiler at some moment invokes gcc
 with out -maix64 flag for some AIX linker tests.
 
-==== Executing Enduro/X after binaries built
-
-When binaries are built and ready for running under the Enduro/X, ensure that
-*LIBPATH* unset (or does not contain /opt/freeware/lib). As Enduro/X links against
-stock AIX libraries, and these freeware libs are causing some conflicts.
-
 == API Model
 
 The Enduro/X API object oriented where the main Enduro/X objects are held into Go
