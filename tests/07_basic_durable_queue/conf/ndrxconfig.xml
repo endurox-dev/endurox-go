@@ -79,6 +79,15 @@
                     <srvid>1</srvid>
                     <sysopt>-e /tmp/tmsrv.log -r -- -t1 -l${NDRX_APPHOME}/var/tm</sysopt>
                 </server>
+                <server name="tmsrv">
+                    <max>1</max>
+                    <srvid>20</srvid>
+                    <envs>
+                          <env name="NDRX_XA_RES_ID">2</env>
+                          <env name="NDRX_XA_DRIVERLIB">libndrxxanulls.${NDRX_LIBEXT}</env>
+                    </envs> 
+                    <sysopt>-e /tmp/tmsrv2.log -r -- -t1 -l${NDRX_APPHOME}/var/tm2</sysopt>
+                </server>
                 <server name="tmqueue">
                     <max>1</max>
                     <srvid>100</srvid>
