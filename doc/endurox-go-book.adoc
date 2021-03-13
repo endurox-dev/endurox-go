@@ -38,7 +38,7 @@ is send to server process while doing shutdown.
 
 To get started with endurox-go module, it is required to install
 
-1. Go compiler
+1. Go compiler and gcc compiler
 
 2. PKG Config package (used by endurox-go) to resolve library dependencies
 
@@ -56,14 +56,12 @@ Particularity sample will run on amd64 on Linux OS:
 
 --------------------------------------------------------------------------------
 $ cd ~
-$ wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.8.linux-amd64.tar.gz
-sudo ln -s /usr/local/go/bin/go /usr/bin/go
-sudo ln -s /usr/local/go/bin/godoc /usr/bin/godoc
-sudo ln -s /usr/local/go/bin/gofmt /usr/bin/gofmt
+$ wget https://golang.org/dl/go1.16.2.linux-amd64.tar.gz
+$ sudo tar -C /usr/local -xzf go1.16.2.linux-amd64.tar.gz
+$ echo "export PATH=\$PATH:/usr/local/go/bin" > $HOME/.profile
 --------------------------------------------------------------------------------
 
-=== Installing pkg config
+=== Installing pkg config and C/C++ compiler (needed for CGO)
 
 The PKG config is needed for endurox-go to select the needed dependences. The 
 Enduro/X install the pkg config file named *atmisrvinteg.pc* to system's pkgconfig
@@ -73,23 +71,22 @@ path. This is later used by golang to build endurox-go. Golang needs pkgconfig p
 Installation process on Linux Ubuntu
 
 --------------------------------------------------------------------------------
-$ sudo apt-get install pkg-config
+$ sudo apt-get install pkg-config gcc g++
 --------------------------------------------------------------------------------
 
 On RHEL Linux (if not already installed):
 
 --------------------------------------------------------------------------------
 $ su - root
+# yum groupinstall 'Development Tools'
 # yum install pkgconfig
 --------------------------------------------------------------------------------
-
 
 Installation on FreeBSD. Also we export PKG_CONFIG_PATH. And we switch the system
 to the GNU make, otherwise tests does not compile.
 --------------------------------------------------------------------------------
 $ su - root
-# pkg install pkgconf
-# pkg install gmake
+# pkg install pkgconf clang gmake
 # mv /usr/bin/make /usr/bin/make.orig
 # ln -s /usr/local/bin/gmake /usr/bin/make
 $ exit
@@ -97,6 +94,86 @@ $ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 --------------------------------------------------------------------------------
 
 Or for BSD, add the PKG_CONFIG_PATH path to /etc/profile.
+
+== Installing Golang and using on AIX
+
+IBM AIX only recently has added Golang compiler which works starting from AIX 7.2
+running on POWER 8 and later CPUs. Also solution has some limitations,
+one of which is that Go compiled binaries on AIX does not support runtime linkage 
+which also prevents XA drivers to be loaded from shared libraries. 
+Thus to have some transaction support in Go, only NULL switch
+(libndrxxanulls.so) resolves to internal null switch driver, i.e. standard
+configuration will work, but it is handled internally by Enduro/X that this particular
+library resolves to statically linked NULL switch.
+
+Golang request GCC compiler to be installed. It cannot be built with xlC as it
+relies internally on GCC to perform CGO linkage. Thought runtime binaries does
+not depend on GNU C/C++ libraries.
+
+=== Installing G/C/C++ and pkg-config
+
+This assumes that Linux Toolbox is installed. If not installed, follow the instructions
+on aix_notes(guides)(Building Enduro/X On IBM AIX Platform)
+
+--------------------------------------------------------------------------------
+$ su - root
+# yum search gcc-cpp gcc-c++ golang pkg-config
+--------------------------------------------------------------------------------
+
+Set the PKG_CONFIG_PATH path:
+
+--------------------------------------------------------------------------------
+$ echo "export PKG_CONFIG_PATH=\$PKG_CONFIG_PATH:/usr/lib/pkgconfig" > $HOME/.profile
+--------------------------------------------------------------------------------
+
+=== Additional notes
+
+When *building* binaries (only build time), ensure that following is set.
+
+--------------------------------------------------------------------------------
+
+$ export CC=gcc
+$ export CXX=g++
+$ export CFLAGS="-Wl,-brtl -maix64"
+$ export LIBPATH=/opt/freeware/lib:/usr/lib:/usr/lib64
+
+--------------------------------------------------------------------------------
+
+As GCC otherwise would not be able to resolve freeware libraries. This also sets
+the runtime linking flags, but these are not used by Go compiler (at-least in
+version 1.16). But this particular CFLAGS value is needed if running "endurox-go/tests"
+as view compiler builds Enduro/X binary for offset calculation and with out "-WL,brtl"
+gcc does not seek for ".so" library files (which is default Enduro/X delivery
+format).
+
+=== Trouble shooting
+
+This section lists caveats found during Golang usage on AIX.
+
+==== Invalid GCC invocation from Golang for 64bit mode
+
+If having error such as:
+
+--------------------------------------------------------------------------------
+
+go build && go install
+# client
+/opt/freeware/lib/golang/pkg/tool/aix_ppc64/link: gcc -Wl,-V failed: exit status 1
+/usr/bin/ld: LD 7.2.4(2/13/18)
+ld: 0711-738 ERROR: Input file /lib/crt0.o:
+        XCOFF32 object files are not allowed in 64-bit mode.
+collect2: error: ld returned 8 exit status
+
+--------------------------------------------------------------------------------
+
+Ensure that OBJECT_MODE is not set. As Go compiler at some moment invokes gcc
+with out -maix64 flag for some AIX linker tests.
+
+==== Executing Enduro/X after binaries built
+
+When binaries are built and ready for running under the Enduro/X, ensure that
+*LIBPATH* unset (or does not contain /opt/freeware/lib). As Enduro/X links against
+stock AIX libraries, and these freeware libs are causing some conflicts.
 
 == API Model
 
