@@ -106,11 +106,15 @@ export NDRX_XA_CLOSE_STR=$NDRX_XA_OPEN_STR
 if [ "$(uname)" == "Darwin" ]; then
 	export NDRX_XA_DRIVERLIB=libndrxxaqdisks.dylib
 	export NDRX_XA_RMLIB=libndrxxaqdisk.dylib
+	export NDRX_LIBEXT=dylib
 else
 
 	export NDRX_XA_DRIVERLIB=libndrxxaqdisks.so
 	export NDRX_XA_RMLIB=libndrxxaqdisk.so
+	export NDRX_LIBEXT=so
 fi
 export NDRX_XA_LAZY_INIT=1
+
+echo "Using extensio: [$NDRX_LIBEXT]"
 
 # vim: set ts=4 sw=4 et smartindent:

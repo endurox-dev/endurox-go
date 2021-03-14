@@ -11,6 +11,8 @@
 rm -rf var/qspace1/prepared 2>/dev/null
 rm -rf var/qspace1/committed 2>/dev/null
 rm -rf var/qspace1/active 2>/dev/null
+rm -rf var/tm2 2>/dev/null
+mkdir var/tm2
 
 pushd .
 cd conf
@@ -25,6 +27,12 @@ export NDRX_MSGSIZEMAX=100000
 
 xadmin down -y
 xadmin start -y
+
+#
+# Move process to RM2/NULL switch
+#
+export NDRX_XA_RES_ID=2
+export NDRX_XA_DRIVERLIB=libndrxxanulls.${NDRX_LIBEXT}
 
 # should print some hello world
 etclient
