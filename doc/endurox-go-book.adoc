@@ -110,7 +110,7 @@ Golang request GCC compiler to be installed. It cannot be built with xlC as it
 relies internally on GCC to perform CGO linkage. Thought runtime binaries does
 not depend on GNU C/C++ libraries.
 
-=== Installing G/C/C++ and pkg-config
+=== Installing Go, GCC and pkg-config
 
 This assumes that Linux Toolbox is installed. If not installed, follow the instructions
 on aix_notes(guides)(Building Enduro/X On IBM AIX Platform)
