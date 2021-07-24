@@ -91,7 +91,7 @@
                 <server name="tmqueue">
                     <max>1</max>
                     <srvid>100</srvid>
-                    <sysopt>-e /tmp/tmqueue.log -r -- -m QSPACE1 -q ${NDRX_APPHOME}/conf/q.conf -s1</sysopt>
+                    <sysopt>-e /tmp/tmqueue.log -r -- -q ${NDRX_APPHOME}/conf/q.conf -s1</sysopt>
                 </server>
 	</servers>
 </endurox>

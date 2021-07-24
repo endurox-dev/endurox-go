@@ -100,7 +100,7 @@ export NDRX_APPHOME=`pwd`/..
 # XA Config for queues, according to manual: http://www.endurox.org/dokuwiki/doku.php?id=v2.5.x:guides:persistent_message_queues_overview
 #
 export NDRX_XA_RES_ID=1
-export NDRX_XA_OPEN_STR="$NDRX_APPHOME/var/qspace1"
+export NDRX_XA_OPEN_STR="datadir='$NDRX_APPHOME/var/qspace1',qspace='QSPACE1'"
 export NDRX_XA_CLOSE_STR=$NDRX_XA_OPEN_STR
 # Static registration:
 if [ "$(uname)" == "Darwin" ]; then
