@@ -52,8 +52,11 @@ run_test "10_views"
 run_test "11_ubf_tests"
 run_test "12_tpimportexp"
 
+grep RESULT test.out
 echo "*** SUMMARY $M_tests tests executed. $M_ok passes, $M_fail failures"
 
+# wait for tail to pick the change
+sleep 5
 xadmin killall tail
 
 exit $M_fail
