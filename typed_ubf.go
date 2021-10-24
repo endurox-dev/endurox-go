@@ -118,7 +118,7 @@ static void go_Btreefree(char *ptr)
 //Reset location infos
 static void reset_loc_info(Bfld_loc_info_t *loc)
 {
-	memset((void *)&loc, 0, sizeof(Bfld_loc_info_t));
+	memset((void *)loc, 0, sizeof(Bfld_loc_info_t));
 }
 
 typedef struct bfprintcb_data bfprintcb_data_t;
