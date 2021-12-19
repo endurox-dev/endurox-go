@@ -310,10 +310,12 @@ out:
 
 */
 import "C"
-import "unsafe"
-import "fmt"
-import "runtime"
-import "encoding/base64"
+import (
+	"encoding/base64"
+	"fmt"
+	"runtime"
+	"unsafe"
+)
 
 /*
  * SUCCEED/FAIL flags
@@ -380,7 +382,7 @@ const (
 	TPNOCACHELOOK  = 0x01000000 /* Do not lookup cache                  */
 	TPNOCACHEADD   = 0x02000000 /* Do not save data to cache            */
 	TPNOCACHEDDATA = 0x04000000 /* Do not use cached data               */
-    TPNOABORT      = 0x08000000 /* Do not abort global transaction if svc call failed */
+	TPNOABORT      = 0x08000000 /* Do not abort global transaction if svc call failed */
 )
 
 /*
@@ -406,10 +408,11 @@ const (
  * Transaction handling constants
  */
 const (
-    TPTXCOMMITDLOG = 0x00000004 /**< Commit decision logged     */
-    TPTXNOOPTIM    = 0x00000100 /**< No known host optimization */
+	TPTXCOMMITDLOG = 0x00000004 /**< Commit decision logged     */
+	TPTXNOOPTIM    = 0x00000100 /**< No known host optimization */
 
 )
+
 /*
  * Max message size (int bytes)
 
@@ -1755,6 +1758,34 @@ func (ac *ATMICtx) TpURCode() (int64, ATMIError) {
 	}
 
 	return ret, nil
+}
+
+//Set call info, a UBF buffer assocated with call buffer
+//@param msg	Message buffer. Will return TPEINVAL error in case if this interface is nil.
+//@param cibuf	UBF buffer with message infos
+//@param flags	Shall be set to 0
+//@return		ATMI Error
+func (ac *ATMICtx) TpSetCallInfo(msg TypedBuffer, cibuf TypedUBF, flags int64) ATMIError {
+	var err ATMIError
+
+	if msg == nil {
+		return NewCustomATMIError(TPEINVAL, "msg cannot be nil")
+	}
+
+	msgbuf := msg.GetBuf()
+	ubfbuf := cibuf.GetBuf()
+
+	ret := C.Otpsetcallinfo(&ac.c_ctx, msgbuf.C_ptr, (*C.UBFH)(unsafe.Pointer(ubfbuf.C_ptr)), C.long(flags))
+
+	if FAIL == ret {
+		err = ac.NewATMIError()
+	}
+
+	msgbuf.nop()
+	ubfbuf.nop()
+	ac.nop() //keep context until the end of the func, and only then allow gc
+
+	return err
 }
 
 /* vim: set ts=4 sw=4 et smartindent: */
