@@ -1765,7 +1765,7 @@ func (ac *ATMICtx) TpURCode() (int64, ATMIError) {
 //@param cibuf	UBF buffer with message infos
 //@param flags	Shall be set to 0
 //@return		ATMI Error
-func (ac *ATMICtx) TpSetCallInfo(msg TypedBuffer, cibuf TypedUBF, flags int64) ATMIError {
+func (ac *ATMICtx) TpSetCallInfo(msg TypedBuffer, cibuf *TypedUBF, flags int64) ATMIError {
 	var err ATMIError
 
 	if msg == nil {
