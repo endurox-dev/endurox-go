@@ -16,7 +16,7 @@ Arbitrary string, Byte array, Unified Buffer Format (UBF), JSON buffer.
 
 # Branches
 
-- If building against Enduro/X 8.0.0, use v8.0 branch, i.e. $ go get github.com/endurox-dev/endurox-go@v8.0
+- If building against Enduro/X 8.0, use v8.0 branch, i.e. $ go get github.com/endurox-dev/endurox-go@v8.0
 
 
 ## Build & test status
