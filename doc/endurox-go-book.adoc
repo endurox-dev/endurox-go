@@ -7,7 +7,7 @@ v1.0, 2016-11:
 
 == Introduction
 
-This module is set of objects that are binded to Enduro/X C based framework. 
+This module is set of objects that are bind to Enduro/X C based framework. 
 Enduro/X by it self is middleware that uses operating system kernel queues for 
 doing high performance inter-process communication. The middleware functionality 
 is in the heart of the Enduro/X. Other functionality that comes in the package
@@ -145,11 +145,38 @@ as view compiler builds Enduro/X binary for offset calculation and with out "-WL
 gcc does not seek for ".so" library files (which is default Enduro/X delivery
 format).
 
-=== Trouble shooting
+== Trouble shooting
 
-This section lists caveats found during Golang usage on AIX.
+This section lists caveats found during Golang usage.
 
-==== Invalid GCC invocation from Golang for 64bit mode
+=== Golang compiler problems
+
+go1.14 introduced use of *SIGURG* for internal purposes of the language runtime.
+This causes Enduro/X Unix system calls to interrupt with *EINTR*, which can lead
+to incorrect work of the binary using Enduro/X Go bindings.
+
+The bug is reported here: https://github.com/golang/go/issues/50521
+
+While this bug is not fixed, the Enduro/X Go binary shall be started with following
+environment variable set:
+
+--------------------------------------------------------------------------------
+
+export GODEBUG="asyncpreemptoff=1"
+
+--------------------------------------------------------------------------------
+
+The setting may be applied to *app.ini* in *[@global]* section as:
+
+--------------------------------------------------------------------------------
+
+[@global]
+...
+GODEBUG=asyncpreemptoff=1
+
+--------------------------------------------------------------------------------
+
+=== AIX: Invalid GCC invocation from Golang for 64bit mode
 
 If having error such as:
 
@@ -171,7 +198,7 @@ with out -maix64 flag for some AIX linker tests.
 == API Model
 
 The Enduro/X API object oriented where the main Enduro/X objects are held into Go
-structures. List of methods are binded to the structures. Here is the main model
+structures. List of methods are bind to the structures. Here is the main model
 of the Go API:
 
 image:images/class_diagram.png[caption="Figure 1: ", title="API Model", alt="enduro/x Golang API model"]
