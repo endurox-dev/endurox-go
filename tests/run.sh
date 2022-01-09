@@ -4,6 +4,11 @@
 # @(#) Integration tests
 #
 
+#
+# Temporary fix for Support #754
+#
+export GODEBUG="asyncpreemptoff=1"
+
 > ./test.out
 # Have some terminal output...
 tail -f test.out &
