@@ -1100,6 +1100,9 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 
 	C.Otpfree(&ac.c_ctx, buf.C_ptr)
 	buf.C_ptr = nil
+	//Remove finalizers...
+	buf.HaveFinalizer = false
+	runtime.SetFinalizer(&buf, nil)
 
 	ac.nop() //keep context until the end of the func, and only then allow gc
 
