@@ -16,6 +16,79 @@ const (
 	FAIL    = -1
 )
 
+//Test Bug #800
+func test_BNext() int {
+
+
+	ac, err := atmi.NewATMICtx()
+
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		os.Exit(atmi.FAIL)
+	}
+	
+	buf, err := ac.NewUBF(1024)
+
+	if err != nil {
+		fmt.Printf("ATMI Error %d:[%s]\n", err.Code(), err.Message())
+		return -1
+	}
+
+	//Set one field for call
+	if err := buf.BChg(ubftab.T_CARRAY_FLD, 0, "HELLO FROM CLIENT"); nil != err {
+		fmt.Printf("UBF Error %d:[%s]\n", err.Code(), err.Message())
+		return -1
+	}
+	//test that we can run zero lenght byte arrays
+	var nulbuf []byte
+	if err := buf.BChg(ubftab.T_CARRAY_2_FLD, 0, nulbuf); nil != err {
+		fmt.Printf("UBF Error %d:[%s]\n", err.Code(), err.Message())
+		return -1
+	}
+
+	//Try to iterate over the buffer with Bnext... Seems having issues with Bug #800
+
+	first :=true
+	i:=0
+
+	for true {
+
+		fid, occ, err :=buf.BNext(first)
+
+		//We are done... actually error is no error
+		if nil!=err {
+			if err.Code()!=atmi.BMINVAL {
+
+			    fmt.Printf("Unexpected code %d got %d\n", atmi.BMINVAL, err.Code())
+			    return -1
+			}
+			break
+		}
+		
+		first=false
+
+		if i==0 {
+			if fid!=ubftab.T_CARRAY_FLD || occ!=0 {
+			    fmt.Printf("i=%d expected fid=%d occ=%d got fid=%d occ=%d\n", i, ubftab.T_CARRAY_FLD, 0, fid, occ)
+			    return -1
+			}
+		} else if i==1 {
+			if fid!=ubftab.T_CARRAY_2_FLD || occ!=0 {
+			    fmt.Printf("i=%d expected fid=%d occ=%d got fid=%d occ=%d\n", i, ubftab.T_CARRAY_2_FLD, 0, fid, occ)
+			    return -1
+			}
+		} else {
+			fmt.Printf("Unexpected i=%d\n", i)
+			return -1
+		}
+		i++
+	}
+	
+	
+	return 0
+	
+}
+
 //Binary main entry
 func main() {
 
@@ -25,7 +98,21 @@ func main() {
 	// go func() {
 	//	log.Println(http.ListenAndServe("localhost:6060", nil))
 	//}()
-
+	
+	////////////////////////////////////////////////////////////////////////
+	//Run some basic UBF tests
+	////////////////////////////////////////////////////////////////////////
+	
+	if SUCCEED!=test_BNext() {
+	
+		fmt.Printf("test_BNext() failed")
+		os.Exit(FAIL)
+	}
+	
+	////////////////////////////////////////////////////////////////////////
+	//Continue with basic XAMTI call
+	////////////////////////////////////////////////////////////////////////
+	
 	var tpur2 map[int64]int
 
 	tpur2 = make(map[int64]int)
