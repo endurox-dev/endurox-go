@@ -58,32 +58,6 @@ static int WrapBerror(TPCONTEXT_T *p_ctx) {
 	return OBerror(p_ctx);
 }
 
-//Get the value with buffer allocation
-static char * c_Bget_str (UBFH * p_ub, BFLDID bfldid, BFLDOCC occ,
-					BFLDLEN *len, int *err_code)
-{
-	char *ret = malloc(NDRX_MSGSIZEMAX);
-
-	*len = NDRX_MSGSIZEMAX;
-	*err_code = 0;
-
-	if (NULL==ret)
-	{
-		*err_code = 1; //memory error
-	}
-	else
-	{
-		if (0!=Bget (p_ub, bfldid, occ, ret, len))
-		{
-			*err_code = 2; //Buffer
-			free(ret);
-			ret = NULL;
-		}
-	}
-
-	return ret;
-}
-
 //Get integer size
 static int c_sizeof_BFLDID(void)
 {
@@ -182,7 +156,7 @@ static char * BPrintStrC(TPCONTEXT_T *p_ctx, UBFH * p_ub)
 	//allocate any real resources. Thus I guess no problem here
 	//just a virtual memory...
 
-	data.size = Bsizeof(p_ub) * MAXTIDENT;
+	data.size = OBsizeof(p_ctx, p_ub) * MAXTIDENT;
 	data.buf = malloc(data.size);
 	data.p_ctx = p_ctx;
 
