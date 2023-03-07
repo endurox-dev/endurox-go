@@ -1,6 +1,6 @@
 # Application Server for GO (ASG)
 
-Version: 2.0.0 - Using Object-mode API.
+Version: v8.0.0 - Using Object-mode API.
 
 ASG is application server for Golang, which makes it possible to process 
 distributed transactions in Golang. It is possible to reload the application 
@@ -96,3 +96,9 @@ processing in XA mode, the connection string must be empty ("").
 ## Contact
 
 Forums: http://www.endurox.org/projects/endurox-go/boards
+
+# Releases
+
+- Version 8.0.0 released on 09/01/2022 (stable) Support #754, Support #780
+- Version 8.0.2 released on 07/03/2023 (stable) Support #800
+

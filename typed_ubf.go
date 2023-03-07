@@ -328,6 +328,8 @@ type UBFExprFunc func(buf *TypedUBF, funcname string) int64
 
 var exprfuncmap map[string]UBFExprFunc //callback mapping for UBF expression functions to go
 
+var M_BNext_fldid C.BFLDID //Used for storing last returned field ID as required by Bnext() C API.
+
 ///////////////////////////////////////////////////////////////////////////////////
 // UBF API
 ///////////////////////////////////////////////////////////////////////////////////
@@ -520,23 +522,20 @@ func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError {
 //@return Field ID, Field Occurrance, UBF Error
 func (u *TypedUBF) BNext(first bool) (int, int, UBFError) {
 
-	var fldid C.BFLDID
+	//var fldid C.BFLDID
 	var occ C.BFLDOCC
 
 	if first {
-		fldid = BFIRSTFLDID
-	} else {
-		//Get next saved in internal ptr in library
-		fldid = FAIL
+		M_BNext_fldid = BFIRSTFLDID
 	}
 
 	if ret := C.OBnext(&u.Buf.Ctx.c_ctx, (*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)),
-		&fldid, &occ, nil, nil); 1 != ret {
+		&M_BNext_fldid, &occ, nil, nil); 1 != ret {
 		return FAIL, FAIL, u.Buf.Ctx.NewUBFError()
 	}
 
 	u.Buf.nop()
-	return int(fldid), int(occ), nil
+	return int(M_BNext_fldid), int(occ), nil
 }
 
 //Initialize/re-initialize UBF buffer
