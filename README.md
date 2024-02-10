@@ -100,3 +100,7 @@ processing in XA mode, the connection string must be empty ("").
 ## Contact
 
 Forums: http://www.endurox.org/projects/endurox-go/boards
+
+# Releases
+
+- Version 2.5.10 released on 10/02/2024 (stable) Bug #825

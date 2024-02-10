@@ -105,12 +105,48 @@ func main() {
 		ac.TpLogDumpDiff(atmi.LOG_DEBUG, "Test HEX dump diff", ptr1, ptr2, len(ptr1))
 
 		//Open request logging
-
 		ac.TpLogSetReqFileDirect("/tmp/08_single-request-1.log")
+
+		//Ensure that file is open Bug #825
+		stat, file := ac.TpLogGetReqFile()
+
+		if !stat {
+			ac.TpLog(atmi.LOG_ERROR, "TESTERROR: TpLogGetReqFile() must return true")
+			ret = FAIL
+			return
+		}
+
+		if file != "/tmp/08_single-request-1.log" {
+
+			ac.TpLog(atmi.LOG_ERROR,
+				"TESTERROR: TpLogGetReqFile() invalid file [%s]", file)
+			ret = FAIL
+			return
+
+		}
 
 		ac.TpLog(atmi.LOG_ERROR, "Hello from request")
 
 		ac.TpLogCloseReqFile()
+
+		//Ensure that file is closed Bug #825
+		stat, file = ac.TpLogGetReqFile()
+
+		if stat {
+			ac.TpLog(atmi.LOG_ERROR, "TESTERROR: TpLogGetReqFile() must return false")
+			ret = FAIL
+			return
+		}
+
+		if file != "" {
+
+			ac.TpLog(atmi.LOG_ERROR,
+				"TESTERROR: TpLogGetReqFile() invalid file [%s] (expected empty)",
+				 file)
+			ret = FAIL
+			return
+
+		}
 
 		ac.TpLogConfig(atmi.LOG_FACILITY_TP_THREAD,
 			-1, "file=/tmp/08_mainth.log ndrx=5 ubf=5 tp=5", "MTH", "")
