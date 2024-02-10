@@ -14,6 +14,10 @@ This ensures fault tolerant processing. Clients and Server Services comunicate
 via middleware which supports three kind of buffers for request/response data: 
 Arbitrary string, Byte array, Unified Buffer Format (UBF), JSON buffer.
 
+# Branches
+
+- If building against Enduro/X 8.0, use v8.0 branch, i.e. $ go get github.com/endurox-dev/endurox-go@v8.0
+
 
 ## Build & test status
 
@@ -101,4 +105,4 @@ Forums: http://www.endurox.org/projects/endurox-go/boards
 
 - Version 8.0.0 released on 09/01/2022 (stable) Support #754, Support #780
 - Version 8.0.2 released on 07/03/2023 (stable) Support #800
-
+- Version 8.0.4 released on 10/02/2024 (stable) Bug #825

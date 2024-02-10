@@ -310,11 +310,12 @@ func (ac *ATMICtx) TpLogGetReqFile() (bool, string) {
 	c_reqfile_ptr := (*C.char)(unsafe.Pointer(c_reqfile))
 	defer C.free(c_reqfile)
 
-	if SUCCEED != C.Otploggetreqfile(&ac.c_ctx, c_reqfile_ptr, C.PATH_MAX) {
-		status = false
-	} else {
+	//Bug #825 fix
+	if 1 == C.Otploggetreqfile(&ac.c_ctx, c_reqfile_ptr, C.PATH_MAX) {
 		status = true
 		reqfile = C.GoString(c_reqfile_ptr)
+	} else {
+		status = false
 	}
 
 	return status, reqfile
