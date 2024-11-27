@@ -7,7 +7,7 @@ v1.0, 2016-11:
 
 == Introduction
 
-This module is set of objects that are bind to Enduro/X C based framework. 
+This module is set of objects that are bound to Enduro/X C based framework. 
 Enduro/X by it self is middleware that uses operating system kernel queues for 
 doing high performance inter-process communication. The middleware functionality 
 is in the heart of the Enduro/X. Other functionality that comes in the package
@@ -195,10 +195,43 @@ collect2: error: ld returned 8 exit status
 Ensure that OBJECT_MODE is not set. As Go compiler at some moment invokes gcc
 with out -maix64 flag for some AIX linker tests.
 
+==== Memory leaks when using CGO
+
+If Go code invokes user C code which uses Enduro/X Core API, memory may leak,
+if contexting is not done properly. Enduro/X Core libraries require
+certain Thread Local Storage (TLS) context, which Enduro/X Go API manages automatically.
+By default native OS threads for Enduro/X Go binaries are not associated with
+any such context and improper invocation of C code (e.g. via C. namespace), may trigger
+Enduro/X Core to allocate new Context and depending on the scenario,
+this may happen every time, when accessing such C code from Enduro/X Go code.
+
+The proper way to make such invocations, would be to lock to OS thread (so that threads
+does not swap between further calls) and associate it with Enduro/X ATMI context:
+
+--------------------------------------------------------------------------------
+
+func some_work(ac *atmi.ATMICtx) {
+
+        runtime.LockOSThread()
+        ac.AssocThreadWithCtx()
+        
+        C.invoke_c_func_which_does_atmi()
+
+        ac.DisassocThreadFromCtx()
+        runtime.UnlockOSThread()
+
+        return
+}
+
+--------------------------------------------------------------------------------
+
+The approach is the same as if using Distributed transactions, as described further
+in the document, where thread association with context is required.
+
 == API Model
 
 The Enduro/X API object oriented where the main Enduro/X objects are held into Go
-structures. List of methods are bind to the structures. Here is the main model
+structures. List of methods are bound to the structures. Here is the main model
 of the Go API:
 
 image:images/class_diagram.png[caption="Figure 1: ", title="API Model", alt="enduro/x Golang API model"]
@@ -3811,7 +3844,7 @@ func main() {
 == Distributed transaction processing
 
 Distributed transaction currently is supported only for Oracle OCI8 driver which is
-binded to Go, the package is available here: https://github.com/endurox-dev/go-oci8
+bound to Go, the package is available here: https://github.com/endurox-dev/go-oci8
 
 One note must be told, that distributed transaction work according to XA API standard
 which sets that transaction is associated with current operating system thread.
