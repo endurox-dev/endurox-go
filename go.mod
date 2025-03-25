@@ -1,1 +1,1 @@
-module github.com/endurox-dev/endurox-go
+module github.com/endurox-dev/endurox-go/v2
