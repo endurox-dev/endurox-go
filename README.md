@@ -104,4 +104,4 @@ Forums: http://www.endurox.org/projects/endurox-go/boards
 # Releases
 
 - Version 2.5.10 released on 10/02/2024 (stable) Bug #825
-- Version 2.5.12 released on 26/03/2025 (stable) Added go.mod support
+- Version 2.5.12 released on 26/03/2025 (stable) Support #892
