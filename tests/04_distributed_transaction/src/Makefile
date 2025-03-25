@@ -1,5 +1,7 @@
 # Env needed for oci build:
-export PKG_CONFIG_PATH=$(shell pwd)/oci8
+export PKG_CONFIG_PATH:=$(PKG_CONFIG_PATH):$(shell pwd)/oci8
+export CGO_CFLAGS=$(CFLAGS)
+export CGO_LDFLAGS=$(CFLAGS)
 
 $(info $$PKG_CONFIG_PATH is [${PKG_CONFIG_PATH}])
 
@@ -19,3 +21,4 @@ submakes:
 	$(MAKE) -C ubftab
 	$(MAKE) -C client
 	$(MAKE) -C server
+

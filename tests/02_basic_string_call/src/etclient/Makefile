@@ -1,2 +1,3 @@
 ../../bin/client: client.go
-	go build && go install
+	go build
+	GOBIN=$(dir $(abspath $@)) go install
