@@ -49,11 +49,11 @@ package atmi
 static void free_string(char* s) { free(s); }
 static char * malloc_string(int size) { return malloc(size); }
 
-extern int go_tpsrvinit();
-extern void go_tpsrvdone();
+extern int go_tpsrvinit(TPCONTEXT_T ctx);
+extern void go_tpsrvdone(TPCONTEXT_T ctx);
 extern void go_cb_dispatch_call(TPCONTEXT_T ctx, TPSVCINFO *p_svc, char *name, char *fname, char *cltid);
-extern int go_periodcallback();
-extern int go_b4pollcallback();
+extern int go_periodcallback(TPCONTEXT_T ctx);
+extern int go_b4pollcallback(TPCONTEXT_T ctx);
 extern int go_pollevent(TPCONTEXT_T ctx, int fd, unsigned int events);
 
 static int c_tpsrvinit(int argc, char **argv)
@@ -195,8 +195,7 @@ static int c_periodcallback(void)
 	//Set back the context
 	tpsetctxt(ctx, 0);
 
-        return ret;
-
+    return ret;
 }
 
 static int c_tpext_addperiodcb(TPCONTEXT_T *p_ctx, int sec)

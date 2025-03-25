@@ -101,9 +101,9 @@ out:
 
 	//Return to the caller
 	if SUCCEED == ret {
-		ac.TpReturn(atmi.TPSUCCESS, 0, &ub, 0)
+		ac.TpReturn(atmi.TPSUCCESS, 0, ub, 0)
 	} else {
-		ac.TpReturn(atmi.TPFAIL, 0, &ub, 0)
+		ac.TpReturn(atmi.TPFAIL, 0, ub, 0)
 	}
 	return
 }
