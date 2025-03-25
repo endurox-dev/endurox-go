@@ -1467,7 +1467,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	c_ctl_replyqueue_tmp := C.CString(ctl.Replyqueue)
 	defer C.free(unsafe.Pointer(c_ctl_replyqueue_tmp))
 	c_ctl_replyqueue := C.malloc(TMQNAMELEN + 1)
-	c_ctl_replyqueue_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
+	c_ctl_replyqueue_ptr := (*C.char)(unsafe.Pointer(c_ctl_replyqueue))
 	defer C.free(unsafe.Pointer(c_ctl_replyqueue))
 
 	if C.strlen(c_ctl_replyqueue_tmp) > TMQNAMELEN {
@@ -1482,7 +1482,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	c_ctl_failurequeue_tmp := C.CString(ctl.Failurequeue)
 	defer C.free(unsafe.Pointer(c_ctl_failurequeue_tmp))
 	c_ctl_failurequeue := C.malloc(TMQNAMELEN + 1)
-	c_ctl_failurequeue_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
+	c_ctl_failurequeue_ptr := (*C.char)(unsafe.Pointer(c_ctl_failurequeue))
 	defer C.free(unsafe.Pointer(c_ctl_failurequeue))
 
 	if C.strlen(c_ctl_failurequeue_tmp) > TMQNAMELEN {
@@ -1494,8 +1494,8 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 	/* The same goes with client id... we might return it on dequeue */
 	c_ctl_cltid_tmp := C.CString(ctl.Cltid)
 	defer C.free(unsafe.Pointer(c_ctl_cltid_tmp))
-	c_ctl_cltid := C.malloc(TMQNAMELEN + 1)
-	c_ctl_cltid_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
+	c_ctl_cltid := C.malloc(NDRX_MAX_ID_SIZE+1)
+	c_ctl_cltid_ptr := (*C.char)(unsafe.Pointer(c_ctl_cltid))
 	defer C.free(unsafe.Pointer(c_ctl_cltid))
 
 	if C.strlen(c_ctl_cltid_tmp) > NDRX_MAX_ID_SIZE {
