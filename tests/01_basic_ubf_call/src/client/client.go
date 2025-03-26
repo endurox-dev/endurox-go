@@ -19,6 +19,8 @@ const (
 //Binary main entry
 func main() {
 
+	atmi.RuntimeInit()
+
 	ret := SUCCEED
 
 	// Run profiler
