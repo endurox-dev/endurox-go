@@ -133,6 +133,9 @@ func Uninit(ac *atmi.ATMICtx) {
 
 //Executable main entry point
 func main() {
+
+	atmi.RuntimeInit()
+
 	//Have some context
 	ac, err := atmi.NewATMICtx()
 
