@@ -310,12 +310,19 @@ out:
 
 */
 import "C"
+<<<<<<< HEAD
 import (
 	"encoding/base64"
 	"fmt"
 	"runtime"
 	"unsafe"
 )
+=======
+import "unsafe"
+import "fmt"
+import "runtime"
+import "encoding/base64"
+>>>>>>> master
 
 /*
  * SUCCEED/FAIL flags
