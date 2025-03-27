@@ -314,8 +314,6 @@ import "unsafe"
 import "fmt"
 import "runtime"
 import "encoding/base64"
-import "os"
-import "strings"
 
 /*
  * SUCCEED/FAIL flags
@@ -1757,28 +1755,6 @@ func (ac *ATMICtx) TpURCode() (int64, ATMIError) {
 	}
 
 	return ret, nil
-}
-
-//Sets the common runtime for the Enduro/X Go binaires
-//As of GO 1.21, the GODEBUG env can be changed from the runtime
-//Thus this init will fix the issue with requiring asyncpreemptoff=1 in process external env
-func RuntimeInit() {
-
-	godebug := os.Getenv("GODEBUG")
-	parts := strings.Split(godebug, ",")
-
-	for _, part := range parts {
-		if strings.HasPrefix(part, "asyncpreemptoff=") {
-			return // Already present, no need to update
-		}
-	}
-
-	if godebug == "" {
-		os.Setenv("GODEBUG", "asyncpreemptoff=1")
-	} else {
-		os.Setenv("GODEBUG", godebug+",asyncpreemptoff=1")
-	}
-
 }
 
 /* vim: set ts=4 sw=4 et smartindent: */
