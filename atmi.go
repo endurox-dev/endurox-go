@@ -315,6 +315,10 @@ import (
 	"fmt"
 	"runtime"
 	"unsafe"
+    "os/signal"
+    "syscall"
+    "strings"
+    "os"
 )
 
 /*
@@ -1789,6 +1793,30 @@ func (ac *ATMICtx) TpSetCallInfo(msg TypedBuffer, cibuf *TypedUBF, flags int64) 
 	ac.nop() //keep context until the end of the func, and only then allow gc
 
 	return err
+}
+
+//Sets the common runtime for the Enduro/X Go binaires
+//As of Go 1.14, it sends SIGURG for preemption to process GC -
+//but this breaks C runtime. Official option is to set env variable GODEBUG="asyncpreemptoff=1"
+//However, for convenience, function is provided to ignore SIGUR signals,
+//thus they shall never reach the C code.
+//This solution however is experimental, and is subject of changes for future
+//module versions.
+//In the current implementation, if "asyncpreemptoff" setting in GODEBUG env is found,
+//function does not perform changes for signal handling
+//(thus, logic may be disabled at runtime, if needed).
+func RuntimeInit() {
+
+	godebug := os.Getenv("GODEBUG")
+	parts := strings.Split(godebug, ",")
+
+	for _, part := range parts {
+		if strings.HasPrefix(part, "asyncpreemptoff=") {
+			return // Already present, no need to update
+		}
+	}
+
+	signal.Ignore(syscall.SIGURG)
 }
 
 /* vim: set ts=4 sw=4 et smartindent: */
