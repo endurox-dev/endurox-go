@@ -387,9 +387,11 @@ func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc st
 
 	buf := data.GetBuf()
 
-	if SUCCEED != C.Otplogsetreqfile(&ac.c_ctx, &buf.C_ptr, c_filename, c_filesvc) {
+	cur_ptr:=buf.C_ptr
+	if SUCCEED != C.Otplogsetreqfile(&ac.c_ctx, &cur_ptr, c_filename, c_filesvc) {
 		err = ac.NewATMIError()
 	}
+	buf.updptr(cur_ptr)
 
 	ac.nop()
 	return err

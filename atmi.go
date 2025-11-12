@@ -273,12 +273,10 @@ static int go_tpdequeue (TPCONTEXT_T *p_ctx,  char *qspace, char *qname, char **
 //NOTE that tpfree will allocate auto-context if none currently present...
 void go_tpfree(char *ptr)
 {
-
     // Allocate new context + set it...
     TPCONTEXT_T c = tpnewctxt(0, 1);
 	tpfree(ptr);
     tpfreectxt(c);
-
 }
 
 //Read the return code from current ATMI context
@@ -315,10 +313,10 @@ import (
 	"fmt"
 	"runtime"
 	"unsafe"
-    "os/signal"
-    "syscall"
-    "strings"
-    "os"
+	"os/signal"
+	"syscall"
+	"strings"
+	"os"
 )
 
 /*
@@ -555,6 +553,10 @@ type TPTRANID struct {
 type ATMICtx struct {
 	gcoff int //dummy counter tricking the gc to suspend while using object in c
 	c_ctx C.TPCONTEXT_T
+	cleanup runtime.Cleanup
+
+	//Protect against copy
+	_ noCopy
 }
 
 /*
@@ -599,6 +601,13 @@ type TPQCTL struct {
 // ATMI Buffers section
 ///////////////////////////////////////////////////////////////////////////////////
 
+// noCopy is used to prevent accidental copying via `go vet` (copylocks).
+type noCopy struct{}
+
+// Lock and Unlock are no-ops, just to satisfy vet's heuristic.
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
+
 //ATMI buffer
 type ATMIBuf struct {
 	gcoff int
@@ -608,11 +617,14 @@ type ATMIBuf struct {
 	//Probably we need a wrapper for lenght function
 	C_len C.long
 
-	//have finalizer installed
-	HaveFinalizer bool
+	//have cleanup installed
+	cleanup runtime.Cleanup
 
 	//Have some context, just a reference to, for ATMI buffer operations
 	Ctx *ATMICtx
+
+	//Protect against copy
+	_ noCopy
 }
 
 //Base interface for typed buffer
@@ -766,7 +778,8 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 			"new context - see ULOG for details")
 	}
 
-	runtime.SetFinalizer(&ret, freeATMICtx)
+	//runtime.SetFinalizer(&ret, freeATMICtx)
+	ret.cleanup = runtime.AddCleanup(&ret, atmiCtxCleanup, ret.c_ctx)
 
 	return &ret, nil
 }
@@ -775,8 +788,15 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 //Internally this will call the TpTerm too to termiante any XATMI client
 //session in progress.
 func (ac *ATMICtx) FreeATMICtx() {
+
+	if ac.c_ctx == nil {
+		return //already freed.
+	}
+
+	ac.cleanup.Stop() //Do not run again...
 	ac.TpTerm() //This extra, but let it be
 	C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
+	ac.c_ctx = nil
 }
 
 //Associate current OS thread with context
@@ -803,10 +823,9 @@ func (ac *ATMICtx) DisassocThreadFromCtx() ATMIError {
 }
 
 //Kill the ATMI context (internal version for finalizer)
-func freeATMICtx(ac *ATMICtx) {
-	if nil != ac.c_ctx {
-		//ac.TpTerm() //This extra, but let it be - not needed, free will do.
-		C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
+func atmiCtxCleanup(c C.TPCONTEXT_T) {
+	if nil != c {
+		C.Otpfreectxt(&c, c)
 	}
 }
 
@@ -850,8 +869,9 @@ func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBu
 	C.free(unsafe.Pointer(c_type))
 	C.free(unsafe.Pointer(c_subtype))
 
-	runtime.SetFinalizer(&buf, tpfree)
-	buf.HaveFinalizer = true
+	//runtime.SetFinalizer(&buf, tpfree)
+	//buf.HaveFinalizer = true
+	buf.cleanup = runtime.AddCleanup(&buf, tpfree, buf.C_ptr)
 
 	ac.nop() //keep context until the end of the func, and only then allow gc
 	return &buf, err
@@ -862,6 +882,18 @@ func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx) {
 	buf.Ctx = ac
 }
 
+//Updated cleanup data, if ptr changed...
+func (buf *ATMIBuf) updptr (cur_ptr *C.char) {
+
+	if cur_ptr != buf.C_ptr {
+		buf.C_ptr = cur_ptr
+		//Fix the of the buf, if ptr was updated.
+		buf.cleanup.Stop()
+		buf.cleanup = runtime.AddCleanup(&buf, tpfree, buf.C_ptr)
+	}
+
+}
+
 //Reallocate the buffer
 //@param buf		ATMI buffer
 //@return 		ATMI Error
@@ -869,11 +901,13 @@ func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 
 	var err ATMIError
 
-	buf.C_ptr = C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
+	cur_ptr := C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
 
-	if nil == buf.C_ptr {
+	if nil == cur_ptr {
 		err = buf.Ctx.NewATMIError()
 	}
+
+	buf.updptr(cur_ptr)
 
 	buf.nop()
 
@@ -910,7 +944,9 @@ func (ac *ATMICtx) TpCall(svc string, tb TypedBuffer, flags int64) (int, ATMIErr
 
 	buf := tb.GetBuf()
 
-	ret := C.Otpcall(&ac.c_ctx, c_svc, buf.C_ptr, buf.C_len, &buf.C_ptr, &buf.C_len, C.long(flags))
+	cur_ptr:=buf.C_ptr
+	ret := C.Otpcall(&ac.c_ctx, c_svc, buf.C_ptr, buf.C_len, &cur_ptr, &buf.C_len, C.long(flags))
+	buf.updptr(cur_ptr)
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
@@ -971,7 +1007,10 @@ func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIErr
 
 	buf := tb.GetBuf()
 
-	ret := C.Otpgetrply(&ac.c_ctx, &c_cd, &buf.C_ptr, &buf.C_len, C.long(flags))
+	cur_ptr:=buf.C_ptr
+	ret := C.Otpgetrply(&ac.c_ctx, &c_cd, &cur_ptr, &buf.C_len, C.long(flags))
+	buf.updptr(cur_ptr)
+
 	*cd = int(c_cd)
 
 	if SUCCEED != ret {
@@ -1102,25 +1141,22 @@ func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 //@param buf		ATMI buffer
 func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 
-	C.Otpfree(&ac.c_ctx, buf.C_ptr)
-	buf.C_ptr = nil
-	//Remove finalizers...
-	buf.HaveFinalizer = false
-	runtime.SetFinalizer(&buf, nil)
-
+	if nil != buf.C_ptr {
+		C.Otpfree(&ac.c_ctx, buf.C_ptr)
+		buf.C_ptr = nil
+		buf.cleanup.Stop()
+	}
 	ac.nop() //keep context until the end of the func, and only then allow gc
-
 }
 
 //Free the ATMI buffer (internal version, for finalizer)
 //Context less operation
 //@param buf		ATMI buffer
-func tpfree(buf *ATMIBuf) {
+func tpfree(C_ptr *C.char) {
 	//Kill any context is appeared.
 	//Protect us from garbadge collector
-	if buf.C_ptr != nil {
-		C.go_tpfree(buf.C_ptr)
-		buf.C_ptr = nil
+	if C_ptr != nil {
+		C.go_tpfree(C_ptr)
 	}
 }
 
@@ -1535,7 +1571,8 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 			&c_ctl_reply_qos,
 			&c_ctl_exp_time)
 	} else {
-		ret = C.go_tpdequeue(&ac.c_ctx, c_qspace, c_qname, &buf.C_ptr, &buf.C_len, C.long(flags),
+		cur_ptr:=buf.C_ptr
+		ret = C.go_tpdequeue(&ac.c_ctx, c_qspace, c_qname, &cur_ptr, &buf.C_len, C.long(flags),
 			&c_ctl_flags,
 			&c_ctl_deq_time,
 			&c_ctl_priority,
@@ -1551,6 +1588,7 @@ func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb Typed
 			&c_ctl_delivery_qos,
 			&c_ctl_reply_qos,
 			&c_ctl_exp_time)
+		buf.updptr(cur_ptr)
 	}
 
 	/* transfer back to structure values we got... */
@@ -1708,9 +1746,9 @@ func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
 
 	//Have buffer usage after C, avoid GC during the C call, if this is last
 	//buffer use
-	buf.nop()
+    runtime.KeepAlive(buf)
 
-	ac.nop() //keep context until the end of the func, and only then allow gc
+	runtime.KeepAlive(ac) //keep context until the end of the func, and only then allow gc
 	return C.GoString(c_str_buf_ptr), nil
 
 }
@@ -1728,13 +1766,17 @@ func (ac *ATMICtx) TpImport(jsondata string, tb TypedBuffer, flags int64) ATMIEr
 	c_jsondata := C.CString(jsondata)
 	defer C.free(unsafe.Pointer(c_jsondata))
 
-	if ret := C.Otpimport(&ac.c_ctx, c_jsondata, C.long(0), &buf.C_ptr, &buf.C_len,
+	cur_ptr := buf.C_ptr
+
+	if ret := C.Otpimport(&ac.c_ctx, c_jsondata, C.long(0), &cur_ptr, &buf.C_len,
 		C.long(flags)); ret != SUCCEED {
 		err = ac.NewATMIError()
 	}
 
-	buf.nop()
-	ac.nop() //keep context until the end of the func, and only then allow gc
+	buf.updptr(cur_ptr)
+
+	runtime.KeepAlive(buf)
+	runtime.KeepAlive(ac) //keep context until the end of the func, and only then allow gc
 	//Have buffer usage after C, avoid GC during the C call
 
 	return err

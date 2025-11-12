@@ -250,6 +250,8 @@ const (
 //UBF Buffer
 type TypedUBF struct {
 	Buf *ATMIBuf
+    //Protect against copy
+	_ noCopy
 }
 
 //Return The ATMI buffer to caller
@@ -259,10 +261,14 @@ func (u *TypedUBF) GetBuf() *ATMIBuf {
 
 //Compiled Expression Tree
 type ExprTree struct {
-	//All object which have finalizer we need nop func to defer so that
-	//during the c call the GC does not collect the object...
-	gcoff int
 	c_ptr *C.char
+
+	//Protect against copy (so that original is GC'd, and we work with invalid copy)
+	_ noCopy
+
+	//have cleanup installed
+	cleanup runtime.Cleanup
+
 }
 
 //Field location infos
@@ -333,12 +339,6 @@ var M_BNext_fldid C.BFLDID //Used for storing last returned field ID as required
 ///////////////////////////////////////////////////////////////////////////////////
 // UBF API
 ///////////////////////////////////////////////////////////////////////////////////
-
-//Do nothing, to trick the GC
-func (expr *ExprTree) nop() int {
-	expr.gcoff++
-	return expr.gcoff
-}
 
 //Get the field len
 //@param fldid	Field ID
@@ -1179,10 +1179,8 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 
 	tree.c_ptr = c_ptr
 
-	//Free up the data once GCed
-	//Well we might have issue here, the ATMI Context might be already
-	//Deallocated, thus we need to have temp context free op.
-	runtime.SetFinalizer(&tree, btreeFree)
+	//runtime.SetFinalizer(&ret, freeATMICtx)
+	tree.cleanup = runtime.AddCleanup(&tree, btreeFree, tree.c_ptr)
 
 	ac.nop() //keep context until the end of the func, and only then allow gc
 	return &tree, nil
@@ -1196,18 +1194,15 @@ func (ac *ATMICtx) BTreeFree(tree *ExprTree) {
 	tree.c_ptr = nil
 
 	ac.nop() //keep context until the end of the func, and only then allow gc
-	tree.nop()
+	tree.cleanup.Stop()
 }
 
 //Internal version (uses temp context)
-func btreeFree(tree *ExprTree) {
+func btreeFree(c_ptr *C.char) {
 
-	if nil != tree.c_ptr {
-		C.go_Btreefree(tree.c_ptr)
-		tree.c_ptr = nil
+	if nil != c_ptr {
+		C.go_Btreefree(c_ptr)
 	}
-
-	tree.nop()
 }
 
 //Test the expresion tree to current UBF buffer
@@ -1221,7 +1216,7 @@ func (u *TypedUBF) BBoolEv(tree *ExprTree) bool {
 		return true
 	}
 
-	tree.nop()
+	runtime.KeepAlive(tree)
 	u.Buf.nop()
 	return false
 }
@@ -1252,7 +1247,7 @@ func (u *TypedUBF) BFloatEv(tree *ExprTree) float64 {
 	c_ret := C.OBfloatev(&u.Buf.Ctx.c_ctx,
 		(*C.UBFH)(unsafe.Pointer(u.Buf.C_ptr)), tree.c_ptr)
 
-	tree.nop()
+	runtime.KeepAlive(tree)
 	u.Buf.nop()
 
 	return float64(c_ret)
@@ -1599,7 +1594,7 @@ func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError) {
 	C.OBboolpr(&ac.c_ctx, tree.c_ptr, f)
 
 	ac.nop()
-	tree.nop()
+	runtime.KeepAlive(tree)
 
 	return C.GoString((*C.char)(c_val)), nil
 }
@@ -1757,7 +1752,6 @@ func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError) {
 		buf.Buf.Ctx = ac
 		return &buf, nil
 	}
-
 }
 
 //Converts string JSON buffer passed in 'buffer' to UBF buffer. This function will
