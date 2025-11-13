@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"ubftab"
+	"runtime"
 )
 
 const (
@@ -19,21 +20,33 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 
 	ret := SUCCEED
 
+
 	//Get UBF Handler
 	ub, _ := ac.CastToUBF(&svc.Data)
+
+	defer func() {
+
+		runtime.GC()
+		//Return to the caller
+		if SUCCEED == ret {
+			ac.TpReturn(atmi.TPSUCCESS, Murcode, ub, 0)
+		} else {
+			ac.TpReturn(atmi.TPFAIL, Murcode, ub, 0)
+		}
+	}()
 
 	//Print the buffer to stdout
 	//fmt.Println("Incoming request:")
 	ub.TpLogPrintUBF(atmi.LOG_DEBUG, "Incoming request:")
 
 	//Resize buffer, to have some more space
-	if err := ub.TpRealloc(1024); err != nil {
+	if err := ub.TpRealloc(100024); err != nil {
 		fmt.Printf("TpRealloc() Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
 		goto out
 	}
 
-	//Set some field
+	//Set some fiel
 	if err := ub.BChg(ubftab.T_STRING_FLD, 0, "Hello World from Enduro/X service"); err != nil {
 		fmt.Printf("Bchg() Got error: %d:[%s]\n", err.Code(), err.Message())
 		ret = FAIL
@@ -49,12 +62,7 @@ func TESTSVC(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	Murcode++
 
 out:
-	//Return to the caller
-	if SUCCEED == ret {
-		ac.TpReturn(atmi.TPSUCCESS, Murcode, ub, 0)
-	} else {
-		ac.TpReturn(atmi.TPFAIL, Murcode, ub, 0)
-	}
+
 	return
 }
 
