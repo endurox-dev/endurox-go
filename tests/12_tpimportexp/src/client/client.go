@@ -105,7 +105,6 @@ func async_main() {
 				ret = FAIL
 				return
 			} else {
-				buf2.BPrint()
 				ac.TpLogError("char: Expression is false")
 				ret = FAIL
 				return
