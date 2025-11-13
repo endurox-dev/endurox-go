@@ -775,8 +775,11 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 //Internally this will call the TpTerm too to termiante any XATMI client
 //session in progress.
 func (ac *ATMICtx) FreeATMICtx() {
+
+    runtime.SetFinalizer(ac, nil)
 	ac.TpTerm() //This extra, but let it be
 	C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
+    ac.c_ctx=nil
 }
 
 //Associate current OS thread with context
@@ -1102,11 +1105,13 @@ func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64) AT
 //@param buf		ATMI buffer
 func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 
+	runtime.SetFinalizer(buf, nil)
+
 	C.Otpfree(&ac.c_ctx, buf.C_ptr)
 	buf.C_ptr = nil
 	//Remove finalizers...
 	buf.HaveFinalizer = false
-	runtime.SetFinalizer(&buf, nil)
+    buf.TpSetCtxt(nil)
 
 	ac.nop() //keep context until the end of the func, and only then allow gc
 

@@ -1191,6 +1191,8 @@ func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError) {
 //Free the expression buffer
 func (ac *ATMICtx) BTreeFree(tree *ExprTree) {
 
+    runtime.SetFinalizer(tree, nil)
+
 	//Unset the finalizer
 	C.OBtreefree(&ac.c_ctx, tree.c_ptr)
 	tree.c_ptr = nil
