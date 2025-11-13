@@ -187,6 +187,7 @@ func main() {
 		//Print the output buffer
 		//buf.BPrint()
 		buf.TpLogPrintUBF(atmi.LOG_DEBUG, "Got response")
+                ac.TpFree(buf.GetBuf())
 		ac.TpTerm()
 		ac.FreeATMICtx()
 		runtime.GC()

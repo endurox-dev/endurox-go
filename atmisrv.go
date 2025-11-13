@@ -469,7 +469,7 @@ func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64) {
 	data := tb.GetBuf()
 
 	//mvitolin 07/03/2016 - tpforward will free the any buffer (auto and manual) #100
-    data.cleanup.Stop()
+	data.cleanup.Stop()
 
 	c_svc := C.CString(svc)
 

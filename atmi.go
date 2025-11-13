@@ -889,9 +889,8 @@ func (buf *ATMIBuf) updptr (cur_ptr *C.char) {
 		buf.C_ptr = cur_ptr
 		//Fix the of the buf, if ptr was updated.
 		buf.cleanup.Stop()
-		buf.cleanup = runtime.AddCleanup(&buf, tpfree, buf.C_ptr)
+		buf.cleanup = runtime.AddCleanup(buf, tpfree, buf.C_ptr)
 	}
-
 }
 
 //Reallocate the buffer
@@ -1146,6 +1145,7 @@ func (ac *ATMICtx) TpFree(buf *ATMIBuf) {
 		buf.C_ptr = nil
 		buf.cleanup.Stop()
 	}
+	buf.cleanup.Stop()
 	ac.nop() //keep context until the end of the func, and only then allow gc
 }
 
