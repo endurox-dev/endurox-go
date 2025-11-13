@@ -108,4 +108,4 @@ Forums: http://www.endurox.org/projects/endurox-go/boards
 - Version 8.0.4 released on 10/02/2024 (stable) Bug #825
 - version 8.0.6 released on 26/03/2025 (stable) Support #892
 - version 8.0.8 released on 27/03/2025 (stable) Feature #894
-- version 8.0.10 released on 13/11/2025 (stable) Support #911
+- version 8.0.12 released on 13/11/2025 (stable) Support #911
