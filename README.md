@@ -1,6 +1,6 @@
 # Application Server for GO (ASG)
 
-Version: v8.0.0 - Using Object-mode API.
+Version: v9.0.0 - Using Object-mode API.
 
 ASG is application server for Golang, which makes it possible to process 
 distributed transactions in Golang. It is possible to reload the application 
