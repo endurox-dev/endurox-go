@@ -11,6 +11,12 @@ all:
 	$(MAKE) -C 10_views
 	$(MAKE) -C 11_ubf_tests
 	$(MAKE) -C 12_tpimportexp
+	$(MAKE) -C 13_buffer_utils
+	$(MAKE) -C 14_saga
+	$(MAKE) -C 15_tracing
+	$(MAKE) -C 16_scripting
+	$(MAKE) -C 17_dlm
+	$(MAKE) -C 18_multi_rm
 
 clean:
 	$(MAKE) -C 01_basic_ubf_call clean
@@ -24,4 +30,10 @@ clean:
 	$(MAKE) -C 10_views clean
 	$(MAKE) -C 11_ubf_tests clean
 	$(MAKE) -C 12_tpimportexp clean
+	$(MAKE) -C 13_buffer_utils clean
+	$(MAKE) -C 14_saga clean
+	$(MAKE) -C 15_tracing clean
+	$(MAKE) -C 16_scripting clean
+	$(MAKE) -C 17_dlm clean
+	$(MAKE) -C 18_multi_rm clean
 

@@ -2,6 +2,17 @@
 
 Version: v9.0.0 - Using Object-mode API.
 
+Requires Go 1.26 or newer, cgo, and Enduro/X 9 development headers and
+libraries (`pkg-config atmisrvinteg`). Import the v9 module as
+`github.com/endurox-dev/endurox-go/v9`.
+
+Version 9 adds Saga registration and recovery, transaction status and renewal,
+named XA resource managers, DLM calls, tracing and context tags, embedded
+scripting, buffer comparison, and reply-queue descriptors. Queue controls
+include the returned trace parent; JSON export uses dynamic allocation.
+See [Version 9 APIs](doc/endurox-go-book.adoc#_version_9_apis) for ownership,
+identifier, and migration requirements.
+
 ASG is application server for Golang, which makes it possible to process 
 distributed transactions in Golang. It is possible to reload the application 
 components without service interruption. Basically system is service oriented 
@@ -15,6 +26,10 @@ via middleware which supports three kind of buffers for request/response data:
 Arbitrary string, Byte array, Unified Buffer Format (UBF), JSON buffer.
 
 # Branches
+
+- Use `v9-dev` for Enduro/X 9. Rebuild applications against matching v9 headers
+  and libraries. Previously serialized v8 transaction suspend tokens are not
+  compatible with the v9 native structure.
 
 - If building against Enduro/X 8.0, use v8.0 branch, i.e. $ go get github.com/endurox-dev/endurox-go@v8.0
 
@@ -32,6 +47,14 @@ Arbitrary string, Byte array, Unified Buffer Format (UBF), JSON buffer.
 ## Documentation
 
 [The Enduro-GO API Document](doc/endurox-go-book.adoc)
+
+Scripting tests are skipped by default. They require the separately licensed
+`endurox-python` component. After installing and configuring its scripting
+plugin, enable them with `./run.sh -scripting` from `tests/`. The default
+`tests/run.sh` runs buffer, Saga, tracing and multiple-RM server cases
+separately. Add `-dlm` to run the DLM server/proxy case with Enduro/X EE.
+Scripting is in `tests/16_scripting`. Build with `make -C tests`; see
+[the integration case list](tests/README).
 
 Enduro/X documentation is located here: http://www.endurox.org/dokuwiki
 
@@ -109,3 +132,5 @@ Forums: http://www.endurox.org/projects/endurox-go/boards
 - version 8.0.6 released on 26/03/2025 (stable) Support #892
 - version 8.0.8 released on 27/03/2025 (stable) Feature #894
 - version 8.0.12 released on 13/11/2025 (stable) Support #911
+- version 8.0.12 released on 13/11/2025 (stable) Support #911
+- version 9.0.1 released on 26/10/2026 (devel) Feature #940 (saga txn support), Feature #941 (embedded scripting), Feature #942 (Telemetry support elements)

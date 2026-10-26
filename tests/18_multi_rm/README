@@ -1,0 +1,15 @@
+18_multi_rm functional integration case.
+
+Build with make -C tests/18_multi_rm. Run its run.sh from the case directory,
+or use tests/run.sh. The case starts its own XATMI servers and repeats native operations/transactions for NDRX_TEST_DURATATION seconds
+(default 10). DLM requires -dlm and Enduro/X EE;
+multiple-RM testing uses a local deterministic native XA fixture, without a DB.
+Do not run concurrently with other shared-domain suites.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

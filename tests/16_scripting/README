@@ -1,0 +1,30 @@
+Scripting lifecycle, callbacks and buffer ownership
+===================================================
+
+Compiler output ownership, callbacks, nested execution with buffer growth,
+alias ownership, custom script errors and active-VM shutdown rejection.
+The nested callback case runs for NDRX_TEST_DURATATION seconds (default 10).
+
+Build: make -C tests/16_scripting
+Run from tests/: 16_scripting/run.sh -scripting
+
+Scripting is disabled by default, including direct launcher/client runs.
+The case requires separately licensed endurox-python. Configure its native
+plugin with NDRX_PLUGINS and the corresponding Python package environment.
+The complete dispatcher enables this case only with ./run.sh -scripting.
+An explicitly enabled case fails if its plugin is unavailable.
+
+The launcher starts and stops a core domain with prefix /go16scr,
+IPC key 44160, and PID file /tmp/ndrxd-go16scr.pid. Installation paths
+use the usual ~/ndrx_home. No EE service is required.
+
+Also starts goscriptsv and repeats real service calls for the configured duration; their
+responses are produced by native-script-to-Go callbacks.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

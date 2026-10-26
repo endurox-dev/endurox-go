@@ -50,14 +50,16 @@ The process of installation should very similar on other operating systems too
 
 Select the Download package from here: https://golang.org/dl/
 
-The endurox-go requires Golang 1.6+
+Enduro/X Go v9 requires Go 1.26 or newer and matching Enduro/X 9
+development headers and libraries. The module import path is
+`github.com/endurox-dev/endurox-go/v9`.
 
 Particularity sample will run on amd64 on Linux OS:
 
 --------------------------------------------------------------------------------
 $ cd ~
-$ wget https://golang.org/dl/go1.16.2.linux-amd64.tar.gz
-$ sudo tar -C /usr/local -xzf go1.16.2.linux-amd64.tar.gz
+$ wget https://golang.org/dl/go1.26.0.linux-amd64.tar.gz
+$ sudo tar -C /usr/local -xzf go1.26.0.linux-amd64.tar.gz
 $ echo "export PATH=\$PATH:/usr/local/go/bin" > $HOME/.profile
 --------------------------------------------------------------------------------
 
@@ -258,6 +260,271 @@ be downloaded here: https://github.com/endurox-dev/go-oci8
 
 - High availability
 
+== Version 9 APIs
+
+The following methods belong to `ATMICtx`. They use the native object API
+and return `ATMIError` on failure. Use each context and scripting VM
+serially; use separate contexts for concurrent requests. Native flags and
+field identifiers come from the installed Enduro/X 9 headers.
+
+[cols="1,3",options="header"]
+|===
+| Area | Methods
+| Saga and recovery
+| `TpSagaEnlist`, `TpSagaEnd`, `TpSagaGet`, `TpSagaUpdate`, `TpSagaLeave`,
+`TpTxStatus`, `TpTxRenew`, `TpXIDToString`, `TpXIDFromString`
+| Multiple resource managers
+| `TpOpen2`, `TpRMOpen`, `TpRMClose`, `TpRMStart`, `TpRMEnd`, `TpGetConnRM`
+| Distributed lock manager
+| `TpDLMMkCall`, `TpDLMCall`, `TpDLMACall`, `TpDLMConnect`,
+`TpDLMToutGet`, `TpDLMAttemptsGet`
+| Traces and context tags
+| `TpTraceSpanBegin`, `TpTraceSpanEnd`, `TpTraceEvent`,
+`TpTraceContextSet`, `TpTraceContextGet`, `TpTraceStateSet`,
+`TpTraceStateGet`, `TpContextTagSet`, `TpContextTagClear`,
+`TpContextTagClearAll`
+| Embedded scripting
+| `ATMICtx.TpScrInit`; `TpScrVm` methods `TpScrUninit`, `TpScrComp`,
+`TpScrLoad`, `TpScrLoadStr`, `TpScrUnload`, `TpScrRegCB`, `TpScrUnregCB`,
+`TpScrExec`, `TpScrError`, `TpScrErrno`, `TpScrSetError`;
+`TpScrBytecode.TpScrFree`
+| Buffer and event integration
+| `TpBufCmp`, `TpExport` using native `tpexport2`, `TpExtGetReplyQFD`
+|===
+
+=== Saga transactions and recovery
+
+A Saga is a pair of actions for work which is committed locally, outside of
+the two-phase commit, for example a call to a web service. When the global
+transaction commits, *tmsrv* calls the commit action, which confirms the work;
+when it is rolled back or times out, *tmsrv* calls the rollback action, which
+compensates it. See *tpsagaenlist(3)* for the full description.
+
+A participant fills in a `TpSagaCtl`, registers it with `TpSagaEnlist` inside
+the global transaction, does its local work and calls `TpSagaEnd`:
+
+[source,go]
+--------------------------------------------------------------------------------
+var ctl atmi.TpSagaCtl
+if err := ctl.SetSagaName("order"); nil != err {
+    return err
+}
+if err := ctl.SetCommitURL("xatmi://ORDERCOMMIT"); nil != err {
+    return err
+}
+if err := ctl.SetPayload([]byte("order-123")); nil != err {
+    return err
+}
+if err := ctx.TpSagaEnlist(&ctl, 0); nil != err {
+    return err
+}
+branch := ctl.GetBranchXID()
+--------------------------------------------------------------------------------
+
+The control types (`TpSagaCtl`, `TpTxStatus`, `TpDlmCtl`, `TpScrCfg`) are
+used through getters and setters; a zero value is ready to use. A copy of an
+initialized control shares its data with the original, so declare a new
+variable for independent data. Setters return an error, and keep the old
+value, when the value does not fit. `SetPayload` copies the bytes (at most
+`NDRX_SAGA_PAYLOAD_MAX`, 4096) and `GetPayload` returns a copy.
+
+After `TpSagaEnlist`, `GetBranchXID()` returns the branch identifier, which
+identifies this participant in all its actions, also after a restart; store
+it with the local work. `GetXID()` returns the global transaction identifier.
+If the result of the registration is unknown, abort the transaction.
+
+Callback URLs are given explicitly, and the `[@saga]` configuration must
+allow them. An empty URL means that the action is not called; at least one of
+commit, rollback or after is needed.
+
+`TpSagaEnd` ends the local work; the participant stays registered. When the
+Saga configuration has `dlmspace`, it also releases the Saga lock of the
+Distributed Lock Manager (DLM) of the Enduro/X Enterprise Edition. Call it even
+without DLM, except with `TPSAGA_NOLOCK` set by `ctl.SetFlags`. `TpSagaLeave`
+removes the participant, so its actions are not called.
+
+Other methods (each takes the control and a separate `flags` argument):
+
+* `TpSagaGet` reads the registered URLs and settings by `SetBranchXID`, also
+  during recovery. It does not return the payload.
+* `TpSagaUpdate` replaces the payload and URLs while the transaction is active.
+  With `TPSAGA_URLSONLY` it replaces only the URLs, also while the transaction
+  completes; read the current URLs with `TpSagaGet` first and keep the same
+  actions present.
+* Set a Saga key to make a repeated registration safe: the same key returns
+  the Saga already registered. A key reused with different data fails, unless
+  `TPSAGA_UPDATE` is given, which replaces the Saga's data.
+* With `TPSAGA_JOINXID`, `TpSagaEnlist` registers in the transaction given by
+  `ctl.SetXID`, without the caller being in it.
+* `TpTxStatus` and `TpTxRenew` query a transaction and extend its timeout.
+  Select the transaction with `SetFlags` and one of `TPTXS_XID` (`SetXID`),
+  `TPTXS_BRXID` (`SetBranchXID`) or `TPTXS_TRANID` (`SetTranID` with a
+  `TpSuspend` result, or `SetTranIDString`). `TpTxRenew` sets the deadline to
+  `SetTimeout` seconds from now. Read the result with `GetStatus`,
+  `GetTimeout` and `GetTimeoutLeft`. Their `flags` must be zero.
+
+There are three distinct identifier representations:
+
+* `XID` is an opaque native global identifier. `TpXIDToString` and
+  `TpXIDFromString` use the native `TPCONVXID` conversion.
+* `GetBranchXID()` returns the participant identifier after `TpSagaEnlist`.
+* `TPTRANID` is the native suspend record. `GetTranIDString` and
+  `SetTranIDString` use its Base64 representation, compatible with
+  `TpSuspendString`. Its format depends on the runtime ABI; do not reuse v8
+  tokens with v9.
+
+These bindings provide the native Saga operations. A public native API
+for completion by global XID is still needed before implementing the
+restincl LRA coordinator close/cancel routes.
+
+=== Resource managers, DLM, and utilities
+
+`TpOpen2(flags)` accepts `TPTXOPENALL`. The `TpRMOpen`, `TpRMClose`,
+`TpRMStart`, and `TpRMEnd` methods take a resource-manager name and flags.
+`TpGetConnRM(rmid)` returns a borrowed native connection pointer; the
+resource manager owns it.
+
+`TpDlmCtl` exposes `Get/SetFlags`, `Get/SetDLMSpace`, `Get/SetSvcName` and
+`Get/SetWaitTime`. `TpDLMMkCall(ub, ctl)` prepares a UBF request and updates
+the native control; obtain its service name with `ctl.GetSvcName()`. It may replace the buffer. `TpDLMCall(svc, buf, flags)`
+also updates the returned buffer and length. `TpDLMACall` and
+`TpDLMConnect` return their descriptors. Check both transport errors and
+per-command `EX_DLM_RVAL1` results: a successful call can contain a
+command failure. The `NDRX_DLM_*`, `EX_DLM_*`, and shared `NE*` constants
+are exported, including force deletion and regex unlock flags.
+
+`TpDLMToutGet(waitTime)` returns effective milliseconds, per-attempt
+milliseconds, per-attempt ATMI seconds, and an error.
+`TpDLMAttemptsGet()` returns the configured limit, not attempts consumed.
+
+`TpBufCmp(left, right, flags)` returns -1, 0, or 1 for a successful
+comparison; only -2 means an error. Nil buffers represent native NULL.
+`TpExport` retains its Go signature and returns dynamically sized JSON.
+`TpExtGetReplyQFD` returns a borrowed pollable descriptor; do not close it.
+Unsupported native queue backends return an error.
+
+`TPQCTL.Traceparent` is output-only for enqueue/dequeue. Assigning it does
+not select a parent. `TPQKEEPORIG` preserves the native origin metadata.
+Queue control marshalling uses the native `CLIENTID` capacity including
+its terminating NUL.
+
+=== Tracing and context tags
+
+`TpTraceContextSet/Get` exchange W3C traceparent strings and
+`TpTraceStateSet/Get` exchange tracestate strings on an active span. Each takes call flags;
+getters return a string and an error. `TpTraceSpanBegin(name, attrs,
+flags)` returns a `uintptr` handle and an error. Pass that handle to
+`TpTraceSpanEnd(handle, status, attrs, flags)`. Attributes are optional
+`*TypedUBF` buffers. `TpTraceEvent(name, attrs, flags)` records an event.
+
+`TpContextTagSet(key, value, flags)`, `TpContextTagClear(key, flags)`, and
+`TpContextTagClearAll(flags)` expose the `TPCTXTAG_*` scope and signal
+flags. NEXT tags persist until explicitly cleared. Clear request-specific
+trace context, state, and tags when reusing a context for another request.
+
+=== Embedded scripting and ownership
+
+An application can run scripts with typed buffers, in a similar way as it
+calls services, and scripts can call Go functions. The interpreter comes from
+a scripting plugin configured with *NDRX_PLUGINS*, for example the Python
+plugin of the separately licensed *endurox-python*. See *tpscrinit(3)* for the
+general rules.
+
+`ac.TpScrInit(cfg, flags)` creates a VM (`*TpScrVm`); pass nil as `cfg` for
+the plugin defaults. The VM belongs to the context `ac`: scripts run in its
+transaction, and the VM is used from one goroutine at a time, like the
+context. For parallel work, use one context and one VM per goroutine. No OS
+thread locking is needed.
+
+Load scripts with `vm.TpScrLoadStr(name, source, flags)`, or compile them once
+with `vm.TpScrComp(source, flags)` and load the result with
+`vm.TpScrLoad(name, code.Bytes(), flags)`; release compiled code with
+`code.TpScrFree()`. `vm.TpScrUnload` removes a script. The load flags are
+`NDRX_TPSCR_PACKAGE`, `NDRX_TPSCR_REPLACE` and `NDRX_TPSCR_FLAT`.
+
+Run a script with `TpScrExec`, using ordinary typed buffers:
+
+[source,go]
+--------------------------------------------------------------------------------
+func (vm *TpScrVm) TpScrExec(name string,
+    param TypedBuffer, input TypedBuffer, flags int64) (TypedBuffer, ATMIError)
+
+type TpScrCallback func(ctx *ATMICtx, vm *TpScrVm, name string,
+    param TypedBuffer, input TypedBuffer, user interface{},
+    flags int64) (TypedBuffer, ATMIError)
+--------------------------------------------------------------------------------
+
+Pass nil for a buffer which is not used. The script may resize the input
+buffers; the binding updates them, also when an error is returned. The output
+may be the input buffer itself; it is also returned with an error, if the
+script gave one. Use `GetBuf()` and the usual typed-buffer casts on the output.
+
+`vm.TpScrRegCB(name, callback, user, flags)` registers a Go function which
+scripts can call; `vm.TpScrUnregCB` removes it. The callback receives the
+context which owns the VM and the input buffers, valid only during the call.
+It changes buffers with their usual methods, returns a typed buffer as output,
+or returns an error to fail; `*TpScrError` also carries a script error code. A
+callback may run another script of the same `vm`. A callback reached from a
+script of a VM of another context fails with `TPEPROTO` without running.
+
+Errors of the scripting methods may be `*TpScrError`, with both `ATMICode` and
+`ScriptCode`. `vm.TpScrError()` and `vm.TpScrErrno()` return the script error
+message and code; `vm.TpScrSetError(code, message)` sets them, for example in
+a callback.
+
+Close the VM with `vm.TpScrUninit(flags)`. `FreeATMICtx()` also closes the
+open VMs and compiled code of the context, but does nothing while a VM of the
+context runs, for example when it is called from a callback. A context with
+open VMs is not garbage collected. Do not use a VM after closing it, even if
+closing failed.
+
+=== Binding regression checks
+
+Integration cases are grouped by functional area under `tests/`. Each
+case has its own configuration, client, Makefiles and launcher:
+
+* `13_buffer_utils`: comparison ordering, dynamic export/import and
+  transport-length selection.
+* `14_saga`: real tmsrv registration, status/renewal, suspend/resume,
+  participant updates/removal and commit/rollback callback ordering.
+* `15_tracing`: context/state round trips, context isolation, spans,
+  events, tags and propagation through an XATMI server.
+* `16_scripting`: compiler output ownership, callbacks, buffer aliases,
+  nested execution, errors and scripting in XATMI service dispatch.
+* `17_dlm`: DLM server and Go proxy, SET/GET/DEL, asynchronous replies,
+  conversational listing and timeout settings (explicit `-dlm`).
+* `18_multi_rm`: two native resources, distinct connection handles, named
+  open/close and manual enlistment in client/server transactions.
+
+Build without running the cases:
+
+--------------------------------------------------------------------------------
+make -C tests
+# Or build one functional area:
+make -C tests/15_tracing
+--------------------------------------------------------------------------------
+
+From `tests/`, run `./run.sh` for the default suite or a case's `run.sh`
+for that area. The default cases use core domains and do not require Enduro/X EE.
+Use `./run.sh -dlm` to include the EE DLM case; `-dlm` and `-scripting`
+can be supplied independently or together.
+Fast scenarios run for 10 seconds by default (NDRX_TEST_DURATATION). Root `go test` does not run them.
+
+Scripting is skipped by default, including direct invocation of its
+launcher. It requires separately licensed `endurox-python`. Configure
+that scripting plugin and Python environment, then opt in from `tests/`:
+
+--------------------------------------------------------------------------------
+./run.sh -scripting
+# Or only scripting:
+16_scripting/run.sh -scripting
+--------------------------------------------------------------------------------
+
+An explicitly enabled scripting case fails if its plugin is unavailable.
+See each directory's README for coverage and domain settings. Each area
+includes its own XATMI server. DLM tests also require EE `tpdlmsv` on PATH.
+Crash recovery and queue trace propagation require additional scenarios.
+
 == Constants
 This chapter describes constants used by Enduro/X module. This includes error codes
 and flags.
@@ -297,8 +564,6 @@ error will be generated.
 *TPSOFTENOENT* (0x00100000) - Simulate that service is not found, used for TpReturn()
 
 *TPNOAUTBUF* (0x00200000) - Don't restore autbuf in srv context, used for TpSrvSetCtxData()
-
-
 
 === ATMI buffer size
 Current Enduro/X version support maximum buffer size of 64KB. The constant is
@@ -840,9 +1105,24 @@ Enduro/X package functions. ATMI Context is initiated by this package.
 |Function
 |func ATMIMsgSizeMax() int64
 |Description
-|Max message size. 
+|Max message size.
 |Returns
 |buffer size configured by Enduro/X, min 64K
+|Applies
+|XATMI client and server
+|===
+
+==== atmi.ExSizeOfLong()
+[cols="h,5a"]
+|===
+|Function
+|func ExSizeOfLong() int
+|Description
+|Return size of long. Used to detect running platform Basically all int64 APIs
+used by ATMI package will resolve from Enduro/X point of view this count of
+bytes..
+|Returns
+|number of bytes in "long" data type
 |Applies
 |XATMI client and server
 |===
@@ -855,8 +1135,8 @@ Enduro/X package functions. ATMI Context is initiated by this package.
 |Description
 |Make context object from C pointer. Function can be used in case If doing any
 direct XATMI operations and you have a C context handler. Which can be promoted
-to Go level ATMI Context.. 
-*c_ctx* is Context ATMI object. 
+to Go level ATMI Context..
+*c_ctx* is Context ATMI object.
 |Returns
 |ATMI Context Object
 |Applies
@@ -873,7 +1153,7 @@ to Go level ATMI Context..
 operations are made. Single go routine can have multiple contexts at the same
 time. The function does not open queues or init XATMI sub-system unless the
 dependant operation is called. For example you may allocat the context and use
-it for logging that will not make overhead for system queues.. 
+it for logging that will not make overhead for system queues..
 |Returns
 |ATMI Error, Pointer to ATMI Context object
 |Applies
@@ -886,10 +1166,10 @@ it for logging that will not make overhead for system queues..
 |Function
 |func NewCustomATMIError(code int, msg string) ATMIError
 |Description
-|Build a custom error. 
-*err* is Error buffer to build. 
-*code* is Error code to setup. 
-*msg* is Error message. 
+|Build a custom error.
+*err* is Error buffer to build.
+*code* is Error code to setup.
+*msg* is Error message.
 |Applies
 |XATMI client and server
 |===
@@ -901,10 +1181,10 @@ it for logging that will not make overhead for system queues..
 |func NewCustomNstdError(code int, msg string) NSTDError
 |Description
 |Build a custom error. Can be used at Go level sources To simulate standard
-error. 
-*err* is Error buffer to build. 
-*code* is Error code to setup. 
-*msg* is Error message. 
+error.
+*err* is Error buffer to build.
+*code* is Error code to setup.
+*msg* is Error message.
 |Applies
 |XATMI client and server
 |===
@@ -915,10 +1195,29 @@ error.
 |Function
 |func NewCustomUBFError(code int, msg string) UBFError
 |Description
-|Build a custom error. 
-*err* is Error buffer to build. 
-*code* is Error code to setup. 
-*msg* is Error message. 
+|Build a custom error.
+*err* is Error buffer to build.
+*code* is Error code to setup.
+*msg* is Error message.
+|Applies
+|XATMI client and server
+|===
+
+==== atmi.RuntimeInit()
+[cols="h,5a"]
+|===
+|Function
+|func RuntimeInit()
+|Description
+|Sets the common runtime for the Enduro/X Go binaires As of Go 1.14, it sends
+SIGURG for preemption to process GC - but this breaks C runtime. Official
+option is to set env variable GODEBUG="asyncpreemptoff=1" However, for
+convenience, function is provided to ignore SIGUR signals, thus they shall
+never reach the C code. This solution however is experimental, and is subject
+of changes for future module versions. In the current implementation, if
+"asyncpreemptoff" setting in GODEBUG env is found, function does not perform
+changes for signal handling (thus, logic may be disabled at runtime, if
+needed)..
 |Applies
 |XATMI client and server
 |===
@@ -933,7 +1232,7 @@ by libnstd library. Which are Enduro/X base library. Currently it is used for lo
 |Function
 |func (e nstdError) Code() int
 |Description
-|Error code getter. 
+|Error code getter.
 |Applies
 |XATMI client and server
 |===
@@ -944,7 +1243,7 @@ by libnstd library. Which are Enduro/X base library. Currently it is used for lo
 |Function
 |func (e nstdError) Error() string
 |Description
-|Standard error interface. 
+|Standard error interface.
 |Applies
 |XATMI client and server
 |===
@@ -955,7 +1254,7 @@ by libnstd library. Which are Enduro/X base library. Currently it is used for lo
 |Function
 |func (e nstdError) Message() string
 |Description
-|Error message getter. 
+|Error message getter.
 |Applies
 |XATMI client and server
 |===
@@ -970,7 +1269,7 @@ seperate chapter in this document.
 |Function
 |func (e atmiError) Code() int
 |Description
-|code getter. 
+|code getter.
 |Applies
 |XATMI client and server
 |===
@@ -981,7 +1280,7 @@ seperate chapter in this document.
 |Function
 |func (e atmiError) Error() string
 |Description
-|Standard error interface. 
+|Standard error interface.
 |Applies
 |XATMI client and server
 |===
@@ -992,13 +1291,13 @@ seperate chapter in this document.
 |Function
 |func (e atmiError) Message() string
 |Description
-|message getter. 
+|message getter.
 |Applies
 |XATMI client and server
 |===
 
 === Abstract IPC buffer - ATMIUbf
-ATMI buffer is base class for String, JSON, UBF (key/value with value arrays) 
+ATMI buffer is base class for String, JSON, UBF (key/value with value arrays)
 and binary buffer.
 
 ==== ATMIBuf.GetBuf()
@@ -1007,18 +1306,36 @@ and binary buffer.
 |Function
 |func (u *ATMIBuf) GetBuf() *ATMIBuf
 |Description
-|Have inteface to base ATMI buffer. 
+|Have inteface to base ATMI buffer.
 |Applies
 |XATMI client and server
 |===
 
-==== ATMIBuf.Nop()
+==== ATMIBuf.Len()
 [cols="h,5a"]
 |===
 |Function
-|func (u *ATMIBuf) Nop() int
+|func (buf *ATMIBuf) Len() int64
 |Description
-|Do nothing, to trick the GC. 
+|Len returns the buffer's current transport length..
+|Returns
+|Current transport length in bytes; 0 for a nil buffer
+|Applies
+|XATMI client and server
+|===
+
+==== ATMIBuf.SetLen()
+[cols="h,5a"]
+|===
+|Function
+|func (buf *ATMIBuf) SetLen(length int64) ATMIError
+|Description
+|SetLen selects the data length within the existing allocation.  It does not
+resize the buffer; zero is valid for self-describing buffers..
+*length* is Nonnegative transport length within the existing allocation; 0
+is valid for self-describing buffers.
+|Returns
+|Nil on success, otherwise ATMIError; the allocation is not resized
 |Applies
 |XATMI client and server
 |===
@@ -1029,10 +1346,10 @@ and binary buffer.
 |Function
 |func (buf *ATMIBuf) TpRealloc(size int64) ATMIError
 |Description
-|Reallocate the buffer. 
-*buf* is ATMI buffer. 
+|Reallocate the buffer.
+*size* is Requested allocation size in bytes.
 |Returns
-|ATMI Error
+|Nil on success, otherwise ATMIError; failure preserves the original buffer
 |Applies
 |XATMI client and server
 |===
@@ -1043,7 +1360,7 @@ and binary buffer.
 |Function
 |func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx)
 |Description
-|Change the context of the buffers (needed for error handling). 
+|Change the context of the buffers (needed for error handling).
 |Applies
 |XATMI client and server
 |===
@@ -1054,11 +1371,11 @@ and binary buffer.
 |Function
 |func (ptr *ATMIBuf) TpTypes(itype *string, subtype *string) (int64, ATMIError)
 |Description
-|Return ATMI buffer info. 
+|Return ATMI buffer info.
 *itype* is ptr to string to return the buffer type  (can be nil), if set then
 on output value will be UBF, CARRAY, STRING or JSON other buffers currently are
-not supported.. 
-*subtype* is ptr to string to return sub-type (can be nil). 
+not supported..
+*subtype* is ptr to string to return sub-type (can be nil).
 |Returns
 |Buffer lenght if no error or -1 if error, ATMI error
 |Applies
@@ -1078,7 +1395,7 @@ used for client and server API.
 |Description
 |Associate current OS thread with context This might be needed for global
 transaction processing Which uses underlaying OS threads for transaction
-association. 
+association.
 |Applies
 |XATMI client and server
 |===
@@ -1089,8 +1406,8 @@ association.
 |Function
 |func (ac *ATMICtx) BBoolCo(expr string) (*ExprTree, UBFError)
 |Description
-|Compile boolean expression TODO: might want auto finalizer with Btreefree!. 
-*expr* is Expression string. 
+|Compile boolean expression TODO: might want auto finalizer with Btreefree!.
+*expr* is Expression string.
 |Returns
 |Expression tree (ptr or nil on error), UBF error
 |Applies
@@ -1103,8 +1420,8 @@ association.
 |Function
 |func (ac *ATMICtx) BBoolPr(tree *ExprTree) (string, UBFError)
 |Description
-|Print the expression tree. 
-*tree* is Compiled expression tree. 
+|Print the expression tree.
+*tree* is Compiled expression tree.
 |Returns
 |printed expresion string, ubf error
 |Applies
@@ -1117,9 +1434,9 @@ association.
 |Function
 |func (ac *ATMICtx) BBoolSetCBF(funcname string, f UBFExprFunc) UBFError
 |Description
-|Set custom callback function for UBF buffer expression evaluator. 
-*funcname* is Name of the function to be used in expression. 
-*f* is callback to function. 
+|Set custom callback function for UBF buffer expression evaluator.
+*funcname* is Name of the function to be used in expression.
+*f* is callback to function.
 |Returns
 |UBF error
 |Applies
@@ -1132,9 +1449,9 @@ association.
 |Function
 |func (ac *ATMICtx) BConcat(dest *TypedUBF, src *TypedUBF) UBFError
 |Description
-|Contact the buffers. 
-*dest* is dest buffer. 
-*src* is source buffer. 
+|Contact the buffers.
+*dest* is dest buffer.
+*src* is source buffer.
 |Returns
 |UBF error
 |Applies
@@ -1147,9 +1464,9 @@ association.
 |Function
 |func (ac *ATMICtx) BCpy(dest *TypedUBF, src *TypedUBF) UBFError
 |Description
-|Copy buffer. 
-*dest* is Destination UBF buffer. 
-*src* is Source UBF buffer. 
+|Copy buffer.
+*dest* is Destination UBF buffer.
+*src* is Source UBF buffer.
 |Returns
 |UBF error
 |Applies
@@ -1162,8 +1479,8 @@ association.
 |Function
 |func (ac *ATMICtx) BFldId(fldnm string) (int, UBFError)
 |Description
-|Return field ID. 
-*fldnm* is Field name. 
+|Return field ID.
+*fldnm* is Field name.
 |Returns
 |Field ID, UBF error
 |Applies
@@ -1176,8 +1493,8 @@ association.
 |Function
 |func (ac *ATMICtx) BFldNo(bfldid int) int
 |Description
-|Return field number. 
-*bfldid* is field id. 
+|Return field number.
+*bfldid* is field id.
 |Returns
 |field number
 |Applies
@@ -1190,8 +1507,8 @@ association.
 |Function
 |func (ac *ATMICtx) BFldType(bfldid int) int
 |Description
-|Return the field type. 
-*bfldid* is field id. 
+|Return the field type.
+*bfldid* is field id.
 |Returns
 |field type
 |Applies
@@ -1204,8 +1521,8 @@ association.
 |Function
 |func (ac *ATMICtx) BFname(bfldid int) (string, UBFError)
 |Description
-|Get field name. 
-*bfldid* is Field ID. 
+|Get field name.
+*bfldid* is Field ID.
 |Returns
 |Field name (or "" if error), UBF error
 |Applies
@@ -1218,9 +1535,9 @@ association.
 |Function
 |func (ac *ATMICtx) BInit(u *TypedUBF, ulen int64) UBFError
 |Description
-|Initialize/re-initialize UBF buffer. 
-*u* is UBF buffer. 
-*ulen* is lenght of the buffer. 
+|Initialize/re-initialize UBF buffer.
+*u* is UBF buffer.
+*ulen* is lenght of the buffer.
 |Returns
 |UBF error
 |Applies
@@ -1233,9 +1550,9 @@ association.
 |Function
 |func (ac *ATMICtx) BMkFldId(fldtype int, bfldid int) (int, UBFError)
 |Description
-|Generate Field ID. 
-*fldtype* is Field type (see BFLD_SHORT cost list). 
-*bfldid* is field number. 
+|Generate Field ID.
+*fldtype* is Field type (see BFLD_SHORT cost list).
+*bfldid* is field number.
 |Returns
 |field id or 0 if error, UBF error
 |Applies
@@ -1249,7 +1566,13 @@ association.
 |func (ac *ATMICtx) BProjCpy(dest *TypedUBF, src *TypedUBF, fldlist []int)
 UBFError
 |Description
-|Make a project copy of the fields (leave only those in array). 
+|Make a project copy of the fields (leave only those in array) The terminator
+in the fildlist array are not required. The list shall contain fields only to
+copy. See *Bprojcpy(3)* for more details. NOTE! The dest buffer is erased
+before copying new data to.
+*dest* is is destination buffer.
+*src* is is source buffer to copy from.
+*fldlist* is list of fields to copy.
 |Returns
 |UBF error
 |Applies
@@ -1262,7 +1585,7 @@ UBFError
 |Function
 |func (ac *ATMICtx) BTreeFree(tree *ExprTree)
 |Description
-|Free the expression buffer. 
+|Free the expression buffer.
 |Applies
 |XATMI client and server
 |===
@@ -1273,9 +1596,9 @@ UBFError
 |Function
 |func (ac *ATMICtx) BUpdate(dest *TypedUBF, src *TypedUBF) UBFError
 |Description
-|Update dest buffer with source buffer data. 
-*dest* is dest buffer. 
-*src* is source buffer. 
+|Update dest buffer with source buffer data.
+*dest* is dest buffer.
+*src* is source buffer.
 |Returns
 |UBF error
 |Applies
@@ -1288,8 +1611,8 @@ UBFError
 |Function
 |func (ac *ATMICtx) BVSizeof(view string) (int64, UBFError)
 |Description
-|Get structure size in bytes. See Bvsizeof(3).. 
-*view* is View name. 
+|Get structure size in bytes. See Bvsizeof(3)..
+*view* is View name.
 |Returns
 |ret (number of view bytes (if no error)), UBFError in case of error
 |Applies
@@ -1302,7 +1625,7 @@ UBFError
 |Function
 |func (ac *ATMICtx) CastToCarray(abuf *ATMIBuf) (*TypedCarray, ATMIError)
 |Description
-|Get the String Handler. 
+|Get the String Handler.
 |Applies
 |XATMI client and server
 |===
@@ -1313,7 +1636,7 @@ UBFError
 |Function
 |func (ac *ATMICtx) CastToJSON(abuf *ATMIBuf) (*TypedJSON, ATMIError)
 |Description
-|Get the JSON Handler from ATMI Buffer. 
+|Get the JSON Handler from ATMI Buffer.
 |Applies
 |XATMI client and server
 |===
@@ -1324,7 +1647,7 @@ UBFError
 |Function
 |func (ac *ATMICtx) CastToString(abuf *ATMIBuf) (*TypedString, ATMIError)
 |Description
-|Get the String Handler from ATMI Buffer. 
+|Get the String Handler from ATMI Buffer.
 |Applies
 |XATMI client and server
 |===
@@ -1335,7 +1658,7 @@ UBFError
 |Function
 |func (ac *ATMICtx) CastToUBF(abuf *ATMIBuf) (*TypedUBF, ATMIError)
 |Description
-|Get the UBF Handler. 
+|Get the UBF Handler.
 |Applies
 |XATMI client and server
 |===
@@ -1347,8 +1670,8 @@ UBFError
 |func (ac *ATMICtx) CastToVIEW(abuf *ATMIBuf) (*TypedVIEW, ATMIError)
 |Description
 |Get the view buffer handler. Usually used by service functions when request is
-received.. 
-*abuf* is ATMI buffer. 
+received..
+*abuf* is ATMI buffer.
 |Returns
 |Typed view (if OK), nil on error. ATMI error in case of error or nil
 |Applies
@@ -1363,7 +1686,7 @@ received..
 |Description
 |Disassocate current os thread from context This might be needed for global
 transaction processing Which uses underlaying OS threads for transaction
-association. 
+association.
 |Applies
 |XATMI client and server
 |===
@@ -1375,7 +1698,13 @@ association.
 |func (ac *ATMICtx) FreeATMICtx()
 |Description
 |Free up the ATMI Context Internally this will call the TpTerm too to termiante
-any XATMI client session in progress.. 
+any XATMI client session in progress. Open scripting VMs and compiler outputs
+of the context are released first. While a VM of the context is executing (e.g.
+when called from its scripting callback) nothing is released: the request is
+logged and ignored, and the context stays usable. If compiler output cannot be
+released, the context also stays usable, so that TpScrFree can be retried.
+While the resources are released (e.g. from a VM shutdown callback), new VMs
+and compiler outputs cannot be created on the context..
 |Applies
 |XATMI client and server
 |===
@@ -1386,7 +1715,7 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewATMIError() ATMIError
 |Description
-|Generate ATMI error, read the codes. 
+|Generate ATMI error, read the codes.
 |Applies
 |XATMI client and server
 |===
@@ -1397,8 +1726,8 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewCarray(b []byte) (*TypedCarray, ATMIError)
 |Description
-|Allocate new string buffer. 
-*s* is - source string. 
+|Allocate new string buffer.
+*s* is - source string.
 |Applies
 |XATMI client and server
 |===
@@ -1409,8 +1738,8 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewJSON(b []byte) (*TypedJSON, ATMIError)
 |Description
-|Allocate new JSON buffer. 
-*s* is - source string. 
+|Allocate new JSON buffer.
+*s* is - source string.
 |Applies
 |XATMI client and server
 |===
@@ -1421,7 +1750,7 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewNstdError() NSTDError
 |Description
-|Generate NSTD error, read the codes. 
+|Generate NSTD error, read the codes.
 |Applies
 |XATMI client and server
 |===
@@ -1432,8 +1761,8 @@ any XATMI client session in progress..
 |Function
 |func (ac *ATMICtx) NewString(gs string) (*TypedString, ATMIError)
 |Description
-|Allocate new string buffer. 
-*s* is - source string. 
+|Allocate new string buffer.
+*s* is - source string.
 |Applies
 |XATMI client and server
 |===
@@ -1445,8 +1774,8 @@ any XATMI client session in progress..
 |func (ac *ATMICtx) NewUBF(size int64) (*TypedUBF, ATMIError)
 |Description
 |Allocate the new UBF buffer NOTE: realloc or other ATMI ops you can do with
-TypedUBF.Buf. 
-*size* is - buffer size. 
+TypedUBF.Buf.
+*size* is - buffer size.
 |Returns
 |Typed UBF, ATMI error
 |Applies
@@ -1459,7 +1788,7 @@ TypedUBF.Buf.
 |Function
 |func (ac *ATMICtx) NewUBFError() UBFError
 |Description
-|Generate UBF error, read the codes. 
+|Generate UBF error, read the codes.
 |Applies
 |XATMI client and server
 |===
@@ -1470,7 +1799,7 @@ TypedUBF.Buf.
 |Function
 |func (ac *ATMICtx) NewVIEW(view string, size int64) (*TypedVIEW, ATMIError)
 |Description
-|Allocate the new VIEW buffer. 
+|Allocate the new VIEW buffer.
 *size* is - buffer size, If use 0, then 1024 or bigger view size is allocated..
 
 |Returns
@@ -1486,10 +1815,10 @@ TypedUBF.Buf.
 |func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int,
 ATMIError)
 |Description
-|TP Async call. 
-*svc* is Service Name to call. 
-*buf* is ATMI buffer. 
-*flags* is Flags to be used for call (see flags section). 
+|TP Async call.
+*svc* is Service Name to call.
+*buf* is ATMI buffer.
+*flags* is Flags to be used for call (see flags section).
 |Returns
 |Call Descriptor (cd), ATMI Error
 |Applies
@@ -1502,8 +1831,8 @@ ATMIError)
 |Function
 |func (ac *ATMICtx) TpAbort(flags int64) ATMIError
 |Description
-|Abort global transaction. 
-*flags* is flags for abort operation (must be 0). 
+|Abort global transaction.
+*flags* is flags for abort operation (must be 0).
 |Returns
 |ATMI Error
 |Applies
@@ -1517,11 +1846,11 @@ ATMIError)
 |func (ac *ATMICtx) TpAdvertise(svcname string, funcname string, fptr
 TPServiceFunction) ATMIError
 |Description
-|Advertise service. 
-*svcname* is Service Name. 
-*funcname* is Function Name. 
+|Advertise service.
+*svcname* is Service Name.
+*funcname* is Function Name.
 *fptr* is Pointer to service function, signature "func FUNCNAME(ac
-*atmi.ATMICtx, svc *atmi.TPSVCINFO)". 
+*atmi.ATMICtx, svc *atmi.TPSVCINFO)".
 |Returns
 |ATMI Error
 |Applies
@@ -1536,10 +1865,10 @@ TPServiceFunction) ATMIError
 (*ATMIBuf, ATMIError)
 |Description
 |Allocate buffer Accepts the standard ATMI values We should add error handling
-here. 
-*b_type* is Buffer type. 
-*b_subtype* is Buffer sub-type. 
-*size* is Buffer size request. 
+here.
+*b_type* is Buffer type.
+*b_subtype* is Buffer sub-type.
+*size* is Buffer size request.
 |Returns
 |ATMI Buffer, atmiError
 |Applies
@@ -1553,10 +1882,10 @@ here.
 |func (ac *ATMICtx) TpAssertEqualError(a interface{}, b interface{}, message
 string) error
 |Description
-|Have some common testing functinos (used by Enduro/X modules). 
-*a* is Paramter a to test. 
-*b* is Paramter b to test (compare with a). 
-*message* is additional error message. 
+|Have some common testing functinos (used by Enduro/X modules).
+*a* is Paramter a to test.
+*b* is Paramter b to test (compare with a).
+*message* is additional error message.
 |Applies
 |XATMI client and server
 |===
@@ -1568,10 +1897,10 @@ string) error
 |func (ac *ATMICtx) TpAssertEqualPanic(a interface{}, b interface{}, message
 string)
 |Description
-|Have some common testing functinos (used by Enduro/X modules). 
-*a* is Paramter a to test. 
-*b* is Paramter b to test (compare with a). 
-*message* is additional error message. 
+|Have some common testing functinos (used by Enduro/X modules).
+*a* is Paramter a to test.
+*b* is Paramter b to test (compare with a).
+*message* is additional error message.
 |Applies
 |XATMI client and server
 |===
@@ -1583,10 +1912,10 @@ string)
 |func (ac *ATMICtx) TpAssertNotEqualError(a interface{}, b interface{}, message
 string) error
 |Description
-|Have some common testing functinos (used by Enduro/X modules). 
-*a* is Paramter a to test. 
-*b* is Paramter b to test (compare with a). 
-*message* is additional error message. 
+|Have some common testing functinos (used by Enduro/X modules).
+*a* is Paramter a to test.
+*b* is Paramter b to test (compare with a).
+*message* is additional error message.
 |Applies
 |XATMI client and server
 |===
@@ -1598,10 +1927,10 @@ string) error
 |func (ac *ATMICtx) TpAssertNotEqualPanic(a interface{}, b interface{}, message
 string)
 |Description
-|Have some common testing functinos (used by Enduro/X modules). 
-*a* is Paramter a to test. 
-*b* is Paramter b to test (compare with a). 
-*message* is additional error message. 
+|Have some common testing functinos (used by Enduro/X modules).
+*a* is Paramter a to test.
+*b* is Paramter b to test (compare with a).
+*message* is additional error message.
 |Applies
 |XATMI client and server
 |===
@@ -1612,11 +1941,29 @@ string)
 |Function
 |func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError
 |Description
-|Begin transaction. 
-*timeout* is Transaction Timeout. 
-*flags* is Transaction flags. 
+|Begin transaction.
+*timeout* is Transaction Timeout.
+*flags* is Transaction flags.
 |Returns
 |ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpBufCmp()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpBufCmp(left, right TypedBuffer, flags int64) (int,
+ATMIError)
+|Description
+|TpBufCmp compares typed values. -1, 0 and 1 are successful order results;
+native -2 is returned with an ATMI error. Nil denotes a NULL typed buffer..
+*left* is Left typed buffer, or nil for a native NULL buffer.
+*right* is Right typed buffer, or nil for a native NULL buffer.
+*flags* is Native comparison flags; use 0.
+|Returns
+|-1, 0 or 1 for ordering and nil error; -2 and ATMIError on failure
 |Applies
 |XATMI client and server
 |===
@@ -1629,11 +1976,11 @@ string)
 ATMIError)
 |Description
 |Do the service call, assume using the same buffer  for return value.  This
-works for self describing buffers. Otherwise we need a buffer size in 
-ATMIBuf.. 
-*svc* is service name. 
-*buf* is ATMI buffer. 
-*flags* is Flags to be used. 
+works for self describing buffers. Otherwise we need a buffer size in
+ATMIBuf..
+*svc* is service name.
+*buf* is ATMI buffer.
+*flags* is Flags to be used.
 |Returns
 |atmiError
 |Applies
@@ -1646,8 +1993,8 @@ ATMIBuf..
 |Function
 |func (ac *ATMICtx) TpCancel(cd int) ATMIError
 |Description
-|Cancel async call. 
-*cd* is Call descriptor. 
+|Cancel async call.
+*cd* is Call descriptor.
 |Returns
 |ATMI error
 |Applies
@@ -1660,7 +2007,7 @@ ATMIBuf..
 |Function
 |func (ac *ATMICtx) TpClose() ATMIError
 |Description
-|Close XA Sub-system. 
+|Close XA Sub-system.
 |Returns
 |ATMI Error
 |Applies
@@ -1673,8 +2020,8 @@ ATMIBuf..
 |Function
 |func (ac *ATMICtx) TpCommit(flags int64) ATMIError
 |Description
-|Commit global transaction. 
-*flags* is flags for abort operation. 
+|Commit global transaction.
+*flags* is flags for abort operation.
 |Applies
 |XATMI client and server
 |===
@@ -1686,12 +2033,60 @@ ATMIBuf..
 |func (ac *ATMICtx) TpConnect(svc string, tb TypedBuffer, flags int64) (int,
 ATMIError)
 |Description
-|Connect to service in conversational mode. 
-*svc* is Service name. 
-*data* is ATMI buffers. 
-*flags* is Flags. 
+|Connect to service in conversational mode.
+*svc* is Service name.
+*data* is ATMI buffers.
+*flags* is Flags.
 |Returns
 |call descriptor (cd), ATMI error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpContextTagClear()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpContextTagClear(key string, flags int64) ATMIError
+|Description
+|TpContextTagClear removes key from the scopes/destinations selected by flags..
+
+*key* is Tag name to remove.
+*flags* is TPCTXTAG scope and signal selection.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpContextTagClearAll()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpContextTagClearAll(flags int64) ATMIError
+|Description
+|TpContextTagClearAll clears the scopes/destinations selected by flags..
+*flags* is TPCTXTAG scope and signal selection to clear.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpContextTagSet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpContextTagSet(key, value string, flags int64) ATMIError
+|Description
+|TpContextTagSet sets a tag in the TPCTXTAG_* scope/destinations in flags.
+NEXT tags persist until explicitly cleared; key and value are copied by C..
+*key* is NUL-free tag name.
+*value* is NUL-free tag value copied by the native API.
+*flags* is TPCTXTAG_PROCESS, TPCTXTAG_THREAD or TPCTXTAG_NEXT scope with
+TPCTXTAG_LOG and/or TPCTXTAG_TRACE.
+|Returns
+|Nil on success, otherwise ATMIError
 |Applies
 |XATMI client and server
 |===
@@ -1702,9 +2097,116 @@ ATMIError)
 |Function
 |func (ac *ATMICtx) TpContinue()
 |Description
-|Continue main thread processing (go back to server polling). 
+|Continue main thread processing (go back to server polling).
 |Applies
 |To XATMI server
+|===
+
+==== ATMICtx.TpDLMACall()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMACall(svc string, tb TypedBuffer, flags int64) (int,
+ATMIError)
+|Description
+|TpDLMACall dispatches an asynchronous DLM request with native retry handling.
+svc is resolved by TpDLMMkCall; the result is the call/conversation
+descriptor..
+*svc* is DLM service name returned in TpDlmCtl.GetSvcName().
+*tb* is Request typed buffer, retained by the caller.
+*flags* is XATMI asynchronous call flags.
+|Returns
+|Asynchronous call descriptor and nil error, or -1 and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpDLMAttemptsGet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMAttemptsGet() (int, ATMIError)
+|Description
+|TpDLMAttemptsGet returns the configured attempt limit, not a call counter..
+|Returns
+|Configured retry attempt limit and nil error, or 0 and ATMIError;	this is
+not the count consumed by a call
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpDLMCall()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMCall(svc string, tb TypedBuffer, flags int64) (int,
+ATMIError)
+|Description
+|TpDLMCall dispatches a DLM request with retries and updates tb with the reply.
+ Inspect per-command EX_DLM_RVAL1 even when the ATMI call succeeds..
+*svc* is DLM service name returned in TpDlmCtl.GetSvcName().
+*tb* is Request buffer, updated with the reply pointer and length even on
+failure.
+*flags* is XATMI call flags passed to the native DLM retry API.
+|Returns
+|0 and nil error on successful transport, otherwise -1 and ATMIError;	inspect
+EX_DLM_RVAL1 for individual command results
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpDLMConnect()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMConnect(svc string, tb TypedBuffer, flags int64) (int,
+ATMIError)
+|Description
+|TpDLMConnect opens a DLM conversation with native retry handling.  svc is
+resolved by TpDLMMkCall; the result is the call/conversation descriptor..
+*svc* is DLM service name returned in TpDlmCtl.GetSvcName().
+*tb* is Initial conversation buffer, retained by the caller.
+*flags* is XATMI conversation flags.
+|Returns
+|Conversation descriptor and nil error, or -1 and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpDLMMkCall()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMMkCall(ub *TypedUBF, ctl *TpDlmCtl) ATMIError
+|Description
+|TpDLMMkCall prepares ub and ctl for dispatch. It may replace ub's allocation..
+
+*ub* is Request UBF; its allocation and length are updated if native
+preparation replaces it.
+*ctl* is DLM control configured with SetDLMSpace and SetWaitTime
+(milliseconds);        GetSvcName returns the selected service.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpDLMToutGet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpDLMToutGet(waitTime int64) (int64, int64, int64,
+ATMIError)
+|Description
+|TpDLMToutGet returns effective and per-attempt milliseconds, and the
+per-attempt ATMI timeout in seconds. Nonpositive waitTime uses ATMI settings..
+*waitTime* is Requested total wait in milliseconds; nonpositive values use
+ATMI timeout settings.
+|Returns
+|Effective milliseconds, per-attempt milliseconds, per-attempt ATMI
+seconds, and ATMIError if calculation fails
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpDequeue()
@@ -1714,12 +2216,12 @@ ATMIError)
 |func (ac *ATMICtx) TpDequeue(qspace string, qname string, ctl *TPQCTL, tb
 TypedBuffer, flags int64) ATMIError
 |Description
-|Dequeue message from Q. 
-*qspace* is Name of the event to post. 
-*qname* is ATMI buffer. 
-*ctl* is Control structure. 
-*tb* is Typed buffer. 
-*flags* is ATMI call flags. 
+|Dequeue message from Q.
+*qspace* is Name of the event to post.
+*qname* is ATMI buffer.
+*ctl* is Control structure.
+*tb* is Typed buffer.
+*flags* is ATMI call flags.
 |Returns
 |ATMI error
 |Applies
@@ -1732,8 +2234,8 @@ TypedBuffer, flags int64) ATMIError
 |Function
 |func (ac *ATMICtx) TpDiscon(cd int) ATMIError
 |Description
-|Disconnect from conversation. 
-*cd* is Call Descriptor. 
+|Disconnect from conversation.
+*cd* is Call Descriptor.
 |Returns
 |ATMI Error
 |Applies
@@ -1747,12 +2249,12 @@ TypedBuffer, flags int64) ATMIError
 |func (ac *ATMICtx) TpEnqueue(qspace string, qname string, ctl *TPQCTL, tb
 TypedBuffer, flags int64) ATMIError
 |Description
-|Enqueue message to Q. 
-*qspace* is Name of the event to post. 
-*qname* is ATMI buffer. 
-*ctl* is Control structure. 
-*tb* is Typed buffer. 
-*flags* is ATMI call flags. 
+|Enqueue message to Q.
+*qspace* is Name of the event to post.
+*qname* is ATMI buffer.
+*ctl* is Control structure.
+*tb* is Typed buffer.
+*flags* is ATMI call flags.
 |Returns
 |ATMI error
 |Applies
@@ -1765,9 +2267,9 @@ TypedBuffer, flags int64) ATMIError
 |Function
 |func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError)
 |Description
-|Export the buffer to JSON format.. 
-*tb* is TypecdTyped buffer. 
-*flags* is 0 (JSON text) or TPEX_STRING (export in base64 format). 
+|Export the buffer to JSON format..
+*tb* is TypecdTyped buffer.
+*flags* is 0 (JSON text) or TPEX_STRING (export in base64 format).
 |Applies
 |XATMI client and server
 |===
@@ -1778,8 +2280,8 @@ TypedBuffer, flags int64) ATMIError
 |Function
 |func (ac *ATMICtx) TpExtAddB4PollCB(cb TPB4PollCallback) ATMIError
 |Description
-|Set periodic before poll callback func. 
-*cb* is Callback function with "func(ctx *ATMICtx) int" signature. 
+|Set periodic before poll callback func.
+*cb* is Callback function with "func(ctx *ATMICtx) int" signature.
 |Returns
 |ATMI Error
 |Applies
@@ -1796,10 +2298,10 @@ TypedBuffer, flags int64) ATMIError
 dispatcher in case if given number of seconds are elapsed. If the service is
 doing some work currenlty then it will not be interrupted. If the service
 workload was longer than period, then given period will be lost and will be
-serviced and next sleep period or after receiving next service call.. 
+serviced and next sleep period or after receiving next service call..
 *secs* is Interval in secods between calls. This basically is number of seconds
-in which service will sleep and wake up.. 
-*cb* is Callback function with signature: "func(ctx *ATMICtx) int".. 
+in which service will sleep and wake up..
+*cb* is Callback function with signature: "func(ctx *ATMICtx) int"..
 |Returns
 |ATMI Error
 |Applies
@@ -1813,10 +2315,10 @@ in which service will sleep and wake up..
 |func (ac *ATMICtx) TpExtAddPollerFD(fd int, events uint32, ptr1 interface{},
 cb TPPollerFdCallback) ATMIError
 |Description
-|Add custom File Descriptor (FD) to Q poller. 
-*events* is Epoll events. 
-*ptr1* is Custom data block to be passed to callback func. 
-*cb* is Callback func. 
+|Add custom File Descriptor (FD) to Q poller.
+*events* is Epoll events.
+*ptr1* is Custom data block to be passed to callback func.
+*cb* is Callback func.
 |Returns
 |ATMI Error
 |Applies
@@ -1829,7 +2331,7 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpExtDelB4PollCB() ATMIError
 |Description
-|Delete before-doing-poll callback. 
+|Delete before-doing-poll callback.
 |Returns
 |ATMI Error
 |Applies
@@ -1842,7 +2344,7 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpExtDelPeriodCB() ATMIError
 |Description
-|Delete del periodic callback. 
+|Delete del periodic callback.
 |Returns
 |ATMI Error
 |Applies
@@ -1855,12 +2357,27 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpExtDelPollerFD(fd int) ATMIError
 |Description
-|Remove the polling file descriptor. 
-*fd* is FD to poll on. 
+|Remove the polling file descriptor.
+*fd* is FD to poll on.
 |Returns
 |ATMI Error
 |Applies
 |To XATMI server
+|===
+
+==== ATMICtx.TpExtGetReplyQFD()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpExtGetReplyQFD() (int, ATMIError)
+|Description
+|TpExtGetReplyQFD returns the context's borrowed, pollable reply-queue FD.  Do
+not close it. Unsupported polling backends return the native ATMI error..
+|Returns
+|Borrowed pollable reply-queue descriptor and nil error, or -1 and
+ATMIError; do not close the descriptor
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpForward()
@@ -1869,10 +2386,10 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpForward(svc string, tb TypedBuffer, flags int64)
 |Description
-|Forward the call to specified poller and return to Q poller. 
-*svc* is Service name to forward the call to. 
-*data* is ATMI buffer. 
-*flags* is Flags. 
+|Forward the call to specified poller and return to Q poller.
+*svc* is Service name to forward the call to.
+*data* is ATMI buffer.
+*flags* is Flags.
 |Applies
 |To XATMI server
 |===
@@ -1883,8 +2400,24 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpFree(buf *ATMIBuf)
 |Description
-|Free the ATMI buffer. 
-*buf* is ATMI buffer. 
+|Free the ATMI buffer.
+*buf* is ATMI buffer.
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpGetConnRM()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpGetConnRM(rmid int) (unsafe.Pointer, ATMIError)
+|Description
+|TpGetConnRM returns the RM-owned native connection for rmid.  The pointer is
+borrowed and must not be freed; closing the RM invalidates it..
+*rmid* is Configured numeric resource-manager ID.
+|Returns
+|Borrowed native connection pointer and nil error, or nil and	ATMIError; the
+RM owns the connection
 |Applies
 |XATMI client and server
 |===
@@ -1895,7 +2428,7 @@ cb TPPollerFdCallback) ATMIError
 |Function
 |func (ac *ATMICtx) TpGetLev() int
 |Description
-|Check are we in globa transaction?. 
+|Check are we in globa transaction?.
 |Returns
 |0 - not in global Tx, 1 - in global Tx
 |Applies
@@ -1909,10 +2442,10 @@ cb TPPollerFdCallback) ATMIError
 |func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int,
 ATMIError)
 |Description
-|Get async call reply. 
-*cd* is call. 
-*buf* is ATMI buffer. 
-*flags* is call flags. 
+|Get async call reply.
+*cd* is call.
+*buf* is ATMI buffer.
+*flags* is call flags.
 |Applies
 |XATMI client and server
 |===
@@ -1923,7 +2456,7 @@ ATMIError)
 |Function
 |func (ac *ATMICtx) TpGetSrvId() int
 |Description
-|Return server id. 
+|Return server id.
 |Returns
 |server_id
 |Applies
@@ -1936,7 +2469,7 @@ ATMIError)
 |Function
 |func (ac *ATMICtx) TpGetnodeId() int64
 |Description
-|Get cluster node id. 
+|Get cluster node id.
 |Returns
 |Node Id
 |Applies
@@ -1951,11 +2484,11 @@ ATMIError)
 ATMIError
 |Description
 |Import the UBF buffer from the json string which is exported by TpExport The
-tb TypedBuffer will be updated according to incoming data. 
-*jsondata* is json string data according to texport(3). 
-*tb* is typed buffer where to install the incoming buffer. 
+tb TypedBuffer will be updated according to incoming data.
+*jsondata* is json string data according to texport(3).
+*tb* is typed buffer where to install the incoming buffer.
 *flags* is TPEX_STRING if decode as base64, TPEX_NOCHANGE do not change tb
-format	     if buffer type is different. 
+format	     if buffer type is different.
 |Applies
 |XATMI client and server
 |===
@@ -1966,7 +2499,7 @@ format	     if buffer type is different.
 |Function
 |func (ac *ATMICtx) TpInit() ATMIError
 |Description
-|Initialize client. 
+|Initialize client.
 |Returns
 |ATMI Error
 |Applies
@@ -1981,10 +2514,10 @@ format	     if buffer type is different.
 |Description
 |Converts string JSON buffer passed in 'buffer' to VIEW buffer. This function
 will automatically allocate new VIEW buffer. See tpjsontoview(3) C call for
-more information.. 
+more information..
 *buffer* is String buffer containing JSON message. The format must be one level
 JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
-occurrences.. 
+occurrences..
 |Returns
 |Typed view if parsed ok, or ATMI error
 |Applies
@@ -1997,10 +2530,10 @@ occurrences..
 |Function
 |func (ac *ATMICtx) TpLog(lev int, format string, a ...interface{})
 |Description
-|Log the message to Enduro/X loggers (see tplog(3) manpage). 
-*lev* is Logging level. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+|Log the message to Enduro/X loggers (see tplog(3) manpage).
+*lev* is Logging level.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2012,9 +2545,9 @@ occurrences..
 |func (ac *ATMICtx) TpLogAlways(format string, a ...interface{})
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
-wrapper. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+wrapper.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2025,7 +2558,7 @@ wrapper.
 |Function
 |func (ac *ATMICtx) TpLogCloseReqFile()
 |Description
-|Close request logger (see tplogclosereqfile(3) manpage). 
+|Close request logger (see tplogclosereqfile(3) manpage).
 |Applies
 |XATMI client and server
 |===
@@ -2036,7 +2569,7 @@ wrapper.
 |Function
 |func (ac *ATMICtx) TpLogCloseThread()
 |Description
-|Close request logger (see tplogclosethread(3) manpage). 
+|Close request logger (see tplogclosethread(3) manpage).
 |Applies
 |XATMI client and server
 |===
@@ -2048,13 +2581,13 @@ wrapper.
 |func (ac *ATMICtx) TpLogConfig(logger int, lev int, debug_string string,
 module string, new_file string) NSTDError
 |Description
-|Configure Enduro/X logger (see tplogconfig(3) manpage). 
-*logger* is is bitwise 'ored' (see LOG_FACILITY_*). 
-*lev* is is optional (if not set: -1), log level to be assigned to facilites. 
+|Configure Enduro/X logger (see tplogconfig(3) manpage).
+*logger* is is bitwise 'ored' (see LOG_FACILITY_*).
+*lev* is is optional (if not set: -1), log level to be assigned to facilites.
 *debug_string* is optional Enduro/X debug string (see ndrxdebug.conf(5)
-manpage). 
+manpage).
 *new_file* is optional (if not set - empty string) logging output file,
-overrides debug_string file tag. 
+overrides debug_string file tag.
 |Returns
 |NSTDError - standard library error
 |Applies
@@ -2068,9 +2601,9 @@ overrides debug_string file tag.
 |func (ac *ATMICtx) TpLogDebug(format string, a ...interface{})
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Debug level
-wrapper. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+wrapper.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2081,8 +2614,8 @@ wrapper.
 |Function
 |func (ac *ATMICtx) TpLogDelBufReqFile(data TypedBuffer) ATMIError
 |Description
-|Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage). 
-*data* is XATMI buffer, must be UBF type. 
+|Delete request file from UBF buffer (see tplogdelbufreqfile(3) manpage).
+*data* is XATMI buffer, must be UBF type.
 |Returns
 |ATMI error
 |Applies
@@ -2096,11 +2629,11 @@ wrapper.
 |func (ac *ATMICtx) TpLogDump(lev int, comment string, ptr []byte, dumplen int)
 ATMIError
 |Description
-|Print the byte array buffer to Enduro/X logger (see tplogdump(3) manpage). 
-*lev* is Logging level (see LOG_* constants). 
-*comment* is Title of the buffer dump. 
-*ptr* is Pointer to buffer for dump. 
-*dumplen* is Length of the bytes to dump. 
+|Print the byte array buffer to Enduro/X logger (see tplogdump(3) manpage).
+*lev* is Logging level (see LOG_* constants).
+*comment* is Title of the buffer dump.
+*ptr* is Pointer to buffer for dump.
+*dumplen* is Length of the bytes to dump.
 |Returns
 |atmiError (in case if invalid length we have for ptr and dumplen)
 |Applies
@@ -2115,12 +2648,12 @@ ATMIError
 []byte, difflen int) ATMIError
 |Description
 |Function compares to byte array buffers and prints the differences to Enduro/X
-logger (see tplogdumpdiff(3) manpage). 
-*lev* is Logging level (see LOG_* constants). 
-*comment* is Title of the buffer diff. 
-*ptr1* is Pointer to buffer1 for compare. 
-*ptr2* is Pointer to buffer2 for compare. 
-*difflen* is Length of the bytes to compare. 
+logger (see tplogdumpdiff(3) manpage).
+*lev* is Logging level (see LOG_* constants).
+*comment* is Title of the buffer diff.
+*ptr1* is Pointer to buffer1 for compare.
+*ptr2* is Pointer to buffer2 for compare.
+*difflen* is Length of the bytes to compare.
 |Returns
 |atmiError (in case if invalid length we have for ptr1/ptr2 and difflen)
 |Applies
@@ -2134,9 +2667,9 @@ logger (see tplogdumpdiff(3) manpage).
 |func (ac *ATMICtx) TpLogError(format string, a ...interface{})
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Error level
-wrapper. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+wrapper.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2148,9 +2681,9 @@ wrapper.
 |func (ac *ATMICtx) TpLogFatal(format string, a ...interface{})
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Fatal/Always level
-wrapper. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+wrapper.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2163,7 +2696,7 @@ wrapper.
 |Description
 |Get the request file name from UBF buffer (see tploggetbufreqfile(3) manpage).
 
-*data* is XATMI buffer (must be UBF). 
+*data* is XATMI buffer (must be UBF).
 |Returns
 |file name, ATMI error
 |Applies
@@ -2176,7 +2709,7 @@ wrapper.
 |Function
 |func (ac *ATMICtx) TpLogGetIflags() string
 |Description
-|Return integration flags Well we will run it in cached mode.... 
+|Return integration flags Well we will run it in cached mode....
 |Applies
 |XATMI client and server
 |===
@@ -2188,7 +2721,7 @@ wrapper.
 |func (ac *ATMICtx) TpLogGetReqFile() (bool, string)
 |Description
 |Return request logging file (if there is one currenlty in use)  (see
-tploggetreqfile(3) manpage). 
+tploggetreqfile(3) manpage).
 |Returns
 |Status (request logger open or not), full path to request file
 |Applies
@@ -2203,8 +2736,8 @@ tploggetreqfile(3) manpage).
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Info level wrapper.
 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2216,13 +2749,13 @@ tploggetreqfile(3) manpage).
 |func (ac *ATMICtx) TpLogSetReqFile(data TypedBuffer, filename string, filesvc
 string) ATMIError
 |Description
-|Set request file to log to (see tplogsetreqfile(3) manpage). 
+|Set request file to log to (see tplogsetreqfile(3) manpage).
 *data* is pointer to  XATMI buffer (must be UBF, others will cause error),
-optional. 
+optional.
 *filename* is field name to set (this goes to UBF buffer too, if set),
-optional. 
+optional.
 *filesvc* is XATMI service name to call for requesting the new request file
-name, optional. 
+name, optional.
 |Returns
 |ATMI error
 |Applies
@@ -2237,8 +2770,8 @@ name, optional.
 |Description
 |Set request logging file, direct version (see tplogsetreqfile_direct(3)
 manpage) Which does operate with thread local storage If fails to open request
-logging file, it will automatically fall-back to stderr.. 
-*filename* is Set file name to perform logging to. 
+logging file, it will automatically fall-back to stderr..
+*filename* is Set file name to perform logging to.
 |Applies
 |XATMI client and server
 |===
@@ -2250,9 +2783,9 @@ logging file, it will automatically fall-back to stderr..
 |func (ac *ATMICtx) TpLogWarn(format string, a ...interface{})
 |Description
 |Log the message to Enduro/X loggers (see tplog(3) manpage) Warning level
-wrapper. 
-*a* is arguemnts for sprintf. 
-*format* is Format string for loggers. 
+wrapper.
+*a* is arguemnts for sprintf.
+*format* is Format string for loggers.
 |Applies
 |XATMI client and server
 |===
@@ -2263,9 +2796,25 @@ wrapper.
 |Function
 |func (ac *ATMICtx) TpOpen() ATMIError
 |Description
-|Open XA Sub-system. 
+|Open XA Sub-system.
 |Returns
 |ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpOpen2()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpOpen2(flags int64) ATMIError
+|Description
+|TpOpen2 opens automatic resource managers, or all with TPTXOPENALL.  flags
+selects the resource managers; errors are reported through ATMIError..
+*flags* is 0 for automatic resource managers, or TPTXOPENALL to include
+manually managed resource managers.
+|Returns
+|Nil on success, otherwise ATMIError
 |Applies
 |XATMI client and server
 |===
@@ -2277,12 +2826,76 @@ wrapper.
 |func (ac *ATMICtx) TpPost(eventname string, tb TypedBuffer, len int64, flags
 int64) (int, ATMIError)
 |Description
-|Post the event to subscribers. 
-*eventname* is Name of the event to post. 
-*data* is ATMI buffer. 
-*flags* is flags. 
+|Post the event to subscribers.
+*eventname* is Name of the event to post.
+*data* is ATMI buffer.
+*flags* is flags.
 |Returns
 |Number Of events posted, ATMI error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpRMClose()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpRMClose(name string, flags int64) ATMIError
+|Description
+|TpRMClose closes the named resource manager.  name is the configured RM name;
+flags follows the native API..
+*name* is Configured resource-manager name.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpRMEnd()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpRMEnd(name string, flags int64) ATMIError
+|Description
+|TpRMEnd ends the manual resource manager association.	name is the configured
+RM name; flags follows the native API..
+*name* is Configured resource-manager name.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpRMOpen()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpRMOpen(name string, flags int64) ATMIError
+|Description
+|TpRMOpen opens the named resource manager.  name is the configured RM name;
+flags follows the native API..
+*name* is Configured resource-manager name.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpRMStart()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpRMStart(name string, flags int64) ATMIError
+|Description
+|TpRMStart associates a manual resource manager with the current transaction.
+name is the configured RM name; flags follows the native API..
+*name* is Configured resource-manager name.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
 |Applies
 |XATMI client and server
 |===
@@ -2294,10 +2907,10 @@ int64) (int, ATMIError)
 |func (ac *ATMICtx) TpRecv(cd int, tb TypedBuffer, flags int64, revent *int64)
 ATMIError
 |Description
-|Receive data from conversation. 
-*cd* is call descriptor. 
-*data* is ATMI buffer. 
-*revent* is Return Event. 
+|Receive data from conversation.
+*cd* is call descriptor.
+*data* is ATMI buffer.
+*revent* is Return Event.
 |Returns
 |ATMI Error
 |Applies
@@ -2310,9 +2923,28 @@ ATMIError
 |Function
 |func (ac *ATMICtx) TpResume(tranid *TPTRANID, flags int64) ATMIError
 |Description
-|Resume transaction. 
-*tranid* is Transaction Id reference. 
-*flags* is Flags for tran resume (must be 0). 
+|Resume transaction NOTE! The string tranid value is platform dependent - CPU
+Architecture and Data Model e.g. ILP32, LP64, etc must not be mixed between
+suspends and resumes..
+*tranid* is Transaction Id reference.
+*flags* is Flags for tran resume (must be 0).
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpResumeString()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpResumeString(tidb64 string, flags int64) ATMIError
+|Description
+|Resume transaction, where TID is encoded in base64 string. NOTE! The string
+tid value is platform dependent - CPU Architecture and Data Model e.g. ILP32,
+LP64, etc must not be mixed..
+*tidb64* is Transaction Id reference (base64 encoded value).
+*flags* is Flags for tran resume (must be 0).
 |Returns
 |ATMI Error
 |Applies
@@ -2326,11 +2958,11 @@ ATMIError
 |func (ac *ATMICtx) TpReturn(rval int, rcode int64, tb TypedBuffer, flags
 int64)
 |Description
-|Return the ATMI call and go to Q poller. 
-*rvel* is Return value (TPFAIL or TPSUCCESS). 
-*rcode* is Return code (used for custom purposes). 
-*tb* is ATMI buffer. 
-*flags* is Flags. 
+|Return the ATMI call and go to Q poller.
+*rvel* is Return value (TPFAIL or TPSUCCESS).
+*rcode* is Return code (used for custom purposes).
+*tb* is ATMI buffer.
+*flags* is Flags.
 |Applies
 |To XATMI server
 |===
@@ -2343,13 +2975,123 @@ int64)
 ATMIError
 |Description
 |We should pass here init & un-init functions... So that we can start the
-processing. 
-*initf* is callback to init function. 
-*uninitf* is callback to un-init function. 
+processing.
+*initf* is callback to init function.
+*uninitf* is callback to un-init function.
 |Returns
 |Enduro/X service exit code, ATMI Error
 |Applies
 |To XATMI server
+|===
+
+==== ATMICtx.TpSagaEnd()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSagaEnd(ctl *TpSagaCtl, flags int64) ATMIError
+|Description
+|TpSagaEnd ends the participant's local working section, retaining its
+registration. If dlmspace is configured, it releases the lock provided	by the
+Distributed Lock Manager (DLM) in Enduro/X Enterprise Edition  (endurox-ee).
+Standard mode requires this call even without DLM.  Only ctl.GetFlags() is
+input; flags must be zero. TPSAGA_NOLOCK  registrations have no section to
+end..
+*ctl* is Saga control; only registration mode Flags is read.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSagaEnlist()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSagaEnlist(ctl *TpSagaCtl, flags int64) ATMIError
+|Description
+|TpSagaEnlist registers ctl in the current branch, or ctl.GetXID() with
+TPSAGA_JOINXID. Read the returned identifiers with GetXID and GetBranchXID..
+*ctl* is Registration metadata, explicit callback URLs and payload up to
+NDRX_SAGA_PAYLOAD_MAX bytes; identifiers are available through getters.
+*flags* is 0, TPSAGA_JOINXID to register in ctl.GetXID(), or TPSAGA_UPDATE for
+	explicit replacement; separate from ctl.GetFlags().
+|Returns
+|Nil on successful registration, otherwise ATMIError; plain duplicate
+registration in a branch fails
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSagaGet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSagaGet(ctl *TpSagaCtl, flags int64) ATMIError
+|Description
+|TpSagaGet reads registered metadata and URLs by ctl.GetBranchXID(), including
+during recovery. Payload is preserved; flags must be zero..
+*ctl* is BranchXID selects the participant; receives metadata,
+registration mode, global XID and URLs without returning payload bytes.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError; the native payload is	preserved
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSagaLeave()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSagaLeave(ctl *TpSagaCtl, flags int64) ATMIError
+|Description
+|TpSagaLeave withdraws ctl.GetBranchXID() from an active transaction,
+preventing its callbacks. It does not release the local working section;  call
+TpSagaEnd for that. The caller need not join; flags must be zero..
+*ctl* is Control with BranchXID identifying the registered participant.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on successful removal, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSagaUpdate()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSagaUpdate(ctl *TpSagaCtl, flags int64) ATMIError
+|Description
+|TpSagaUpdate replaces an active participant's payload and URLs. With
+TPSAGA_URLSONLY it relocates URLs during recovery without changing callback
+presence. URL-only calls ignore Payload, ContentType and registration Flags..
+*ctl* is Participant BranchXID and replacement callback URLs; full updates
+also copy Payload, ContentType and registration Flags.
+*flags* is 0 for an active participant full update, or TPSAGA_URLSONLY to
+relocate URLs during recovery.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpScrInit()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpScrInit(cfg *TpScrCfg, flags int64) (*TpScrVm, ATMIError)
+|Description
+|TpScrInit creates a VM using cfg and the scripting plugin selected by the
+environment. Initialization errors include the plugin's error details..
+*cfg* is Optional TpScrCfg configured with SetVersion and SetInitString; nil
+uses	   configured plugin defaults.
+*flags* is Native scripting initialization flags; normally 0.
+|Returns
+|Owned VM and nil error, or nil and ATMIError with initialization
+diagnostics; release with TpScrUninit
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.TpSend()
@@ -2359,10 +3101,28 @@ processing.
 |func (ac *ATMICtx) TpSend(cd int, tb TypedBuffer, flags int64, revent *int64)
 ATMIError
 |Description
-|Receive data from conversation. 
-*cd* is call descriptor. 
-*data* is ATMI buffer. 
-*revent* is Return Event. 
+|Receive data from conversation.
+*cd* is call descriptor.
+*data* is ATMI buffer.
+*revent* is Return Event.
+|Returns
+|ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSetCallInfo()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSetCallInfo(msg TypedBuffer, cibuf *TypedUBF, flags
+int64) ATMIError
+|Description
+|Set call info, a UBF buffer assocated with call buffer.
+*msg* is Message buffer. Will return TPEINVAL error in case if this interface
+is nil..
+*cibuf* is UBF buffer with message infos.
+*flags* is Shall be set to 0.
 |Returns
 |ATMI Error
 |Applies
@@ -2375,8 +3135,8 @@ ATMIError
 |Function
 |func (ac *ATMICtx) TpSrvFreeCtxData(data *TPSRVCTXDATA)
 |Description
-|Free the server context data. 
-*data* is Context data block. 
+|Free the server context data.
+*data* is Context data block.
 |Applies
 |To XATMI server
 |===
@@ -2388,7 +3148,7 @@ ATMIError
 |func (ac *ATMICtx) TpSrvGetCtxData() (*TPSRVCTXDATA, ATMIError)
 |Description
 |Get Server Call thread context data (free of *TPSRVCTXDATA must be done by
-user). 
+user).
 |Returns
 |contect data, ATMI Error
 |Applies
@@ -2401,7 +3161,7 @@ user).
 |Function
 |func (ac *ATMICtx) TpSrvSetCtxData(data *TPSRVCTXDATA, flags int64) ATMIError
 |Description
-|Restore thread context data. 
+|Restore thread context data.
 |Returns
 |ATMI Error
 |Applies
@@ -2415,11 +3175,11 @@ user).
 |func (ac *ATMICtx) TpSubscribe(eventexpr string, filter string, ctl *TPEVCTL,
 flags int64) (int64, ATMIError)
 |Description
-|Subscribe service to some specified event. 
-*eventexpr* is Subscription ID (retruned by TPSubscribe()). 
-*filter* is Event filter expression (regex). 
-*ctl* is Control struct. 
-*flags* is Flags. 
+|Subscribe service to some specified event.
+*eventexpr* is Subscription ID (retruned by TPSubscribe()).
+*filter* is Event filter expression (regex).
+*ctl* is Control struct.
+*flags* is Flags.
 |Returns
 |Subscription id, ATMI Error
 |Applies
@@ -2432,11 +3192,29 @@ flags int64) (int64, ATMIError)
 |Function
 |func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError
 |Description
-|Suspend transaction. 
-*tranid* is Transaction Id reference. 
-*flags* is Flags for suspend (must be 0). 
+|Suspend transaction NOTE! The string tranid value is platform dependent - CPU
+Architecture and Data Model e.g. ILP32, LP64, etc must not be mixed between
+suspends and resumes..
+*tranid* is Transaction Id reference.
+*flags* is Flags for suspend (must be 0).
 |Returns
 |ATMI Error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpSuspendString()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpSuspendString(flags int64) (string, ATMIError)
+|Description
+|Suspend transaction, return transaction ID as base64 encoded string NOTE! The
+string tid value is platform dependent - CPU Architecture and Data Model e.g.
+ILP32, LP64, etc must not be mixed between suspends and resumes..
+*flags* is Flags for suspend (must be 0).
+|Returns
+|tid, ATMI Error
 |Applies
 |XATMI client and server
 |===
@@ -2447,9 +3225,168 @@ flags int64) (int64, ATMIError)
 |Function
 |func (ac *ATMICtx) TpTerm() ATMIError
 |Description
-|Terminate the client. 
+|Terminate the client.
 |Returns
 |ATMI error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceContextGet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceContextGet(flags int64) (string, ATMIError)
+|Description
+|TpTraceContextGet returns the current W3C traceparent; flags must be zero.  An
+empty string means no propagated value is present..
+*flags* is Reserved; must be 0.
+|Returns
+|Current W3C traceparent and nil error, or empty string and	ATMIError;
+empty with nil error means no context
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceContextSet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceContextSet(traceparent string, flags int64)
+ATMIError
+|Description
+|TpTraceContextSet imports W3C traceparent; an empty string clears it.	flags
+must be zero. The selected Enduro/X context owns the copied value..
+*traceparent* is W3C traceparent string; an empty string clears the
+propagated context.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceEvent()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceEvent(name string, attributes *TypedUBF,	flags
+int64) ATMIError
+|Description
+|TpTraceEvent records name and optional UBF attributes on the current span..
+*name* is NUL-free event name.
+*attributes* is Optional UBF attributes, or nil.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceSpanBegin()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceSpanBegin(name string, attributes *TypedUBF,
+flags int64) (uintptr, ATMIError)
+|Description
+|TpTraceSpanBegin starts a span with optional UBF attributes and returns its
+opaque handle. TPTRACE_F_ACTIVE spans must be ended in reverse nesting order..
+*name* is NUL-free span name.
+*attributes* is Optional UBF attributes, or nil.
+*flags* is TPTRACE_F_ACTIVE to activate the span, TPTRACE_F_NEW_ROOT for a
+new trace, or 0.
+|Returns
+|Opaque span handle and nil error, or 0 and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceSpanEnd()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceSpanEnd(handle uintptr, status int,	attributes
+*TypedUBF, flags int64) ATMIError
+|Description
+|TpTraceSpanEnd ends handle with a TPTRACE_STATUS_* result and optional UBF
+attributes. The native engine releases the span; the handle must not be
+reused..
+*handle* is Live handle returned by TpTraceSpanBegin; cannot be reused
+after completion.
+*status* is TPTRACE_STATUS_UNSET, TPTRACE_STATUS_OK or
+TPTRACE_STATUS_ERROR.
+*attributes* is Optional UBF completion attributes, or nil.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceStateGet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceStateGet(flags int64) (string, ATMIError)
+|Description
+|TpTraceStateGet returns the current W3C tracestate; flags must be zero.  An
+empty string means no propagated value is present..
+*flags* is Reserved; must be 0.
+|Returns
+|Current W3C tracestate and nil error, or empty string and ATMIError;	empty
+with nil error means no state
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTraceStateSet()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTraceStateSet(state string, flags int64) ATMIError
+|Description
+|TpTraceStateSet sets W3C tracestate on an active span; empty clears it.  flags
+must be zero. The selected Enduro/X context owns the copied value..
+*state* is W3C tracestate string; an empty string clears it.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTxRenew()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTxRenew(st *TpTxStatus, flags int64) ATMIError
+|Description
+|TpTxRenew requests st.GetTimeout() seconds from now, capped by the earliest
+participant deadline. The returned status contains the effective timeout.
+Flags selects one identifier; the call's flags argument must be zero..
+*st* is Transaction selector and requested Timeout in seconds from now;
+receives Status, Timeout and TimeoutLeft.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on successful renewal, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTxStatus()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTxStatus(st *TpTxStatus, flags int64) ATMIError
+|Description
+|TpTxStatus reads the status and timeouts of the selected transaction.	Flags
+selects one identifier; the call's flags argument must be zero..
+*st* is Transaction selector: Flags is exactly one of TPTXS_XID,
+TPTXS_BRXID or TPTXS_TRANID; receives Status, Timeout and TimeoutLeft.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil on successful lookup, otherwise ATMIError; returned timeouts are	seconds
 |Applies
 |XATMI client and server
 |===
@@ -2461,14 +3398,28 @@ flags int64) (int64, ATMIError)
 |func (ac *ATMICtx) TpTypes(ptr *ATMIBuf, itype *string, subtype *string)
 (int64, ATMIError)
 |Description
-|Return ATMI buffer info. 
-*ptr* is Pointer to ATMI buffer. 
+|Return ATMI buffer info.
+*ptr* is Pointer to ATMI buffer.
 *itype* is ptr to string to return the buffer type  (can be nil), if set then
 on output value will be UBF, CARRAY, STRING or JSON other buffers currently are
-not supported.. 
-*subtype* is ptr to string to return sub-type (can be nil). 
+not supported..
+*subtype* is ptr to string to return sub-type (can be nil).
 |Returns
 |Buffer lenght if no error or -1 if error, ATMI error
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpURCode()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpURCode() (int64, ATMIError)
+|Description
+|Return user return code from last service call (i.e. value from second
+argument of tpreturn - rcode).
+|Returns
+|tpurcode from ATMI context
 |Applies
 |XATMI client and server
 |===
@@ -2479,8 +3430,8 @@ not supported..
 |Function
 |func (ac *ATMICtx) TpUnadvertise(svcname string) ATMIError
 |Description
-|Unadvertise service dynamically. 
-*svcname* is Service Name. 
+|Unadvertise service dynamically.
+*svcname* is Service Name.
 |Returns
 |ATMI Error
 |Applies
@@ -2494,13 +3445,44 @@ not supported..
 |func (ac *ATMICtx) TpUnsubscribe(subscription int64, flags int64) (int,
 ATMIError)
 |Description
-|Unsubscribe from event broker. 
-*subscription* is Subscription ID (retruned by TPSubscribe()). 
-*flags* is Flags. 
+|Unsubscribe from event broker.
+*subscription* is Subscription ID (retruned by TPSubscribe()).
+*flags* is Flags.
 |Returns
 |Number of subscriptions deleted, ATMI Error
 |Applies
 |To XATMI server
+|===
+
+==== ATMICtx.TpXIDFromString()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpXIDFromString(value string) (*XID, ATMIError)
+|Description
+|TpXIDFromString decodes a global XID using the native TPCONVXID codec.  Branch
+XID strings and TpSuspendString tokens use different representations..
+*value* is NUL-free global XID string produced by native TPCONVXID
+conversion.
+|Returns
+|Decoded native XID and nil error, or nil and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpXIDToString()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpXIDToString(xid *XID) (string, ATMIError)
+|Description
+|TpXIDToString converts a global XID through the native TPCONVXID codec..
+*xid* is Native global XID obtained from Saga registration or
+TpXIDFromString.
+|Returns
+|Native TPCONVXID string and nil error, or empty string and ATMIError
+|Applies
+|XATMI client and server
 |===
 
 ==== ATMICtx.UBFAlloc()
@@ -2509,8 +3491,8 @@ ATMIError)
 |Function
 |func (ac *ATMICtx) UBFAlloc(size int64) (TypedUBF, ATMIError)
 |Description
-|Allocate the UBF buffer. 
-*size* is Buffer size in bytes. 
+|Allocate the UBF buffer.
+*size* is Buffer size in bytes.
 |Returns
 |UBF Handler, ATMI Error
 |Applies
@@ -2524,9 +3506,9 @@ ATMIError)
 |func (ac *ATMICtx) UserLog(format string, a ...interface{})
 |Description
 |Do the user logging. This prints the message to ULOG. Suitable for system wide
-critical message notifications. 
-*format* is format string. 
-*a* is list of data fields for format string. 
+critical message notifications.
+*format* is format string.
+*a* is list of data fields for format string.
 |Applies
 |XATMI client and server
 |===
@@ -2541,7 +3523,7 @@ buffer cannot contain binary zero (0x00) byte.
 |Function
 |func (u *TypedString) GetBuf() *ATMIBuf
 |Description
-|Return The ATMI buffer to caller. 
+|Return The ATMI buffer to caller.
 |Applies
 |XATMI client and server
 |===
@@ -2552,7 +3534,7 @@ buffer cannot contain binary zero (0x00) byte.
 |Function
 |func (s *TypedString) GetString() string
 |Description
-|Get the string value out from buffer. 
+|Get the string value out from buffer.
 |Returns
 |String value
 |Applies
@@ -2565,8 +3547,8 @@ buffer cannot contain binary zero (0x00) byte.
 |Function
 |func (s *TypedString) SetString(gs string) ATMIError
 |Description
-|Set the string to the buffer. 
-*str* is String value. 
+|Set the string to the buffer.
+*str* is String value.
 |Applies
 |XATMI client and server
 |===
@@ -2577,7 +3559,7 @@ buffer cannot contain binary zero (0x00) byte.
 |Function
 |func (u *TypedString) TpRealloc(size int64) ATMIError
 |Description
-|. 
+|.
 |Applies
 |XATMI client and server
 |===
@@ -2594,7 +3576,18 @@ with UBF field names and values. Values can be arrays.
 |Function
 |func (u *TypedJSON) GetBuf() *ATMIBuf
 |Description
-|Return The ATMI buffer to caller. 
+|Return The ATMI buffer to caller.
+|Applies
+|XATMI client and server
+|===
+
+==== TypedJSON.GetJSON()
+[cols="h,5a"]
+|===
+|Function
+|func (j *TypedJSON) GetJSON() []byte
+|Description
+|Get JSON bytes...
 |Applies
 |XATMI client and server
 |===
@@ -2605,7 +3598,7 @@ with UBF field names and values. Values can be arrays.
 |Function
 |func (j *TypedJSON) GetJSONText() string
 |Description
-|Get the string value out from buffer. 
+|Get the string value out from buffer.
 |Returns
 |JSON value
 |Applies
@@ -2618,7 +3611,7 @@ with UBF field names and values. Values can be arrays.
 |Function
 |func (j *TypedJSON) SetJSON(b []byte) ATMIError
 |Description
-|Set JSON bytes. 
+|Set JSON bytes.
 |Applies
 |XATMI client and server
 |===
@@ -2629,8 +3622,8 @@ with UBF field names and values. Values can be arrays.
 |Function
 |func (j *TypedJSON) SetJSONText(gs string) ATMIError
 |Description
-|Set the string to the buffer. 
-*str* is JSON value. 
+|Set the string to the buffer.
+*str* is JSON value.
 |Applies
 |XATMI client and server
 |===
@@ -2641,7 +3634,7 @@ with UBF field names and values. Values can be arrays.
 |Function
 |func (u *TypedJSON) TpRealloc(size int64) ATMIError
 |Description
-|. 
+|.
 |Applies
 |XATMI client and server
 |===
@@ -2655,7 +3648,20 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (u *TypedCarray) GetBuf() *ATMIBuf
 |Description
-|Return The ATMI buffer to caller. 
+|Return The ATMI buffer to caller.
+|Applies
+|XATMI client and server
+|===
+
+==== TypedCarray.GetBytes()
+[cols="h,5a"]
+|===
+|Function
+|func (s *TypedCarray) GetBytes() []byte
+|Description
+|Get the string value out from buffer.
+|Returns
+|String value
 |Applies
 |XATMI client and server
 |===
@@ -2666,8 +3672,8 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (s *TypedCarray) SetBytes(b []byte) ATMIError
 |Description
-|. 
-*str* is String value. 
+|.
+*str* is String value.
 |Applies
 |XATMI client and server
 |===
@@ -2678,7 +3684,7 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (u *TypedCarray) TpRealloc(size int64) ATMIError
 |Description
-|. 
+|.
 |Applies
 |XATMI client and server
 |===
@@ -2690,7 +3696,7 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (e ubfError) Code() int
 |Description
-|code getter. 
+|code getter.
 |Applies
 |XATMI client and server
 |===
@@ -2701,7 +3707,7 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (e ubfError) Error() string
 |Description
-|Standard error interface. 
+|Standard error interface.
 |Applies
 |XATMI client and server
 |===
@@ -2712,7 +3718,7 @@ Typed Carray, basically is byte array buffer.
 |Function
 |func (e ubfError) Message() string
 |Description
-|message getter. 
+|message getter.
 |Applies
 |XATMI client and server
 |===
@@ -2727,9 +3733,9 @@ can contain the array of elements (occurrences).
 |Function
 |func (u *TypedUBF) BAdd(bfldid int, ival interface{}) UBFError
 |Description
-|Add field to buffer. 
-*bfldid* is Field ID. 
-*ival* is Input value. 
+|Add field to buffer.
+*bfldid* is Field ID.
+*ival* is Input value.
 |Returns
 |UBF Error
 |Applies
@@ -2744,11 +3750,11 @@ can contain the array of elements (occurrences).
 first bool) UBFError
 |Description
 |Fast add of filed to buffer (assuming buffer not changed and adding the same
-type of field. NOTE ! Types must be matched with UBF field type. 
-*bfldid* is field id to add. 
-*ival* is value to add. 
-*loc* is location data (last saved or new data) - initialized by first flag. 
-*first* is set to true, if 'loc' is not inialised. 
+type of field. NOTE ! Types must be matched with UBF field type.
+*bfldid* is field id to add.
+*ival* is value to add.
+*loc* is location data (last saved or new data) - initialized by first flag.
+*first* is set to true, if 'loc' is not inialised.
 |Returns
 |UBF error or nil
 |Applies
@@ -2761,8 +3767,8 @@ type of field. NOTE ! Types must be matched with UBF field type.
 |Function
 |func (u *TypedUBF) BBoolEv(tree *ExprTree) bool
 |Description
-|Test the expresion tree to current UBF buffer. 
-*tree* is compiled expression tree. 
+|Test the expresion tree to current UBF buffer.
+*tree* is compiled expression tree.
 |Returns
 |true (buffer matched expression) or false (buffer not matched expression)
 |Applies
@@ -2775,9 +3781,9 @@ type of field. NOTE ! Types must be matched with UBF field type.
 |Function
 |func (u *TypedUBF) BChg(bfldid int, occ int, ival interface{}) UBFError
 |Description
-|Change field in buffer. 
-*bfldid* is Field ID. 
-*ival* is Input value. 
+|Change field in buffer.
+*bfldid* is Field ID.
+*ival* is Input value.
 |Returns
 |UBF Error
 |Applies
@@ -2791,11 +3797,11 @@ type of field. NOTE ! Types must be matched with UBF field type.
 |func (u *TypedUBF) BChgCombined(bfldid int, occ int, ival interface{}, do_add
 bool) UBFError
 |Description
-|Set the field value. Combined supports change (chg) or add mode. 
-*bfldid* is Field ID. 
-*occ* is Field Occurrance. 
-*ival* is Input value. 
-*do_add* is Adding mode true = add, false = change. 
+|Set the field value. Combined supports change (chg) or add mode.
+*bfldid* is Field ID.
+*occ* is Field Occurrance.
+*ival* is Input value.
+*do_add* is Adding mode true = add, false = change.
 |Returns
 |UBF Error
 |Applies
@@ -2808,9 +3814,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BDel(bfldid int, occ int) UBFError
 |Description
-|Delete the field from buffer. 
-*fldid* is Field ID. 
-*occ* is Field occurance. 
+|Delete the field from buffer.
+*fldid* is Field ID.
+*occ* is Field occurance.
 |Returns
 |UBF error
 |Applies
@@ -2823,8 +3829,8 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BDelAll(bfldid int) UBFError
 |Description
-|Delete field (all occurrances) from buffer. 
-*bfldid* is field ID. 
+|Delete field (all occurrances) from buffer.
+*bfldid* is field ID.
 |Returns
 |UBF error
 |Applies
@@ -2837,8 +3843,8 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BDelete(fldlist []int) UBFError
 |Description
-|Delete listed fields from UBF buffer. 
-*fldlist* is list of fields (array). 
+|Delete listed fields from UBF buffer.
+*fldlist* is list of fields (array).
 |Returns
 |UBF error
 |Applies
@@ -2851,8 +3857,8 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BExtRead(s string) UBFError
 |Description
-|Read the bufer content from string. 
-*s* is String buffer representation. 
+|Read the bufer content from string.
+*s* is String buffer representation.
 |Returns
 |UBF error
 |Applies
@@ -2865,8 +3871,8 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BFloatEv(tree *ExprTree) float64
 |Description
-|Evalute expression value in float64 format. 
-*tree* is compiled expression tree. 
+|Evalute expression value in float64 format.
+*tree* is compiled expression tree.
 |Returns
 |expression value
 |Applies
@@ -2879,9 +3885,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGet(bfldid int, occ int) (interface{}, UBFError)
 |Description
-|Get the field form buffer. This returns the interface to underlaying type. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Get the field form buffer. This returns the interface to underlaying type.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |interface to value,	 UBF error
 |Applies
@@ -2894,9 +3900,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetByte(bfldid int, occ int) (byte, UBFError)
 |Description
-|Return byte (c char) value from buffer. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Return byte (c char) value from buffer.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |byte val, UBF error
 |Applies
@@ -2909,9 +3915,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetByteArr(bfldid int, occ int) ([]byte, UBFError)
 |Description
-|Get string value. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Get string value.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |string val, UBF error
 |Applies
@@ -2924,9 +3930,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetFloat32(bfldid int, occ int) (float32, UBFError)
 |Description
-|Get float value from UBF buffer, see CBget(3). 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Get float value from UBF buffer, see CBget(3).
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |float, UBF error
 |Applies
@@ -2939,9 +3945,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetFloat64(bfldid int, occ int) (float64, UBFError)
 |Description
-|Get double value. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Get double value.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |double, UBF error
 |Applies
@@ -2954,9 +3960,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetInt(bfldid int, occ int) (int, UBFError)
 |Description
-|Return int (basicaly C long (int64) casted to) value from buffer. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Return int (basicaly C long (int64) casted to) value from buffer.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |int64 val,	 UBF error
 |Applies
@@ -2969,9 +3975,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetInt16(bfldid int, occ int) (int16, UBFError)
 |Description
-|Return int16 value from buffer. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Return int16 value from buffer.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |int16 val,	 UBF error
 |Applies
@@ -2984,9 +3990,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetInt64(bfldid int, occ int) (int64, UBFError)
 |Description
-|Return int64 value from buffer. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Return int64 value from buffer.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |int64 val,	 UBF error
 |Applies
@@ -2999,9 +4005,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BGetString(bfldid int, occ int) (string, UBFError)
 |Description
-|Get string value. 
-*bfldid* is Field ID. 
-*occ* is Occurrance. 
+|Get string value.
+*bfldid* is Field ID.
+*occ* is Occurrance.
 |Returns
 |string val, UBF error
 |Applies
@@ -3014,7 +4020,7 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BIsUBF() bool
 |Description
-|Test C buffer for UBF format. 
+|Test C buffer for UBF format.
 |Returns
 |TRUE - buffer is UBF, FALSE - not UBF
 |Applies
@@ -3027,9 +4033,9 @@ bool) UBFError
 |Function
 |func (u *TypedUBF) BLen(bfldid int, occ int) (int, UBFError)
 |Description
-|Get the field len. 
-*fldid* is Field ID. 
-*occ* is Field occurance. 
+|Get the field len.
+*fldid* is Field ID.
+*occ* is Field occurance.
 |Returns
 |FIeld len, UBF error
 |Applies
@@ -3043,8 +4049,8 @@ bool) UBFError
 |func (u *TypedUBF) BNext(first bool) (int, int, UBFError)
 |Description
 |Iterate over the buffer NOTE: This is not multiple context safe. It stores
-iteration state internally. 
-*first* is TRUE start iteration, FALSE continue iteration. 
+iteration state internally.
+*first* is TRUE start iteration, FALSE continue iteration.
 |Returns
 |Field ID, Field Occurrance, UBF Error
 |Applies
@@ -3057,8 +4063,8 @@ iteration state internally.
 |Function
 |func (u *TypedUBF) BOccur(bfldid int) (int, UBFError)
 |Description
-|Get the number of field occurrances in buffer. 
-*bfldid* is Field ID. 
+|Get the number of field occurrances in buffer.
+*bfldid* is Field ID.
 |Returns
 |count (or -1 on error), UBF error
 |Applies
@@ -3071,9 +4077,9 @@ iteration state internally.
 |Function
 |func (u *TypedUBF) BPres(bfldid int, occ int) bool
 |Description
-|Check for field presence in buffer. 
-*fldid* is Field ID. 
-*occ* is Field occurance. 
+|Check for field presence in buffer.
+*fldid* is Field ID.
+*occ* is Field occurance.
 |Returns
 |true/false present/not present
 |Applies
@@ -3086,26 +4092,9 @@ iteration state internally.
 |Function
 |func (u *TypedUBF) BPrint() UBFError
 |Description
-|Print the buffer to stdout. 
+|Print the buffer to stdout.
 |Returns
 |UBF error
-|Applies
-|XATMI client and server
-|===
-
-==== TypedUBF.BPrintStr()
-[cols="h,5a"]
-|===
-|Function
-|func (u *TypedUBF) BPrintStr() (string, UBFError)
-|Description
-|Print UBF buffer to string. The output string buffer at C side is composed as
-UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size is
-used for purpuse so that Go developer can used extended buffer size in case if
-there is no free space (returned error BEUNIX). 
-|Returns
-|s BPrint format string or "" in case of error. Second argument is	UBF
-error set in case of error, else it is nil
 |Applies
 |XATMI client and server
 |===
@@ -3116,7 +4105,7 @@ error set in case of error, else it is nil
 |Function
 |func (u *TypedUBF) BProj(fldlist []int) UBFError
 |Description
-|Make a project copy of the fields (leave only those in array). 
+|Make a project copy of the fields (leave only those in array).
 |Returns
 |UBF error
 |Applies
@@ -3129,8 +4118,8 @@ error set in case of error, else it is nil
 |Function
 |func (u *TypedUBF) BQBoolEv(expr string) (bool, UBFError)
 |Description
-|Quick eval of the expression (compiles & frees the handler automatically). 
-*expr* is Expression tree. 
+|Quick eval of the expression (compiles & frees the handler automatically).
+*expr* is Expression tree.
 |Returns
 |result: true or false, UBF error
 |Applies
@@ -3143,7 +4132,7 @@ error set in case of error, else it is nil
 |Function
 |func (u *TypedUBF) BRead(dump []byte) UBFError
 |Description
-|Serialize the UBF buffer. 
+|Serialize the UBF buffer.
 |Returns
 |serialized bytes, UBF error
 |Applies
@@ -3156,7 +4145,7 @@ error set in case of error, else it is nil
 |Function
 |func (u *TypedUBF) BSizeof() (int64, UBFError)
 |Description
-|Get the total buffer size. 
+|Get the total buffer size.
 |Returns
 |bufer size, UBF error
 |Applies
@@ -3169,10 +4158,13 @@ error set in case of error, else it is nil
 |Function
 |func (u *TypedUBF) BSprint() (string, UBFError)
 |Description
-|Alternative for Bfprint. Will return the output in string variable So that
-caller can do anything it wants with the string output. 
+|Print UBF buffer to string. The output string buffer at C side is composed as
+UBF buffer size of multiplied by MAXTIDENT (currently 30). The total size is
+used for purpuse so that Go developer can used extended buffer size in case if
+there is no free space (returned error BEUNIX).
 |Returns
-|Printed buffer, UBF error
+|s BPrint format string or "" in case of error. Second argument is	UBF
+error set in case of error, else it is nil
 |Applies
 |XATMI client and server
 |===
@@ -3184,8 +4176,8 @@ caller can do anything it wants with the string output.
 |func (u *TypedUBF) BType(bfldid int) (string, UBFError)
 |Description
 |Return type descriptor of the field - string format. possible values: short,
-long, char, float, double, string, carray. 
-*bfldid* is field ID. 
+long, char, float, double, string, carray.
+*bfldid* is field ID.
 |Returns
 |field type, UBF error
 |Applies
@@ -3198,7 +4190,7 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) BUnused() (int64, UBFError)
 |Description
-|Get the number of free bytes of UBF buffer. 
+|Get the number of free bytes of UBF buffer.
 |Returns
 |buffer free bytes, UBF error
 |Applies
@@ -3211,7 +4203,7 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) BUsed() (int64, UBFError)
 |Description
-|Get the number of bytes used in UBF buffer. 
+|Get the number of bytes used in UBF buffer.
 |Returns
 |number of byptes used, UBF error
 |Applies
@@ -3224,7 +4216,7 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) BWrite() ([]byte, UBFError)
 |Description
-|Serialize the UBF buffer. 
+|Serialize the UBF buffer.
 |Returns
 |serialized bytes, UBF error
 |Applies
@@ -3237,7 +4229,7 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) GetBuf() *ATMIBuf
 |Description
-|Return The ATMI buffer to caller. 
+|Return The ATMI buffer to caller.
 |Applies
 |XATMI client and server
 |===
@@ -3248,8 +4240,8 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) Marshal(v interface{}) UBFError
 |Description
-|Copy the structur in v struct to UBF. 
-*v* is local struct. 
+|Copy the structur in v struct to UBF.
+*v* is local struct.
 |Returns
 |UBF error
 |Applies
@@ -3262,12 +4254,12 @@ long, char, float, double, string, carray.
 |Function
 |func (u *TypedUBF) MarshalSingle(v interface{}, occ int) UBFError
 |Description
-|Copy the structur in v struct to UBF. 
-*v* is local struct. 
+|Copy the structur in v struct to UBF.
+*v* is local struct.
 *occ* is single occurrence to marshal to UBF, i.e. single struct arrays
 occurrence	to copy to UBF. Applies only to structure array elements. In
 case of occurrence   is set which is out of the bounds of the array, the error
-will be generated as	    BEINVAL. 
+will be generated as	    BEINVAL.
 |Returns
 |UBF error
 |Applies
@@ -3283,10 +4275,10 @@ will be generated as	    BEINVAL.
 |Converts string JSON buffer passed in 'buffer' to UBF buffer. This function
 will automatically allocate the free space in UBF to fit the JSON. The size
 will be determinated by string length. See tpjsontoubf(3) C call for more
-information.. 
+information..
 *buffer* is String buffer containing JSON message. The format must be one level
 JSON containing UBF_FIELD:Value. The value can be array, then it is loaded into
-occurrences.. 
+occurrences..
 |Returns
 |UBFError ('BEINVAL' if failed to convert, 'BMALLOC' if buffer resize failed)
 |Applies
@@ -3299,7 +4291,7 @@ occurrences..
 |Function
 |func (u *TypedUBF) TpLogPrintUBF(lev int, title string)
 |Description
-|Print the buffer to stdout. 
+|Print the buffer to stdout.
 |Returns
 |UBF error
 |Applies
@@ -3312,7 +4304,7 @@ occurrences..
 |Function
 |func (u *TypedUBF) TpRealloc(size int64) ATMIError
 |Description
-|. 
+|.
 |Applies
 |XATMI client and server
 |===
@@ -3324,7 +4316,7 @@ occurrences..
 |func (u *TypedUBF) TpUBFToJSON() (string, ATMIError)
 |Description
 |Convert given UBF buffer to JSON block, see tpubftojson(3) C call Output
-string is automatically allocated. 
+string is automatically allocated.
 |Returns
 |JSON string (if converted ok), ATMIError in case of failure. More detailed
 infos in case of error is found in 'ubf' and 'ndrx' facility logs.
@@ -3339,8 +4331,8 @@ infos in case of error is found in 'ubf' and 'ndrx' facility logs.
 |func (u *TypedUBF) Unmarshal(v interface{}) UBFError
 |Description
 |Copy the specified fields to the local structure according to the `ubf' (i.e.
-take fields from UBF and copy to v structure).. 
-*v* is local struct. 
+take fields from UBF and copy to v structure)..
+*v* is local struct.
 |Returns
 |UBF error
 |Applies
@@ -3354,10 +4346,10 @@ take fields from UBF and copy to v structure)..
 |func (u *TypedUBF) UnmarshalSingle(v interface{}, occ int) UBFError
 |Description
 |Copy the specified fields to the local structure according to the `ubf' (i.e.
-take fields from UBF and copy to v structure).. 
-*v* is local struct. 
-*occ* is single occurrence in UBF to copy to either simple structure elements  
-or array elements. If copied to array, then it goes to first array element.. 
+take fields from UBF and copy to v structure)..
+*v* is local struct.
+*occ* is single occurrence in UBF to copy to either simple structure elements
+or array elements. If copied to array, then it goes to first array element..
 |Returns
 |UBF error
 |Applies
@@ -3373,11 +4365,11 @@ Typed view, dynamic access to C VIEW structures via field names.
 |Function
 |func (u *TypedVIEW) BVChg(cname string, occ int, ival interface{}) UBFError
 |Description
-|Set view field value. See CBvchg(3).. 
-*cname* is C field name of view. 
-*occ* is Occurrance to set. 
+|Set view field value. See CBvchg(3)..
+*cname* is C field name of view.
+*occ* is Occurrance to set.
 *ival* is Value to set to. Note that given field is automatically converted to
-specified typed in view with best possible converstion. 
+specified typed in view with best possible converstion.
 |Returns
 |byte array val,	 UBF error
 |Applies
@@ -3390,8 +4382,8 @@ specified typed in view with best possible converstion.
 |Function
 |func (u *TypedVIEW) BVCpy(dst *TypedVIEW) (int64, UBFError)
 |Description
-|Copy view content to another view. 
-*dst* is destination view to copy to, must be atleast in size of view. 
+|Copy view content to another view.
+*dst* is destination view to copy to, must be atleast in size of view.
 |Returns
 |bytes copied, UBF error (or nil)
 |Applies
@@ -3405,12 +4397,12 @@ specified typed in view with best possible converstion.
 |func (u *TypedVIEW) BVGetByte(cname string, occ int, flags int64) (byte,
 UBFError)
 |Description
-|Return Byte (char) value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return Byte (char) value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |signle byte val, UBF error
 |Applies
@@ -3424,12 +4416,12 @@ set to).
 |func (u *TypedVIEW) BVGetByteArr(cname string, occ int, flags int64) ([]byte,
 UBFError)
 |Description
-|Return carray/byte array BLOB value from view field. See CBvget(3).. 
-*cname* is C field name of view. 
-*occ* is Occurrance. 
+|Return carray/byte array BLOB value from view field. See CBvget(3)..
+*cname* is C field name of view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |byte array val,	 UBF error
 |Applies
@@ -3443,12 +4435,12 @@ set to).
 |func (u *TypedVIEW) BVGetFloat32(cname string, occ int, flags int64) (float32,
 UBFError)
 |Description
-|Return float value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return float value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |float val,	 UBF error
 |Applies
@@ -3462,12 +4454,12 @@ set to).
 |func (u *TypedVIEW) BVGetFloat64(cname string, occ int, flags int64) (float64,
 UBFError)
 |Description
-|Return double value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return double value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |double val,	 UBF error
 |Applies
@@ -3481,12 +4473,12 @@ set to).
 |func (u *TypedVIEW) BVGetInt(cname string, occ int, flags int64) (int,
 UBFError)
 |Description
-|Return int value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return int value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |int val,	 UBF error
 |Applies
@@ -3500,12 +4492,12 @@ set to).
 |func (u *TypedVIEW) BVGetInt16(cname string, occ int, flags int64) (int16,
 UBFError)
 |Description
-|Return int16 value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return int16 value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |int16 val,	 UBF error
 |Applies
@@ -3519,12 +4511,12 @@ set to).
 |func (u *TypedVIEW) BVGetInt64(cname string, occ int, flags int64) (int64,
 UBFError)
 |Description
-|Return int64 value from view field. See CBvget(3).. 
-*cname* is C field name for view. 
-*occ* is Occurrance. 
+|Return int64 value from view field. See CBvget(3)..
+*cname* is C field name for view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |int64 val,	 UBF error
 |Applies
@@ -3538,12 +4530,12 @@ set to).
 |func (u *TypedVIEW) BVGetString(cname string, occ int, flags int64) (string,
 UBFError)
 |Description
-|Return string value from view field. See CBvget(3).. 
-*cname* is C field name of view. 
-*occ* is Occurrance. 
+|Return string value from view field. See CBvget(3)..
+*cname* is C field name of view.
+*occ* is Occurrance.
 *flags* is BVACCESS_NOTNULL (do not return NULL value defined in view but
 report as BNOTPRES error instead) or 0 (returns NULL values if view field is
-set to). 
+set to).
 |Returns
 |string val,	 UBF error
 |Applies
@@ -3556,7 +4548,7 @@ set to).
 |Function
 |func (u *TypedVIEW) BVName() string
 |Description
-|Return view name. 
+|Return view name.
 |Returns
 |view name
 |Applies
@@ -3574,9 +4566,9 @@ int, int64, UBFError)
 When starting to iterate, "start" field must be set to true, when continue to
 iterate the, the start must be set to false. In case if field is found, the
 first return value (ret) will be set to 1, if EOF is reached, then ret is set
-to 0. If error occurs, the ret is set to -1 and UBFError is set. 
-*state* is object value to keep the state of the iteration. 
-*start* is true - if start to iterate, false - if continue to iterate. 
+to 0. If error occurs, the ret is set to -1 and UBFError is set.
+*state* is object value to keep the state of the iteration.
+*start* is true - if start to iterate, false - if continue to iterate.
 |Returns
 |ret (status -1: fail, 0: EOF, 1: Got field), cname (field name),  fldtyp
 (BFLD_* type), maxocc (Max occurrences), dim_size (field size in bytes), UBF
@@ -3593,8 +4585,8 @@ Error if have err
 UBFError)
 |Description
 |Get view field information, occurrences and related infos. See Bvoccur(3) C
-manpage for more infos.. 
-*cname* is view field name. 
+manpage for more infos..
+*cname* is view field name.
 |Returns
 |ret (number of "C" set occs), maxocc (max occurrences fo field), realocc (real
 non NULL occurrences measuring from array end), dim_size (number of bytes
@@ -3612,7 +4604,7 @@ error if set)
 |Description
 |Set number number of occurrences in "C_<field>" field, if "C" flag defined in
 view. If flag not defined, then call succeeds but value is ignored. See
-Bvsetoccur(3).. 
+Bvsetoccur(3)..
 |Returns
 |UBF error in case of error (nil on SUCCEED)
 |Applies
@@ -3625,7 +4617,7 @@ Bvsetoccur(3)..
 |Function
 |func (u *TypedVIEW) BVSizeof() (int64, UBFError)
 |Description
-|Get structure size in bytes for given TypedVIEW object. See Bvsizeof(3).. 
+|Get structure size in bytes for given TypedVIEW object. See Bvsizeof(3)..
 |Returns
 |ret (number of view bytes (if no error)), UBFError in case of error
 |Applies
@@ -3638,7 +4630,7 @@ Bvsetoccur(3)..
 |Function
 |func (u *TypedVIEW) GetBuf() *ATMIBuf
 |Description
-|Return The ATMI buffer to caller. 
+|Return The ATMI buffer to caller.
 |Applies
 |XATMI client and server
 |===
@@ -3649,7 +4641,7 @@ Bvsetoccur(3)..
 |Function
 |func (v *TypedVIEW) TpRealloc(size int64) ATMIError
 |Description
-|. 
+|.
 |Applies
 |XATMI client and server
 |===
@@ -3661,9 +4653,1055 @@ Bvsetoccur(3)..
 |func (u *TypedVIEW) TpVIEWToJSON(flags int64) (string, ATMIError)
 |Description
 |Convert given VIEW buffer to JSON block, see tpviewtojson(3) C call Output
-string is automatically allocated. 
+string is automatically allocated.
 |Returns
 |JSON string (if converted ok), ATMIError in case of failure.
+|Applies
+|XATMI client and server
+|===
+
+=== Scripting compiler output
+
+Compiler storage is released with *TpScrFree()*. *Bytes()* returns an independent Go copy.
+
+==== TpScrBytecode.Bytes()
+[cols="h,5a"]
+|===
+|Function
+|func (code *TpScrBytecode) Bytes() []byte
+|Description
+|Bytes copies compiled bytecode into Go storage, or returns nil after release..
+
+|Returns
+|Independent Go copy of compiled bytecode, or nil if the allocation	is nil
+or released
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrBytecode.TpScrFree()
+[cols="h,5a"]
+|===
+|Function
+|func (code *TpScrBytecode) TpScrFree() ATMIError
+|Description
+|TpScrFree releases compiler output with the scripting allocator, using the
+context that compiled it. Nil and already released bytecode need no action..
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+=== Scripting errors
+
+Scripting errors preserve the ATMI code, provider ScriptCode and diagnostic text.
+
+==== TpScrError.Code()
+[cols="h,5a"]
+|===
+|Function
+|func (e *TpScrError) Code() int
+|Description
+|Code returns the ATMI error code..
+|Returns
+|ATMI failure code; the separate ScriptCode field holds the provider	result
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrError.Error()
+[cols="h,5a"]
+|===
+|Function
+|func (e *TpScrError) Error() string
+|Description
+|Error returns the ATMI and scripting failure details..
+|Returns
+|Formatted ATMI code, scripting code and diagnostic text
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrError.Message()
+[cols="h,5a"]
+|===
+|Function
+|func (e *TpScrError) Message() string
+|Description
+|Message returns the scripting engine error text..
+|Returns
+|Scripting engine diagnostic text
+|Applies
+|XATMI client and server
+|===
+
+=== TpSagaCtl native control
+
+Getters and setters access one backing C record. XATMI calls use that same record. The zero value is ready to use; initialized copies share storage.
+
+==== TpSagaCtl.GetAfterURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetAfterURL() string
+|Description
+|GetAfterURL reads after callback URL from the native record..
+|Returns
+|Current after callback URL
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetBranchXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetBranchXID() string
+|Description
+|GetBranchXID reads participant branch identifier from the native record..
+|Returns
+|Current participant branch identifier
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetCommitURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetCommitURL() string
+|Description
+|GetCommitURL reads commit callback URL from the native record..
+|Returns
+|Current commit callback URL
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetContentType()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetContentType() string
+|Description
+|GetContentType reads payload MIME type from the native record..
+|Returns
+|Current payload MIME type
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetFlags() int64
+|Description
+|GetFlags reads registration mode flags from the native record..
+|Returns
+|Current registration mode flags
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetForgetURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetForgetURL() string
+|Description
+|GetForgetURL reads forget callback URL from the native record..
+|Returns
+|Current forget callback URL
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetPayload()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetPayload() []byte
+|Description
+|GetPayload copies the bytes selected by the native payload length..
+|Returns
+|Independent payload bytes; nil when the payload is empty
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetPayloadLen()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetPayloadLen() int64
+|Description
+|GetPayloadLen reads the payload length stored in the C record..
+|Returns
+|Payload length in bytes
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetRollbackURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetRollbackURL() string
+|Description
+|GetRollbackURL reads rollback callback URL from the native record..
+|Returns
+|Current rollback callback URL
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetSagaKey()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetSagaKey() string
+|Description
+|GetSagaKey reads idempotency key from the native record..
+|Returns
+|Current idempotency key
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetSagaName()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetSagaName() string
+|Description
+|GetSagaName reads Saga profile name from the native record..
+|Returns
+|Current Saga profile name
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetStatusURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetStatusURL() string
+|Description
+|GetStatusURL reads status callback URL from the native record..
+|Returns
+|Current status callback URL
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetTimeout()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetTimeout() int64
+|Description
+|GetTimeout reads the lifetime requested at first registration..
+|Returns
+|Seconds from first registration, or zero for no participant limit
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetXID() XID
+|Description
+|GetXID returns a value copy of the native global transaction identifier..
+|Returns
+|Native global XID
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetAfterURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetAfterURL(value string) ATMIError
+|Description
+|SetAfterURL writes after callback URL to the native record..
+*value* is New after callback URL.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetBranchXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetBranchXID(value string) ATMIError
+|Description
+|SetBranchXID writes participant branch identifier to the native record..
+*value* is New participant branch identifier.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetCommitURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetCommitURL(value string) ATMIError
+|Description
+|SetCommitURL writes commit callback URL to the native record..
+*value* is New commit callback URL.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetContentType()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetContentType(value string) ATMIError
+|Description
+|SetContentType writes payload MIME type to the native record..
+*value* is New payload MIME type.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetFlags(value int64) ATMIError
+|Description
+|SetFlags writes registration mode flags to the native record..
+*value* is New registration mode flags.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetForgetURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetForgetURL(value string) ATMIError
+|Description
+|SetForgetURL writes forget callback URL to the native record..
+*value* is New forget callback URL.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetPayload()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetPayload(value []byte) ATMIError
+|Description
+|SetPayload copies bytes into control-owned C memory and sets payload_len.
+Passing nil or an empty slice releases the payload immediately..
+*value* is Payload bytes, at most NDRX_SAGA_PAYLOAD_MAX.
+|Returns
+|Nil on success, otherwise an error with the previous payload intact
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetPayloadLen()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetPayloadLen(length int64) ATMIError
+|Description
+|SetPayloadLen changes the payload view; newly exposed bytes are zeroed..
+*length* is New length in bytes, between zero and NDRX_SAGA_PAYLOAD_MAX.
+|Returns
+|Nil on success, otherwise an error without changing the payload
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetRollbackURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetRollbackURL(value string) ATMIError
+|Description
+|SetRollbackURL writes rollback callback URL to the native record..
+*value* is New rollback callback URL.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetSagaKey()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetSagaKey(value string) ATMIError
+|Description
+|SetSagaKey writes idempotency key to the native record..
+*value* is New idempotency key.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetSagaName()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetSagaName(value string) ATMIError
+|Description
+|SetSagaName writes Saga profile name to the native record..
+*value* is New Saga profile name.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetStatusURL()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetStatusURL(value string) ATMIError
+|Description
+|SetStatusURL writes status callback URL to the native record..
+*value* is New status callback URL.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetTimeout()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetTimeout(value int64) ATMIError
+|Description
+|SetTimeout sets the optional registration lifetime. It can shorten the global
+deadline and bounds later renewal. Metadata updates retain the original limit..
+
+*value* is Seconds from first registration; zero adds no limit.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.SetXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) SetXID(value XID) ATMIError
+|Description
+|SetXID stores a native global transaction identifier..
+*value* is Global XID obtained from registration or TpXIDFromString.
+|Returns
+|Nil on success, otherwise TPEINVAL for a nil control
+|Applies
+|XATMI client and server
+|===
+
+=== TpTxStatus native control
+
+Getters and setters access one backing C record. XATMI calls use that same record. The zero value is ready to use; initialized copies share storage.
+
+==== TpTxStatus.GetBranchXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetBranchXID() string
+|Description
+|GetBranchXID reads participant branch identifier from the native record..
+|Returns
+|Current participant branch identifier
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetFlags() int64
+|Description
+|GetFlags reads TPTXS identifier selector from the native record..
+|Returns
+|Current TPTXS identifier selector
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetStatus()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetStatus() int64
+|Description
+|GetStatus reads transaction status from the native record..
+|Returns
+|Current transaction status
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetTimeout()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetTimeout() int64
+|Description
+|GetTimeout reads timeout in seconds from the native record..
+|Returns
+|Current timeout in seconds
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetTimeoutLeft()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetTimeoutLeft() int64
+|Description
+|GetTimeoutLeft reads remaining lifetime in seconds from the native record..
+|Returns
+|Current remaining lifetime in seconds
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetTranID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetTranID() TPTRANID
+|Description
+|GetTranID returns a value copy of the native suspend token..
+|Returns
+|Native TPTRANID, valid only for the matching runtime ABI
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetTranIDString()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetTranIDString() string
+|Description
+|GetTranIDString encodes the stored native token for TpResumeString..
+|Returns
+|Base64 token for this runtime ABI
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) GetXID() XID
+|Description
+|GetXID returns a value copy of the native global transaction identifier..
+|Returns
+|Native global XID
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetBranchXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetBranchXID(value string) ATMIError
+|Description
+|SetBranchXID writes participant branch identifier to the native record..
+*value* is New participant branch identifier.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetFlags(value int64) ATMIError
+|Description
+|SetFlags writes TPTXS identifier selector to the native record..
+*value* is New TPTXS identifier selector.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetStatus()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetStatus(value int64) ATMIError
+|Description
+|SetStatus writes transaction status to the native record..
+*value* is New transaction status.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetTimeout()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetTimeout(value int64) ATMIError
+|Description
+|SetTimeout writes timeout in seconds to the native record..
+*value* is New timeout in seconds.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetTimeoutLeft()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetTimeoutLeft(value int64) ATMIError
+|Description
+|SetTimeoutLeft writes remaining lifetime in seconds to the native record..
+*value* is New remaining lifetime in seconds.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetTranID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetTranID(value TPTRANID) ATMIError
+|Description
+|SetTranID stores an existing native suspend token without converting fields..
+*value* is Token returned by TpSuspend.
+|Returns
+|Nil on success, otherwise TPEINVAL for a nil control
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetTranIDString()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetTranIDString(value string) ATMIError
+|Description
+|SetTranIDString decodes a TpSuspendString token directly into the native
+field..
+*value* is Base64 native TPTRANID token.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpTxStatus) SetXID(value XID) ATMIError
+|Description
+|SetXID stores a native global transaction identifier..
+*value* is Global XID obtained from registration or TpXIDFromString.
+|Returns
+|Nil on success, otherwise TPEINVAL for a nil control
+|Applies
+|XATMI client and server
+|===
+
+=== TpDlmCtl native control
+
+Getters and setters access one backing C record. XATMI calls use that same record. The zero value is ready to use; initialized copies share storage.
+
+==== TpDlmCtl.GetDLMSpace()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) GetDLMSpace() string
+|Description
+|GetDLMSpace reads DLM space name from the native record..
+|Returns
+|Current DLM space name
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.GetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) GetFlags() int64
+|Description
+|GetFlags reads DLM call flags from the native record..
+|Returns
+|Current DLM call flags
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.GetSvcName()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) GetSvcName() string
+|Description
+|GetSvcName reads resolved DLM service name from the native record..
+|Returns
+|Current resolved DLM service name
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.GetWaitTime()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) GetWaitTime() int64
+|Description
+|GetWaitTime reads lock wait time in milliseconds from the native record..
+|Returns
+|Current lock wait time in milliseconds
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.SetDLMSpace()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) SetDLMSpace(value string) ATMIError
+|Description
+|SetDLMSpace writes DLM space name to the native record..
+*value* is New DLM space name.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.SetFlags()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) SetFlags(value int64) ATMIError
+|Description
+|SetFlags writes DLM call flags to the native record..
+*value* is New DLM call flags.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.SetSvcName()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) SetSvcName(value string) ATMIError
+|Description
+|SetSvcName writes resolved DLM service name to the native record..
+*value* is New resolved DLM service name.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpDlmCtl.SetWaitTime()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpDlmCtl) SetWaitTime(value int64) ATMIError
+|Description
+|SetWaitTime writes lock wait time in milliseconds to the native record..
+*value* is New lock wait time in milliseconds.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+=== TpScrCfg native control
+
+Getters and setters access one backing C record. XATMI calls use that same record. The zero value is ready to use; initialized copies share storage.
+
+==== TpScrCfg.GetInitString()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpScrCfg) GetInitString() string
+|Description
+|GetInitString reads provider initialization string from the native record..
+|Returns
+|Current provider initialization string
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrCfg.GetVersion()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpScrCfg) GetVersion() int
+|Description
+|GetVersion reads scripting configuration version from the native record..
+|Returns
+|Current scripting configuration version
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrCfg.SetInitString()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpScrCfg) SetInitString(value string) ATMIError
+|Description
+|SetInitString writes provider initialization string to the native record..
+*value* is New provider initialization string.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrCfg.SetVersion()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpScrCfg) SetVersion(value int) ATMIError
+|Description
+|SetVersion writes scripting configuration version to the native record..
+*value* is New scripting configuration version.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+=== Scripting VM
+
+A VM belongs to the ATMI context which created it; its methods use that context. Release it with *TpScrUninit()* or *FreeATMICtx()* of the owner.
+
+==== TpScrVm.TpScrComp()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrComp(source string,	flags int64) (*TpScrBytecode,
+ATMIError)
+|Description
+|TpScrComp compiles source and returns an owned native bytecode allocation.
+Use Bytes to obtain a Go copy, and TpScrFree to release the allocation..
+*source* is Script source text, passed with its byte length.
+*flags* is Native compiler flags; normally 0.
+|Returns
+|Owned compiler output and nil error, or nil and ATMIError; release
+compiler storage with TpScrFree
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrErrno()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrErrno() (int, ATMIError)
+|Description
+|TpScrErrno returns the current scripting error code of a live VM..
+|Returns
+|Current provider error code and nil error, or 0 and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrError()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrError() (string, ATMIError)
+|Description
+|TpScrError copies the current error message of a live VM.  Initialization
+failures are already captured in the error from TpScrInit..
+|Returns
+|Copied provider diagnostic string and nil error, or empty string and
+ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrExec()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrExec(name string,	param TypedBuffer, input
+TypedBuffer, flags int64) (TypedBuffer, ATMIError)
+|Description
+|TpScrExec executes a script using the existing typed-buffer representation.
+Native input pointer and length changes update the supplied buffers directly,
+as for TpCall and TpGetRply. Returned aliases reuse the same ATMIBuf owner..
+*name* is Loaded script or function name.
+*param* is Parameter buffer, or nil.
+*input* is Input buffer, or nil.
+*flags* is Native execution flags forwarded to the script.
+|Returns
+|Output buffer and error; inspect the output even on failure
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrLoad()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrLoad(name string, bytes []byte,	flags int64)
+ATMIError
+|Description
+|TpScrLoad loads bytecode under name. Go owns bytes and may reuse it afterward.
+ flags accepts the native NDRX_TPSCR_* loading options..
+*name* is NUL-free script or package name.
+*bytes* is Compiled bytecode copied into temporary native storage for this
+call.
+*flags* is NDRX_TPSCR_PACKAGE, NDRX_TPSCR_REPLACE, NDRX_TPSCR_FLAT or 0 as
+supported by the provider.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrLoadStr()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrLoadStr(name, source string,	flags int64) ATMIError
+|Description
+|TpScrLoadStr compiles and loads source under name with NDRX_TPSCR_* flags..
+*name* is NUL-free script or package name.
+*source* is Script source text, passed with its byte length.
+*flags* is NDRX_TPSCR_PACKAGE, NDRX_TPSCR_REPLACE, NDRX_TPSCR_FLAT or 0 as
+supported by the provider.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrRegCB()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrRegCB(name string, callback TpScrCallback,	user
+interface{}, flags int64) ATMIError
+|Description
+|TpScrRegCB registers callback and user data under name. C retains only a
+C-allocated handle token; it never retains a Go pointer. Use the VM serially..
+*name* is NUL-free callback registration name.
+*callback* is Go callback invoked synchronously with borrowed context and
+mutable buffer slots.
+*user* is Go user data retained until unregister or VM shutdown.
+*flags* is Native registration flags; normally 0.
+|Returns
+|Nil on success, otherwise ATMIError; failed native registration may	retain
+callback storage until VM shutdown
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrSetError()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrSetError(code int, message string) ATMIError
+|Description
+|TpScrSetError sets the VM's script code/message, including from a host
+callback..
+*code* is Provider or application scripting error code.
+*message* is NUL-free diagnostic text.
+|Returns
+|Nil on success, otherwise ATMIError; setting an error does not 	itself
+fail a callback
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrUninit()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrUninit(flags int64) ATMIError
+|Description
+|TpScrUninit destroys the VM and releases all retained callback handles on
+success.  No execution or callback may be active while the VM is being
+destroyed.  The handle is invalidated even on failure; callback storage is then
+retained..
+*flags* is Native scripting shutdown flags; normally 0.
+|Returns
+|Nil on success, otherwise ATMIError; a native shutdown attempt
+invalidates the VM even on failure
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrUnload()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrUnload(name string, flags int64) ATMIError
+|Description
+|TpScrUnload removes the loaded script identified by name..
+*name* is Loaded script or package name.
+*flags* is Native unload flags; normally 0.
+|Returns
+|Nil on success, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== TpScrVm.TpScrUnregCB()
+[cols="h,5a"]
+|===
+|Function
+|func (vm *TpScrVm) TpScrUnregCB(name string, flags int64) ATMIError
+|Description
+|TpScrUnregCB unregisters name and releases its Go callback and user data..
+*name* is Callback registration name to remove.
+*flags* is Native unregister flags; normally 0.
+|Returns
+|Nil on success, otherwise ATMIError; successful removal releases
+callback and user data
 |Applies
 |XATMI client and server
 |===

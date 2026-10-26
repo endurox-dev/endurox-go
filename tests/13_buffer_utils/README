@@ -1,0 +1,23 @@
+Buffer comparison, export and transport lengths
+===============================================
+
+Comparison ordering, large dynamic export/import round trips and
+transport-length selection. Comparison and export run for NDRX_TEST_DURATATION seconds (default 10).
+
+Build: make -C tests/13_buffer_utils
+Run from tests/: 13_buffer_utils/run.sh
+
+The launcher starts and stops a core domain with prefix /go13buf,
+IPC key 44130, and PID file /tmp/ndrxd-go13buf.pid. Installation paths
+use the usual ~/ndrx_home. No EE service is required.
+
+Also starts gobufsv and checks synchronous calls and asynchronous reply
+descriptors across process boundaries, with server-side comparison/export.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

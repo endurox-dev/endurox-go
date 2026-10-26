@@ -10,4 +10,14 @@ tests/10_views/src/golang.org/
 tests/10_views/src/ubftab/test.fd.go
 tests/10_views/src/viewdir/t40.V
 tests/10_views/src/viewdir/t40.h
+tests/13_buffer_utils/bin/
+tests/14_saga/bin/
+tests/15_tracing/bin/
+tests/16_scripting/bin/
 
+tests/17_dlm/bin/
+tests/17_dlm/edb_log/
+tests/17_dlm/edb_snapshot/
+tests/18_multi_rm/bin/
+tests/18_multi_rm/RM1/
+tests/18_multi_rm/RM2/

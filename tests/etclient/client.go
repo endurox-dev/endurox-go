@@ -6,7 +6,7 @@ package main
 import "C"
 
 import (
-	"atmi"
+	atmi "github.com/endurox-dev/endurox-go/v9"
 	"fmt"
 	"os"
 	"runtime"
@@ -36,7 +36,7 @@ func main() {
 		//Allocate context
 		ac, err = atmi.NewATMICtx()
 		if nil != err {
-			fmt.Errorf("Failed to allocate cotnext!", err)
+			fmt.Printf("Failed to allocate context: %v\n", err)
 			ret = FAIL
 			return
 		}

@@ -54,6 +54,7 @@ package atmi
 #include <stdlib.h>
 #include <oatmi.h>
 #include <onerror.h>
+#include <exparson.h>
 
 // Wrapper for TPNIT
 static int go_tpinit(TPCONTEXT_T *p_ctxt) {
@@ -74,198 +75,6 @@ static int go_Nerror(TPCONTEXT_T *p_ctxt) {
 static void free_string(char* s) { free(s); }
 static char * malloc_string(int size) { return malloc(size); }
 
-
-static void go_param_to_tpqctl(
-		TPQCTL *qc,
-		long *ctl_flags,
-		long *ctl_deq_time,
-		long *ctl_priority,
-		long *ctl_diagnostic,
-		char *ctl_diagmsg,
-		char *ctl_msgid,
-		char *ctl_corrid,
-		char *ctl_replyqueue,
-		char *ctl_failurequeue,
-		char *ctl_cltid,
-		long *ctl_urcode,
-		long *ctl_appkey,
-		long *ctl_delivery_qos,
-		long *ctl_reply_qos,
-		long *ctl_exp_time)
-{
-	qc->flags = *ctl_flags;
-	qc->deq_time = *ctl_deq_time;
-	qc->priority = *ctl_priority;
-	qc->diagnostic = *ctl_diagnostic;
-	strcpy(qc->diagmsg, ctl_diagmsg);
-	memcpy(qc->msgid, ctl_msgid, TMMSGIDLEN);
-	memcpy(qc->corrid, ctl_corrid, TMCORRIDLEN);
-	strcpy(qc->replyqueue, ctl_replyqueue);
-	strcpy(qc->failurequeue, ctl_failurequeue);
-	strcpy(qc->cltid.clientdata, ctl_cltid);
-	qc->urcode = *ctl_urcode;
-	qc->appkey = *ctl_appkey;
-	qc->delivery_qos = *ctl_delivery_qos;
-	qc->reply_qos = *ctl_reply_qos;
-	qc->exp_time = *ctl_exp_time;
-}
-
-static void go_tpqctl_to_param(
-		TPQCTL *qc,
-		long *ctl_flags,
-		long *ctl_deq_time,
-		long *ctl_priority,
-		long *ctl_diagnostic,
-		char *ctl_diagmsg,
-		char *ctl_msgid,
-		char *ctl_corrid,
-		char *ctl_replyqueue,
-		char *ctl_failurequeue,
-		char *ctl_cltid,
-		long *ctl_urcode,
-		long *ctl_appkey,
-		long *ctl_delivery_qos,
-		long *ctl_reply_qos,
-		long *ctl_exp_time)
-{
-	*ctl_flags = qc->flags;
-	*ctl_deq_time = qc->deq_time;
-	*ctl_priority = qc->priority;
-	*ctl_diagnostic = qc->diagnostic;
-	strcpy(ctl_diagmsg, qc->diagmsg);
-	memcpy(ctl_msgid, qc->msgid, TMMSGIDLEN);
-	memcpy(ctl_corrid, qc->corrid, TMCORRIDLEN);
-	strcpy(ctl_replyqueue, qc->replyqueue);
-	strcpy(ctl_failurequeue, qc->failurequeue);
-	strcpy(ctl_cltid, qc->cltid.clientdata);
-	qc->urcode = *ctl_urcode;
-	qc->appkey = *ctl_appkey;
-	qc->delivery_qos = *ctl_delivery_qos;
-	qc->reply_qos = *ctl_reply_qos;
-	qc->exp_time = *ctl_exp_time;
-}
-
-static int go_tpenqueue (TPCONTEXT_T *p_ctx, char *qspace, char *qname, char *data, long len, long flags,
-		long *ctl_flags,
-		long *ctl_deq_time,
-		long *ctl_priority,
-		long *ctl_diagnostic,
-		char *ctl_diagmsg,
-		char *ctl_msgid,
-		char *ctl_corrid,
-		char *ctl_replyqueue,
-		char *ctl_failurequeue,
-		char *ctl_cltid,
-		long *ctl_urcode,
-		long *ctl_appkey,
-		long *ctl_delivery_qos,
-		long *ctl_reply_qos,
-		long *ctl_exp_time
-)
-{
-	int ret;
-	TPQCTL qc;
-	memset(&qc, 0, sizeof(qc));
-
-	go_param_to_tpqctl(&qc,
-			ctl_flags,
-			ctl_deq_time,
-			ctl_priority,
-			ctl_diagnostic,
-			ctl_diagmsg,
-			ctl_msgid,
-			ctl_corrid,
-			ctl_replyqueue,
-			ctl_failurequeue,
-			ctl_cltid,
-			ctl_urcode,
-			ctl_appkey,
-			ctl_delivery_qos,
-			ctl_reply_qos,
-			ctl_exp_time);
-
-	ret = Otpenqueue (p_ctx, qspace, qname, &qc, data, len, flags);
-
-	go_tpqctl_to_param(&qc,
-			ctl_flags,
-			ctl_deq_time,
-			ctl_priority,
-			ctl_diagnostic,
-			ctl_diagmsg,
-			ctl_msgid,
-			ctl_corrid,
-			ctl_replyqueue,
-			ctl_failurequeue,
-			ctl_cltid,
-			ctl_urcode,
-			ctl_appkey,
-			ctl_delivery_qos,
-			ctl_reply_qos,
-			ctl_exp_time);
-
-	return ret;
-}
-
-static int go_tpdequeue (TPCONTEXT_T *p_ctx,  char *qspace, char *qname, char **data, long *len, long flags,
-		long *ctl_flags,
-		long *ctl_deq_time,
-		long *ctl_priority,
-		long *ctl_diagnostic,
-		char *ctl_diagmsg,
-		char *ctl_msgid,
-		char *ctl_corrid,
-		char *ctl_replyqueue,
-		char *ctl_failurequeue,
-		char *ctl_cltid,
-		long *ctl_urcode,
-		long *ctl_appkey,
-		long *ctl_delivery_qos,
-		long *ctl_reply_qos,
-		long *ctl_exp_time
-)
-{
-	int ret;
-	TPQCTL qc;
-	memset(&qc, 0, sizeof(qc));
-
-	go_param_to_tpqctl(&qc,
-			ctl_flags,
-			ctl_deq_time,
-			ctl_priority,
-			ctl_diagnostic,
-			ctl_diagmsg,
-			ctl_msgid,
-			ctl_corrid,
-			ctl_replyqueue,
-			ctl_failurequeue,
-			ctl_cltid,
-			ctl_urcode,
-			ctl_appkey,
-			ctl_delivery_qos,
-			ctl_reply_qos,
-			ctl_exp_time);
-
-	ret = Otpdequeue (p_ctx, qspace, qname, &qc, data, len, flags);
-
-	go_tpqctl_to_param(&qc,
-			ctl_flags,
-			ctl_deq_time,
-			ctl_priority,
-			ctl_diagnostic,
-			ctl_diagmsg,
-			ctl_msgid,
-			ctl_corrid,
-			ctl_replyqueue,
-			ctl_failurequeue,
-			ctl_cltid,
-			ctl_urcode,
-			ctl_appkey,
-			ctl_delivery_qos,
-			ctl_reply_qos,
-			ctl_exp_time);
-
-	return ret;
-}
 
 //We need a tpfree version with NULL context
 //So if we run in NULL context, then we must kill the new context appeared
@@ -360,7 +169,7 @@ const (
 	TPEDIAGNOSTIC = 24
 	TPEMIB        = 25
 	TPINITFAIL    = 30
-	TPMAXVAL      = 31
+	TPMAXVAL      = C.TPMAXVAL
 )
 
 /*
@@ -482,10 +291,10 @@ const (
  * Q constants
  */
 const (
-	TMMSGIDLEN       = 32
-	TMCORRIDLEN      = 32
-	TMQNAMELEN       = 15
-	NDRX_MAX_ID_SIZE = 96
+	TMMSGIDLEN       = C.TMMSGIDLEN
+	TMCORRIDLEN      = C.TMCORRIDLEN
+	TMQNAMELEN       = C.TMQNAMELEN
+	NDRX_MAX_ID_SIZE = C.NDRX_MAX_ID_SIZE
 )
 
 /*
@@ -555,6 +364,12 @@ type TPTRANID struct {
 type ATMICtx struct {
 	gcoff int //dummy counter tricking the gc to suspend while using object in c
 	c_ctx C.TPCONTEXT_T
+	//Open scripting VMs and compiler outputs owned by this context; a context
+	//with open entries is not garbage collected, FreeATMICtx releases them
+	scriptVMs   map[*scriptVMState]struct{}
+	scriptCodes map[*scriptBytecodeState]struct{}
+	//FreeATMICtx is releasing them: no new VMs or compiler outputs
+	scriptClosing bool
 }
 
 /*
@@ -593,6 +408,7 @@ type TPQCTL struct {
 	Delivery_qos int64             /* delivery quality of service  */
 	Reply_qos    int64             /* reply message quality of service  */
 	Exp_time     int64             /* expiration time  */
+	Traceparent  string            /* output-only W3C enqueue trace context */
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -773,10 +589,38 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 
 //Free up the ATMI Context
 //Internally this will call the TpTerm too to termiante any XATMI client
-//session in progress.
+//session in progress. Open scripting VMs and compiler outputs of the context
+//are released first. While a VM of the context is executing (e.g. when called
+//from its scripting callback) nothing is released: the request is logged and
+//ignored, and the context stays usable. If compiler output cannot be released,
+//the context also stays usable, so that TpScrFree can be retried. While the
+//resources are released (e.g. from a VM shutdown callback), new VMs and
+//compiler outputs cannot be created on the context.
 func (ac *ATMICtx) FreeATMICtx() {
 
-    runtime.SetFinalizer(ac, nil)
+	if ac.scriptClosing {
+		ac.TpLogError("FreeATMICtx ignored: the context is already being freed")
+		return
+	}
+	for state := range ac.scriptVMs {
+		if 0 != state.active {
+			ac.TpLogError("FreeATMICtx ignored: a scripting VM of the context is executing")
+			return
+		}
+	}
+	ac.scriptClosing = true
+	for state := range ac.scriptVMs {
+		(&TpScrVm{state: state}).TpScrUninit(0)
+	}
+	for code := range ac.scriptCodes {
+		(&TpScrBytecode{state: code}).TpScrFree()
+	}
+	if 0 != len(ac.scriptVMs) || 0 != len(ac.scriptCodes) {
+		ac.scriptClosing = false
+		ac.TpLogError("FreeATMICtx incomplete: scripting resources could not be released")
+		return
+	}
+	runtime.SetFinalizer(ac, nil)
 	ac.TpTerm() //This extra, but let it be
 	C.Otpfreectxt(&ac.c_ctx, ac.c_ctx)
     ac.c_ctx=nil
@@ -836,6 +680,7 @@ func MakeATMICtx(c_ctx C.TPCONTEXT_T) *ATMICtx {
 func (ac *ATMICtx) TpAlloc(b_type string, b_subtype string, size int64) (*ATMIBuf, ATMIError) {
 
 	var buf ATMIBuf
+	buf.Ctx = ac
 	var err ATMIError
 
 	c_type := C.CString(b_type)
@@ -866,16 +711,18 @@ func (buf *ATMIBuf) TpSetCtxt(ac *ATMICtx) {
 }
 
 //Reallocate the buffer
-//@param buf		ATMI buffer
-//@return 		ATMI Error
+//@param size Requested allocation size in bytes
+//@return Nil on success, otherwise ATMIError; failure preserves the original buffer
 func (buf *ATMIBuf) TpRealloc(size int64) ATMIError {
 
 	var err ATMIError
 
-	buf.C_ptr = C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
+	ptr := C.Otprealloc(&buf.Ctx.c_ctx, buf.C_ptr, C.long(size))
 
-	if nil == buf.C_ptr {
+	if nil == ptr {
 		err = buf.Ctx.NewATMIError()
+	} else {
+		buf.C_ptr = ptr
 	}
 
 	buf.nop()
@@ -970,7 +817,7 @@ func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) (int, ATMIEr
 func (ac *ATMICtx) TpGetRply(cd *int, tb TypedBuffer, flags int64) (int, ATMIError) {
 
 	var err ATMIError
-	var c_cd C.int
+	c_cd := C.int(*cd)
 
 	buf := tb.GetBuf()
 
@@ -1317,7 +1164,9 @@ func (ac *ATMICtx) TpResumeString(tidb64 string, flags int64) ATMIError {
 				tidb64, unsafe.Sizeof(c_tptranid), len(tidbytes)))
 	}
 
-	ret := C.Otpresume(&ac.c_ctx, (*C.TPTRANID)(unsafe.Pointer(&tidbytes[0])), C.long(flags))
+	// Copy into aligned native storage; v9 includes rm_axreg_mask.
+	C.memcpy(unsafe.Pointer(&c_tptranid), unsafe.Pointer(&tidbytes[0]), C.sizeof_TPTRANID)
+	ret := C.Otpresume(&ac.c_ctx, &c_tptranid, C.long(flags))
 
 	if SUCCEED != ret {
 		err = ac.NewATMIError()
@@ -1438,159 +1287,75 @@ func (ac *ATMICtx) TpTerm() ATMIError {
 //@param flags		ATMI call flags
 //@param is_enq		Is Enqueue? If not then dequeue
 //@return		ATMI error
-func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL, tb TypedBuffer, flags int64, is_enq bool) ATMIError {
-
-	var err ATMIError
-
-	c_qspace := C.CString(qspace)
-	defer C.free(unsafe.Pointer(c_qspace))
-
-	c_qname := C.CString(qname)
-	defer C.free(unsafe.Pointer(c_qname))
-
-	c_ctl_flags := C.long(ctl.Flags)
-	c_ctl_deq_time := C.long(ctl.Deq_time)
-	c_ctl_priority := C.long(ctl.Priority)
-	c_ctl_diagnostic := C.long(ctl.Diagnostic)
-	c_ctl_diagmsg := C.calloc(1, 256)
-	c_ctl_diagmsg_ptr := (*C.char)(unsafe.Pointer(c_ctl_diagmsg))
-	defer C.free(unsafe.Pointer(c_ctl_diagmsg))
-
-	c_ctl_msgid := C.malloc(TMMSGIDLEN)
-	c_ctl_msgid_ptr := (*C.char)(unsafe.Pointer(c_ctl_msgid))
-	defer C.free(unsafe.Pointer(c_ctl_msgid))
-	for i := 0; i < TMMSGIDLEN; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))) = C.char(ctl.Msgid[i])
+func (ac *ATMICtx) tp_enq_deq(qspace string, qname string, ctl *TPQCTL,
+	tb TypedBuffer, flags int64, is_enq bool) ATMIError {
+	defer runtime.KeepAlive(ac)
+	defer runtime.KeepAlive(tb)
+	if err := ac.checkContext(); err != nil {
+		return err
 	}
-
-	c_ctl_corrid := C.malloc(TMCORRIDLEN)
-	c_ctl_corrid_ptr := (*C.char)(unsafe.Pointer(c_ctl_corrid))
-	defer C.free(unsafe.Pointer(c_ctl_corrid))
-	for i := 0; i < TMCORRIDLEN; i++ {
-		*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))) = C.char(ctl.Corrid[i])
+	if ctl == nil || strings.IndexByte(qspace, 0) >= 0 || strings.IndexByte(qname, 0) >= 0 {
+		return NewCustomATMIError(TPEINVAL, "queue control is nil or queue name contains NUL")
 	}
-
-	/* Allocate the buffer for reply q, because we might receive this on
-	   dequeue.
-	*/
-	c_ctl_replyqueue_tmp := C.CString(ctl.Replyqueue)
-	defer C.free(unsafe.Pointer(c_ctl_replyqueue_tmp))
-	c_ctl_replyqueue := C.malloc(TMQNAMELEN + 1)
-	c_ctl_replyqueue_ptr := (*C.char)(unsafe.Pointer(c_ctl_replyqueue))
-	defer C.free(unsafe.Pointer(c_ctl_replyqueue))
-
-	if C.strlen(c_ctl_replyqueue_tmp) > TMQNAMELEN {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("Invalid reply queue len, max: %d", TMQNAMELEN))
+	buf := nativeBuffer(tb)
+	if buf == nil {
+		return NewCustomATMIError(TPEINVAL, "queue buffer is nil")
 	}
-	C.strcpy(c_ctl_replyqueue_ptr, c_ctl_replyqueue_tmp)
-
-	/* Allocate the buffer for failure q, because we might receive this on
-	   dequeue.
-	*/
-	c_ctl_failurequeue_tmp := C.CString(ctl.Failurequeue)
-	defer C.free(unsafe.Pointer(c_ctl_failurequeue_tmp))
-	c_ctl_failurequeue := C.malloc(TMQNAMELEN + 1)
-	c_ctl_failurequeue_ptr := (*C.char)(unsafe.Pointer(c_ctl_failurequeue))
-	defer C.free(unsafe.Pointer(c_ctl_failurequeue))
-
-	if C.strlen(c_ctl_failurequeue_tmp) > TMQNAMELEN {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("Invalid failure queue len, max: %d", TMQNAMELEN))
+	var qc C.TPQCTL
+	qc.flags, qc.deq_time = C.long(ctl.Flags), C.long(ctl.Deq_time)
+	qc.priority, qc.diagnostic = C.long(ctl.Priority), C.long(ctl.Diagnostic)
+	qc.urcode, qc.appkey = C.long(ctl.Urcode), C.long(ctl.Appkey)
+	qc.delivery_qos, qc.reply_qos = C.long(ctl.Delivery_qos), C.long(ctl.Reply_qos)
+	qc.exp_time = C.long(ctl.Exp_time)
+	for i := range ctl.Msgid {
+		qc.msgid[i] = C.char(ctl.Msgid[i])
 	}
-	C.strcpy(c_ctl_failurequeue_ptr, c_ctl_failurequeue_tmp)
-
-	/* The same goes with client id... we might return it on dequeue */
-	c_ctl_cltid_tmp := C.CString(ctl.Cltid)
-	defer C.free(unsafe.Pointer(c_ctl_cltid_tmp))
-	c_ctl_cltid := C.malloc(NDRX_MAX_ID_SIZE+1)
-	c_ctl_cltid_ptr := (*C.char)(unsafe.Pointer(c_ctl_cltid))
-	defer C.free(unsafe.Pointer(c_ctl_cltid))
-
-	if C.strlen(c_ctl_cltid_tmp) > NDRX_MAX_ID_SIZE {
-		return NewCustomATMIError(TPEINVAL,
-			fmt.Sprintf("Invalid client id len, max: %d", NDRX_MAX_ID_SIZE))
+	for i := range ctl.Corrid {
+		qc.corrid[i] = C.char(ctl.Corrid[i])
 	}
-	C.strcpy(c_ctl_cltid_ptr, c_ctl_cltid_tmp)
-
-	c_ctl_urcode := C.long(ctl.Urcode)
-	c_ctl_appkey := C.long(ctl.Appkey)
-	c_ctl_delivery_qos := C.long(ctl.Delivery_qos)
-	c_ctl_reply_qos := C.long(ctl.Reply_qos)
-	c_ctl_exp_time := C.long(ctl.Exp_time)
-
-	buf := tb.GetBuf()
-
+	for _, text := range []struct {
+		dst         []C.char
+		value, name string
+	}{
+		{qc.replyqueue[:], ctl.Replyqueue, "replyqueue"},
+		{qc.failurequeue[:], ctl.Failurequeue, "failurequeue"},
+		{qc.cltid.clientdata[:], ctl.Cltid, "cltid"},
+	} {
+		if err := copyCText(text.dst, text.value, text.name); err != nil {
+			return err
+		}
+	}
+	cSpace, cName := C.CString(qspace), C.CString(qname)
+	defer C.free(unsafe.Pointer(cSpace))
+	defer C.free(unsafe.Pointer(cName))
 	var ret C.int
 	if is_enq {
-		ret = C.go_tpenqueue(&ac.c_ctx, c_qspace, c_qname, buf.C_ptr, buf.C_len, C.long(flags),
-			&c_ctl_flags,
-			&c_ctl_deq_time,
-			&c_ctl_priority,
-			&c_ctl_diagnostic,
-			c_ctl_diagmsg_ptr,
-			c_ctl_msgid_ptr,
-			c_ctl_corrid_ptr,
-			c_ctl_replyqueue_ptr,
-			c_ctl_failurequeue_ptr,
-			c_ctl_cltid_ptr,
-			&c_ctl_urcode,
-			&c_ctl_appkey,
-			&c_ctl_delivery_qos,
-			&c_ctl_reply_qos,
-			&c_ctl_exp_time)
+		ret = C.Otpenqueue(&ac.c_ctx, cSpace, cName, &qc, buf.C_ptr,
+			buf.C_len, C.long(flags))
 	} else {
-		ret = C.go_tpdequeue(&ac.c_ctx, c_qspace, c_qname, &buf.C_ptr, &buf.C_len, C.long(flags),
-			&c_ctl_flags,
-			&c_ctl_deq_time,
-			&c_ctl_priority,
-			&c_ctl_diagnostic,
-			c_ctl_diagmsg_ptr,
-			c_ctl_msgid_ptr,
-			c_ctl_corrid_ptr,
-			c_ctl_replyqueue_ptr,
-			c_ctl_failurequeue_ptr,
-			c_ctl_cltid_ptr,
-			&c_ctl_urcode,
-			&c_ctl_appkey,
-			&c_ctl_delivery_qos,
-			&c_ctl_reply_qos,
-			&c_ctl_exp_time)
+		ret = C.Otpdequeue(&ac.c_ctx, cSpace, cName, &qc, &buf.C_ptr,
+			&buf.C_len, C.long(flags))
 	}
-
-	/* transfer back to structure values we got... */
-	ctl.Flags = int64(c_ctl_flags)
-	ctl.Deq_time = int64(c_ctl_deq_time)
-	ctl.Priority = int64(c_ctl_priority)
-	ctl.Diagnostic = int64(c_ctl_diagnostic)
-
-	ctl.Diagmsg = C.GoString(c_ctl_diagmsg_ptr)
-
-	for i := 0; i < TMMSGIDLEN; i++ {
-		ctl.Msgid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_msgid) + uintptr(i))))
-	}
-
-	for i := 0; i < TMCORRIDLEN; i++ {
-		ctl.Corrid[i] = byte(*(*C.char)(unsafe.Pointer(uintptr(c_ctl_corrid) + uintptr(i))))
-	}
-
-	ctl.Replyqueue = C.GoString(c_ctl_replyqueue_ptr)
-	ctl.Failurequeue = C.GoString(c_ctl_failurequeue_ptr)
-	ctl.Cltid = C.GoString(c_ctl_cltid_ptr)
-
-	ctl.Urcode = int64(c_ctl_urcode)
-	ctl.Appkey = int64(c_ctl_appkey)
-	ctl.Delivery_qos = int64(c_ctl_delivery_qos)
-	ctl.Reply_qos = int64(c_ctl_reply_qos)
-	ctl.Exp_time = int64(c_ctl_exp_time)
-
-	if FAIL == ret {
+	var err ATMIError
+	if ret == FAIL {
 		err = ac.NewATMIError()
 	}
-
-	buf.nop()
-	ac.nop() //keep context until the end of the func, and only then allow gc
-
+	ctl.Flags, ctl.Deq_time = int64(qc.flags), int64(qc.deq_time)
+	ctl.Priority, ctl.Diagnostic = int64(qc.priority), int64(qc.diagnostic)
+	ctl.Diagmsg = C.GoString(&qc.diagmsg[0])
+	for i := range ctl.Msgid {
+		ctl.Msgid[i] = byte(qc.msgid[i])
+	}
+	for i := range ctl.Corrid {
+		ctl.Corrid[i] = byte(qc.corrid[i])
+	}
+	ctl.Replyqueue = C.GoString(&qc.replyqueue[0])
+	ctl.Failurequeue = C.GoString(&qc.failurequeue[0])
+	ctl.Cltid = C.GoString(&qc.cltid.clientdata[0])
+	ctl.Urcode, ctl.Appkey = int64(qc.urcode), int64(qc.appkey)
+	ctl.Delivery_qos, ctl.Reply_qos = int64(qc.delivery_qos), int64(qc.reply_qos)
+	ctl.Exp_time = int64(qc.exp_time)
+	ctl.Traceparent = C.GoString(&qc.traceparent[0])
 	return err
 }
 
@@ -1688,36 +1453,26 @@ func (ac *ATMICtx) TpAssertNotEqualError(a interface{}, b interface{}, message s
 //@param tb TypecdTyped buffer
 //@param flags 0 (JSON text) or TPEX_STRING (export in base64 format)
 func (ac *ATMICtx) TpExport(tb TypedBuffer, flags int64) (string, ATMIError) {
-
-	var err ATMIError
-	buf := tb.GetBuf()
-
-	c_str_buf := C.malloc(C.size_t(ATMIMsgSizeMax() * 2))
-	c_str_buf_ptr := (*C.char)(unsafe.Pointer(c_str_buf))
-	defer C.free(unsafe.Pointer(c_str_buf))
-	c_len := C.long(ATMIMsgSizeMax() * 2)
-
-	//WELL! go might be too agressive, if it loads in the function call
-	//the buf object and for the caller tb/buf is last used in the block
-	//the GC might start to kill the buf, thus meaning it will corrupt the
-	//UBF buffer object while C is processing !!!!!!!!
-	//Thus needs to lock buf somehow while we are in the C
-	if ret := C.Otpexport(&ac.c_ctx, buf.C_ptr, buf.C_len, c_str_buf_ptr, &c_len,
-		C.long(flags)); ret != SUCCEED {
-		err = ac.NewATMIError()
-	}
-
-	if nil != err {
+	defer runtime.KeepAlive(ac)
+	defer runtime.KeepAlive(tb)
+	if err := ac.checkContext(); err != nil {
 		return "", err
 	}
-
-	//Have buffer usage after C, avoid GC during the C call, if this is last
-	//buffer use
-	buf.nop()
-
-	ac.nop() //keep context until the end of the func, and only then allow gc
-	return C.GoString(c_str_buf_ptr), nil
-
+	var ptr *C.char
+	var length C.long
+	if buf := nativeBuffer(tb); buf != nil {
+		ptr, length = buf.C_ptr, buf.C_len
+	}
+	var text *C.char
+	var size C.long
+	ret := C.Otpexport2(&ac.c_ctx, ptr, length, &text, &size, C.long(flags))
+	if text != nil {
+		defer C.exjson_free_serialized_string(text)
+	}
+	if ret != SUCCEED {
+		return "", ac.NewATMIError()
+	}
+	return C.GoString(text), nil
 }
 
 //Import the UBF buffer from the json string which is exported by TpExport

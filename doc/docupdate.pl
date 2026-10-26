@@ -10,6 +10,11 @@ use Text::Wrap;
 
 my $M_doc = 'endurox-go-book.adoc';
 
+if (!@ARGV)
+{
+    die "Usage: $0 ../*.go\n";
+}
+
 #
 # So we will store Object.Func.
 #
@@ -74,20 +79,14 @@ NEXT:	while (<$fh>) {
 			my $return = "N/A";
 			my $def = "";
 			
-			if ($line=~/^func.*[^\{]\s*$/)
-			{
-				# We need to read some more lines here and join them
-				# util we get the scope open symbol
-				while (<$fh>)
-				{
-					chomp;
-					if ($line =~/^func.*[^\{]\s*$/)
-					{
-						last;
-					}
-					$line = $line.$_;
-				}
-			}
+            # Join signatures until the function body's opening brace.
+            while ($line !~ /\{\s*$/)
+            {
+                my $next_line = <$fh>;
+                last unless defined $next_line;
+                chomp $next_line;
+                $line = $line.' '.$next_line;
+            }
 			# Ok This is our func, get the structure or it is global/atmi.
 			
 			# func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64) ATMIError {
@@ -104,11 +103,11 @@ NEXT:	while (<$fh>) {
 				print "1: [$line]\n";
 				($struct, $func, $return) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*\((.*)\)\s*{/);
 			}
-			elsif ($line =~/^func\s*\(.*\)\s*[A-Za-z0-9_]*\(.*\)\s*[0-9A-Za-z_\*]*\s*{/)
+			elsif ($line =~/^func\s*\(.*\)\s*[A-Za-z0-9_]*\(.*\)\s*[0-9A-Za-z_\*\[\]\.]*\s*{/)
 			{
 				# func (ac *ATMICtx) TpACall(svc string, tb TypedBuffer, flags int64)  ATMIError {
 				print "2: [$line]\n";
-				($struct, $func, $return) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
+				($struct, $func, $return) = ($line =~/^func\s*\(.*\s\**(.*)\)\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*\[\]\.]*)\s*{/);
 			}
 			elsif ($line =~/^func\s*\(.*\)\s*[A-Za-z0-9_]*\(.*\)\s*{/)
 			{
@@ -122,11 +121,11 @@ NEXT:	while (<$fh>) {
 				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*\((.*)\)\s*{/);
 				print "4: [$line]\n";
 			}
-			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*[A-Za-z0-9_\*]*\s*{/)
+			elsif ($line =~/^func\s*[A-Za-z0-9_]*\(.*\)\s*[A-Za-z0-9_\*\[\]\.]*\s*{/)
 			{
 				# func NewATMICtx() ATMIError {
 				
-				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*]*)\s*{/);
+				($func, $return) = ($line =~/^func\s*([A-Za-z0-9_]*)\(.*\)\s*([0-9A-Za-z_\*\[\]\.]*)\s*{/);
 				
 				print "5: [$line]\n";
 			}
@@ -267,6 +266,30 @@ END_MESSAGE
 			{
 				$prefix = "07";
 			}
+            elsif ($struct=~/^TpSagaCtl$/)
+            {
+                $prefix = "13";
+            }
+            elsif ($struct=~/^TpTxStatus$/)
+            {
+                $prefix = "14";
+            }
+            elsif ($struct=~/^TpDlmCtl$/)
+            {
+                $prefix = "15";
+            }
+            elsif ($struct=~/^TpScrCfg$/)
+            {
+                $prefix = "16";
+            }
+            elsif ($struct=~/^TpScrBytecode$/)
+            {
+                $prefix = "11";
+            }
+            elsif ($struct=~/^TpScrError$/)
+            {
+                $prefix = "12";
+            }
 			elsif ($struct=~/^ATMIBuf$/)
 			{
 				$prefix = "03";
@@ -469,7 +492,40 @@ UBF Error object, used by UBF buffer functions.
 END_MESSAGE
 	}
 	
+
+    if ($name=~/^...TpScrBytecode\./ && $topic ne "TpScrBytecode")
+    {
+        $topic = "TpScrBytecode";
+        $output = $output."=== Scripting compiler output\n\n";
+        $output = $output."Compiler storage is released with *TpScrFree()*. "
+                ."*Bytes()* returns an independent Go copy.\n\n";
+    }
+    elsif ($name=~/^...TpScrVm\./ && $topic ne "TpScrVm")
+    {
+        $topic = "TpScrVm";
+        $output = $output."=== Scripting VM\n\n";
+        $output = $output."A VM belongs to the ATMI context which created it; "
+                ."its methods use that context. Release it with "
+                ."*TpScrUninit()* or *FreeATMICtx()* of the owner.\n\n";
+    }
+    elsif ($name=~/^...TpScrError\./ && $topic ne "TpScrError")
+    {
+        $topic = "TpScrError";
+        $output = $output."=== Scripting errors\n\n";
+        $output = $output."Scripting errors preserve the ATMI code, provider "
+                ."ScriptCode and diagnostic text.\n\n";
+    }
 	
+    elsif ($name=~/^...(TpSagaCtl|TpTxStatus|TpDlmCtl|TpScrCfg)\./
+            && $topic ne $1)
+    {
+        $topic = $1;
+        $output = $output."=== $topic native control\n\n";
+        $output = $output."Getters and setters access one backing C record. "
+                ."XATMI calls use that same record. The zero value is ready "
+                ."to use; initialized copies share storage.\n\n";
+    }
+
 	# Strip the leading func name
 	my ($funcname) = ($name =~ /^...(.*)/);
 	
@@ -491,6 +547,7 @@ if (-e $M_doc)
 	my $data = read_file($M_doc);
 	#$data =~ s/Copyright Start-Up/Copyright Large Corporation/g;
 	
+	$output =~ s/[ \t]+$//mg;
 	$output = "[[gen_doc-start]]\n".$output."[[gen_doc-stop]]";
 	
 	$data =~ s/(\[\[gen_doc-start\]\])(.*)(\[\[gen_doc-stop\]\])/$output/s;

@@ -1,0 +1,25 @@
+Saga and transaction argument validation
+========================================
+
+Oversized registration payloads, NUL-containing XIDs and malformed
+transaction suspend tokens are rejected. Checks run for NDRX_TEST_DURATATION seconds (default 10).
+
+
+Build: make -C tests/14_saga
+Run from tests/: 14_saga/run.sh
+
+The launcher starts and stops a core domain with prefix /go14sag,
+IPC key 44140, and PID file /tmp/ndrxd-go14sag.pid. Installation paths
+use the usual ~/ndrx_home. No EE service is required.
+
+Starts tmsrv and gosagasv. Repeats complete commit, rollback and leave
+transactions, with two participant branches, duplicate rejection, XID/status,
+renewal, suspend/resume, payload/URL updates and completion order checks.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

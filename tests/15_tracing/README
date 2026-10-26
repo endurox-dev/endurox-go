@@ -1,0 +1,24 @@
+Trace context, spans and context tags
+=====================================
+
+Traceparent and tracestate round trips, context isolation, active-span
+parent restoration, events, tag operations and explicit context cleanup.
+Checks run for NDRX_TEST_DURATATION seconds (default 10); no telemetry exporter is required.
+
+Build: make -C tests/15_tracing
+Run from tests/: 15_tracing/run.sh
+
+The launcher starts and stops a core domain with prefix /go15trc,
+IPC key 44150, and PID file /tmp/ndrxd-go15trc.pid. Installation paths
+use the usual ~/ndrx_home. No EE service is required.
+
+Also starts gotracesv and verifies traceparent/tracestate propagation
+through real XATMI requests and replies.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

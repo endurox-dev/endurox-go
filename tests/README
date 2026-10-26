@@ -1,1 +1,25 @@
 04_distributed_transaction - this should be built manually. See readme in folder.
+
+13_buffer_utils - buffer comparison, dynamic export/import and length views.
+14_saga - tmsrv participants, status/renewal, updates, commit/rollback and leave.
+15_tracing - trace context/state, spans, tags and XATMI server propagation.
+16_scripting - scripting lifecycle, buffer ownership and callbacks in XATMI services.
+
+Each functional case has its own conf/, src/client/, Makefiles and run.sh.
+Build all clients with make from tests/, or build one numbered directory.
+./run.sh runs the core cases. Scripting requires separately licensed
+endurox-python and explicit -scripting on ./run.sh or 16_scripting/run.sh.
+See each case's README for its coverage and configuration.
+
+17_dlm - DLM server/proxy, async calls, listing and timeout settings; opt-in -dlm.
+18_multi_rm - two native resource managers, distinct handles and server enlistment.
+DLM requires Enduro/X EE installed, with tpdlmsv on PATH. The default dispatcher
+runs core cases only; -dlm and -scripting can be supplied independently.
+
+Stress scenarios use NDRX_TEST_DURATATION in whole seconds, defaulting to 10
+when unset or empty. Invalid, nonpositive or out-of-range values fail the test.
+Each scenario completes its current operation/cycle before stopping and reports
+the completed count and elapsed time. Waiting/recovery cases keep their bounded
+single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
+Native test clients suppress expected-error chatter; servers retain error logs.
+Use the existing Enduro/X logging configuration for a short verbose diagnosis.

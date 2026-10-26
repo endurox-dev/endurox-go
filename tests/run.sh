@@ -4,6 +4,16 @@
 # @(#) Integration tests
 #
 
+SCRIPTING=0
+DLM=0
+for option in "$@"; do
+    case "$option" in
+        -scripting) SCRIPTING=1 ;;
+        -dlm) DLM=1 ;;
+        *) echo "Usage: $0 [-scripting] [-dlm]" >&2; exit 2 ;;
+    esac
+done
+
 #
 # Temporary fix for Support #754
 #
@@ -22,12 +32,13 @@ M_fail=0
 run_test () {
 
         test=$1
+        shift
         M_tests=$((M_tests + 1))
         echo "*** RUNNING [$test]"
 
         pushd .
         cd $test
-        ./run.sh
+        ./run.sh "$@"
         ret=$?
         popd
         
@@ -56,6 +67,21 @@ run_test "09_return_manual_buffer"
 run_test "10_views"
 run_test "11_ubf_tests"
 run_test "12_tpimportexp"
+run_test "13_buffer_utils"
+run_test "14_saga"
+run_test "15_tracing"
+if [[ $SCRIPTING -eq 1 ]]; then
+        run_test "16_scripting" -scripting
+else
+        echo "*** SKIPPED [16_scripting]: enable -scripting with separately licensed endurox-python"
+fi
+
+run_test "18_multi_rm"
+if [[ $DLM -eq 1 ]]; then
+        run_test "17_dlm" -dlm
+else
+        echo "*** SKIPPED [17_dlm]: enable -dlm with Enduro/X EE"
+fi
 
 ################################################################################
 # Print results in out file
