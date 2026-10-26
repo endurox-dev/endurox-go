@@ -107,7 +107,10 @@ maintainer preferences. Session instructions take precedence.
 - Update the narrative examples and regenerate `doc/endurox-go-book.adoc` with
   `./docupdate.pl ../*.go` from the `doc` directory. Check that new receiver types
   have their own sections and that signatures and accessor examples render.
-- Copy constants and field IDs from the matching C headers, including types.
+- Map API constants and flags from the matching C headers, including types.
+  Generate UBF field IDs from field tables with `mkfldhdr` in application/test
+  `ubftab` packages, including product fields from `Exfields`; do not maintain
+  a binding-level `exfields.go` copy. Keep generated Go files out of Git.
   DLM operation/command names are strings; flags are numeric. Do not guess
   values or copy obsolete comments without checking the implementation.
 - Use shared boundary helpers for repeated validation/ownership responsibilities.

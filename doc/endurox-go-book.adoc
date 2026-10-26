@@ -339,9 +339,9 @@ commit, rollback or after is needed.
 
 `TpSagaEnd` ends the local work; the participant stays registered. When the
 Saga configuration has `dlmspace`, it also releases the Saga lock of the
-Distributed Lock Manager (DLM) of the Enduro/X Enterprise Edition. Call it even
-without DLM, except with `TPSAGA_NOLOCK` set by `ctl.SetFlags`. `TpSagaLeave`
-removes the participant, so its actions are not called.
+Distributed Lock Manager (DLM) of the Enduro/X Enterprise Edition. In case
+if `TPSAGA_NOLOCK` flag is set in `ctl.SetFlags`, `TpSagaEnd` shall not be called.
+`TpSagaLeave` removes the participant, so its actions are not called.
 
 Other methods (each takes the control and a separate `flags` argument):
 
@@ -413,8 +413,9 @@ its terminating NUL.
 `TpTraceContextSet/Get` exchange W3C traceparent strings and
 `TpTraceStateSet/Get` exchange tracestate strings on an active span. Each takes call flags;
 getters return a string and an error. `TpTraceSpanBegin(name, attrs,
-flags)` returns a `uintptr` handle and an error. Pass that handle to
-`TpTraceSpanEnd(handle, status, attrs, flags)`. Attributes are optional
+flags)` returns a `TpTraceSpan` handle and an error. Pass it to
+`TpTraceSpanEnd(span, status, attrs, flags)`. A span is valid only in the
+context which started it. Attributes are optional
 `*TypedUBF` buffers. `TpTraceEvent(name, attrs, flags)` records an event.
 
 `TpContextTagSet(key, value, flags)`, `TpContextTagClear(key, flags)`, and
@@ -3288,16 +3289,16 @@ int64) ATMIError
 |===
 |Function
 |func (ac *ATMICtx) TpTraceSpanBegin(name string, attributes *TypedUBF,
-flags int64) (uintptr, ATMIError)
+flags int64) (TpTraceSpan, ATMIError)
 |Description
 |TpTraceSpanBegin starts a span with optional UBF attributes and returns its
-opaque handle. TPTRACE_F_ACTIVE spans must be ended in reverse nesting order..
+handle. TPTRACE_F_ACTIVE spans must be ended in reverse nesting order..
 *name* is NUL-free span name.
 *attributes* is Optional UBF attributes, or nil.
 *flags* is TPTRACE_F_ACTIVE to activate the span, TPTRACE_F_NEW_ROOT for a
 new trace, or 0.
 |Returns
-|Opaque span handle and nil error, or 0 and ATMIError
+|Span handle and nil error, or 0 and ATMIError
 |Applies
 |XATMI client and server
 |===
@@ -3306,14 +3307,14 @@ new trace, or 0.
 [cols="h,5a"]
 |===
 |Function
-|func (ac *ATMICtx) TpTraceSpanEnd(handle uintptr, status int,	attributes
-*TypedUBF, flags int64) ATMIError
+|func (ac *ATMICtx) TpTraceSpanEnd(span TpTraceSpan, status int,
+attributes *TypedUBF, flags int64) ATMIError
 |Description
-|TpTraceSpanEnd ends handle with a TPTRACE_STATUS_* result and optional UBF
+|TpTraceSpanEnd ends span with a TPTRACE_STATUS_* result and optional UBF
 attributes. The native engine releases the span; the handle must not be
 reused..
-*handle* is Live handle returned by TpTraceSpanBegin; cannot be reused
-after completion.
+*span* is Live handle returned by TpTraceSpanBegin; cannot be reused	after
+completion.
 *status* is TPTRACE_STATUS_UNSET, TPTRACE_STATUS_OK or
 TPTRACE_STATUS_ERROR.
 *attributes* is Optional UBF completion attributes, or nil.

@@ -1,5 +1,5 @@
 all:
-	$(MAKE) -C driver
+	$(MAKE) -C ubftab
 	$(MAKE) -C server
 	$(MAKE) -C client
 

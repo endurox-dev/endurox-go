@@ -133,17 +133,21 @@ func (ac *ATMICtx) TpTraceStateGet(flags int64) (string, ATMIError) {
 	return C.GoString(&value[0]), nil
 }
 
+// TpTraceSpan identifies a span started by TpTraceSpanBegin. It is valid only
+// in the ATMICtx that started it, until TpTraceSpanEnd.
+type TpTraceSpan uint64
+
 // TpTraceSpanBegin starts a span with optional UBF attributes and returns its
-// opaque handle. TPTRACE_F_ACTIVE spans must be ended in reverse nesting order.
+// handle. TPTRACE_F_ACTIVE spans must be ended in reverse nesting order.
 // @param name NUL-free span name
 // @param attributes Optional UBF attributes, or nil
 // @param flags TPTRACE_F_ACTIVE to activate the span, TPTRACE_F_NEW_ROOT for a
 //
 //	new trace, or 0
 //
-// @return Opaque span handle and nil error, or 0 and ATMIError
+// @return Span handle and nil error, or 0 and ATMIError
 func (ac *ATMICtx) TpTraceSpanBegin(name string, attributes *TypedUBF,
-	flags int64) (uintptr, ATMIError) {
+	flags int64) (TpTraceSpan, ATMIError) {
 	defer runtime.KeepAlive(ac)
 	defer runtime.KeepAlive(attributes)
 	if err := ac.checkContext(); nil != err {
@@ -165,12 +169,12 @@ func (ac *ATMICtx) TpTraceSpanBegin(name string, attributes *TypedUBF,
 	if C.Otptracespanbegin(&ac.c_ctx, cName, attrs, C.long(flags), &handle) != SUCCEED {
 		return 0, ac.NewATMIError()
 	}
-	return uintptr(handle), nil
+	return TpTraceSpan(handle), nil
 }
 
-// TpTraceSpanEnd ends handle with a TPTRACE_STATUS_* result and optional UBF
+// TpTraceSpanEnd ends span with a TPTRACE_STATUS_* result and optional UBF
 // attributes. The native engine releases the span; the handle must not be reused.
-// @param handle Live handle returned by TpTraceSpanBegin; cannot be reused
+// @param span Live handle returned by TpTraceSpanBegin; cannot be reused
 //
 //	after completion
 //
@@ -181,7 +185,7 @@ func (ac *ATMICtx) TpTraceSpanBegin(name string, attributes *TypedUBF,
 // @param attributes Optional UBF completion attributes, or nil
 // @param flags Reserved; must be 0
 // @return Nil on success, otherwise ATMIError
-func (ac *ATMICtx) TpTraceSpanEnd(handle uintptr, status int,
+func (ac *ATMICtx) TpTraceSpanEnd(span TpTraceSpan, status int,
 	attributes *TypedUBF, flags int64) ATMIError {
 	defer runtime.KeepAlive(ac)
 	defer runtime.KeepAlive(attributes)
@@ -195,7 +199,7 @@ func (ac *ATMICtx) TpTraceSpanEnd(handle uintptr, status int,
 		}
 		attrs = (*C.UBFH)(unsafe.Pointer(attributes.Buf.C_ptr))
 	}
-	if C.Otptracespanend(&ac.c_ctx, C.uintptr_t(handle), C.int(status), attrs,
+	if C.Otptracespanend(&ac.c_ctx, C.uintptr_t(span), C.int(status), attrs,
 		C.long(flags)) != SUCCEED {
 		return ac.NewATMIError()
 	}

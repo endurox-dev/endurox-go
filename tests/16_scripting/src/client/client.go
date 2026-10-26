@@ -46,6 +46,7 @@ import (
 
 	atmi "github.com/endurox-dev/endurox-go/v9"
 	"github.com/endurox-dev/endurox-go/v9/tests/testutil"
+	"ubftab"
 )
 
 var scripting = flag.Bool("scripting", false,
@@ -164,7 +165,7 @@ def main(name, param, incoming, flags):
     rc, output = relocate(param, incoming, flags)
     assert builtins._endurox_test_held['data'][%d][0] == 'grown'
     return rc, output
-`, atmi.EX_DATA, atmi.EX_DLM_KEY)
+`, ubftab.T_CARRAY_FLD, ubftab.T_STRING_FLD)
 	if err := vm.TpScrLoadStr("inspect", inspect, atmi.NDRX_TPSCR_FLAT); nil != err {
 		return err
 	}
@@ -205,7 +206,7 @@ def main(name, param, incoming, flags):
 		if err := ubf.TpRealloc(131072); nil != err {
 			return nil, err
 		}
-		if err := ubf.BChg(atmi.EX_DLM_KEY, 0, "grown"); nil != err {
+		if err := ubf.BChg(ubftab.T_STRING_FLD, 0, "grown"); nil != err {
 			return nil, atmi.NewCustomATMIError(atmi.TPESYSTEM, err.Error())
 		}
 		return vm.TpScrExec("inspect", param, input, 0)
@@ -224,7 +225,7 @@ def main(name, param, incoming, flags):
         return output
     finally:
         del builtins._endurox_test_held
-`, atmi.EX_DLM_KEY)
+`, ubftab.T_STRING_FLD)
 	if err := vm.TpScrLoadStr("nested", source, atmi.NDRX_TPSCR_FLAT); nil != err {
 		return err
 	}
@@ -247,7 +248,7 @@ def main(name, param, incoming, flags):
 		if nil != err {
 			return err
 		}
-		value, uerr := got.BGetString(atmi.EX_DLM_KEY, 0)
+		value, uerr := got.BGetString(ubftab.T_STRING_FLD, 0)
 		if nil != uerr || value != "grown" {
 			return fmt.Errorf("nested callback writeback: %q, %v", value, uerr)
 		}

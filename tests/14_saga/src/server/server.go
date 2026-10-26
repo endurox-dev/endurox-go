@@ -42,6 +42,7 @@ import (
 	atmi "github.com/endurox-dev/endurox-go/v9"
 	"os"
 	"sync"
+	"ubftab"
 )
 
 // Completed callbacks retained until the client reads each record.
@@ -64,12 +65,12 @@ func GOREGISTER(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		ac.TpReturn(atmi.TPFAIL, 0, &svc.Data, 0)
 		return
 	}
-	key, uerr := request.BGetString(atmi.EX_DATA_STR, 0)
+	key, uerr := request.BGetString(ubftab.T_STRING_FLD, 0)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, request, 0)
 		return
 	}
-	mode, uerr := request.BGetString(atmi.EX_DATA_STR, 1)
+	mode, uerr := request.BGetString(ubftab.T_STRING_FLD, 1)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, request, 0)
 		return
@@ -130,7 +131,7 @@ func GOREGISTER(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 			return
 		}
 	}
-	if uerr := request.BChg(atmi.EX_DATA_STR, 0, ctl.GetBranchXID()); nil != uerr {
+	if uerr := request.BChg(ubftab.T_STRING_FLD, 0, ctl.GetBranchXID()); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, request, 0)
 		return
 	}
@@ -140,7 +141,7 @@ func GOREGISTER(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		ac.TpReturn(atmi.TPFAIL, 0, request, 0)
 		return
 	}
-	if uerr := request.BChg(atmi.EX_DATA_STR, 1, global); nil != uerr {
+	if uerr := request.BChg(ubftab.T_STRING_FLD, 1, global); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, request, 0)
 		return
 	}
@@ -160,17 +161,17 @@ func GOACTION(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		ac.TpReturn(atmi.TPFAIL, 0, &svc.Data, 0)
 		return
 	}
-	branch, uerr := data.BGetString(atmi.TMSAGA_BRXID, 0)
+	branch, uerr := data.BGetString(ubftab.TMSAGA_BRXID, 0)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	action, uerr := data.BGetByte(atmi.TMSAGA_ACTION, 0)
+	action, uerr := data.BGetByte(ubftab.TMSAGA_ACTION, 0)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	payload, uerr := data.BGetByteArr(atmi.TMSAGA_DATA, 0)
+	payload, uerr := data.BGetByteArr(ubftab.TMSAGA_DATA, 0)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
@@ -193,7 +194,7 @@ func GOSTATE(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		ac.TpReturn(atmi.TPFAIL, 0, &svc.Data, 0)
 		return
 	}
-	branch, uerr := data.BGetString(atmi.EX_DATA_STR, 0)
+	branch, uerr := data.BGetString(ubftab.T_STRING_FLD, 0)
 	if nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
@@ -206,19 +207,19 @@ func GOSTATE(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	if exists {
 		count = 1
 	}
-	if uerr := data.BChg(atmi.EX_NERROR_CODE, 0, count); nil != uerr {
+	if uerr := data.BChg(ubftab.T_LONG_FLD, 0, count); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	if uerr := data.BChg(atmi.TMSAGA_ACTION, 0, record.action); nil != uerr {
+	if uerr := data.BChg(ubftab.T_CHAR_FLD, 0, record.action); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	if uerr := data.BChg(atmi.EX_DATA_STR, 1, string(record.payload)); nil != uerr {
+	if uerr := data.BChg(ubftab.T_STRING_FLD, 1, string(record.payload)); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	if uerr := data.BChg(atmi.TMTXTRYCNT, 0, record.sequence); nil != uerr {
+	if uerr := data.BChg(ubftab.T_LONG_2_FLD, 0, record.sequence); nil != uerr {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}

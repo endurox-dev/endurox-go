@@ -21,3 +21,8 @@ tests/17_dlm/edb_snapshot/
 tests/18_multi_rm/bin/
 tests/18_multi_rm/RM1/
 tests/18_multi_rm/RM2/
+tests/14_saga/src/ubftab/test.fd.go
+tests/16_scripting/src/ubftab/test.fd.go
+tests/18_multi_rm/src/ubftab/test.fd.go
+tests/14_saga/src/ubftab/Exfields.go
+tests/17_dlm/src/ubftab/Exfields.go

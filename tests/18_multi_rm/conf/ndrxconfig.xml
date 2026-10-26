@@ -69,10 +69,18 @@
     <!--     <exportsvcs>FOREX</exportsvcs> -->
 	</defaults>
 	<servers>
-        <server name="tmsrv"><srvid>5</srvid><cctag>GO_A</cctag><min>1</min><max>1</max>
+        <server name="tmsrv">
+            <srvid>5</srvid>
+            <cctag>GO_A</cctag>
+            <min>1</min>
+            <max>1</max>
             <sysopt>-e ${TEST_DIR}/tm-a.log -r -- -t60 -l${TEST_DIR}/RM1</sysopt>
         </server>
-        <server name="tmsrv"><srvid>6</srvid><cctag>GO_B</cctag><min>1</min><max>1</max>
+        <server name="tmsrv">
+            <srvid>6</srvid>
+            <cctag>GO_B</cctag>
+            <min>1</min>
+            <max>1</max>
             <sysopt>-e ${TEST_DIR}/tm-b.log -r -- -t60 -l${TEST_DIR}/RM2</sysopt>
         </server>
         <server name="gormsv">

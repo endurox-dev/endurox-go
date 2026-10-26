@@ -41,9 +41,10 @@ import (
 	"fmt"
 	atmi "github.com/endurox-dev/endurox-go/v9"
 	"os"
+	"ubftab"
 )
 
-// Enlist the manual RM and return both native connection identities.
+// Enlist the manual RM B and mark the request when done.
 // @param ac server context
 // @param svc incoming request
 func GORM(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
@@ -56,25 +57,15 @@ func GORM(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
-	a, err := ac.TpGetConnRM(1)
-	if nil != err {
-		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
-		return
-	}
-	b, err := ac.TpGetConnRM(2)
-	if nil != err || nil == a || nil == b || a == b {
-		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
-		return
-	}
-	if err := data.BChg(atmi.TMTXTRYCNT, 0, int64(uintptr(a))); nil != err {
-		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
-		return
-	}
-	if err := data.BChg(atmi.TMTXTRYMAXCNT, 0, int64(uintptr(b))); nil != err {
+	if _, err := ac.TpGetConnRM(2); nil == err || atmi.TPENOENT != err.Code() {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}
 	if err := ac.TpRMEnd("B", 0); nil != err {
+		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
+		return
+	}
+	if err := data.BChg(ubftab.T_LONG_FLD, 0, int64(1)); nil != err {
 		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
 		return
 	}

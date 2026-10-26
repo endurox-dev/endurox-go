@@ -13,3 +13,8 @@ the completed count and elapsed time. Waiting/recovery cases keep their bounded
 single-pass sequence. Use NDRX_TEST_DURATATION=1 for a short check or 300 for load.
 Native test clients suppress expected-error chatter; servers retain error logs.
 Use the existing Enduro/X logging configuration for a short verbose diagnosis.
+
+The build generates protocol field constants with mkfldhdr from the installed
+SDK's share/endurox/ubftab/Exfields table, located through pkg-config. Override
+EXFIELDTBL when using another matching field table. Generated Exfields.go stays
+in the case's src/ubftab package and is not checked in.

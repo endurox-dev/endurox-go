@@ -94,6 +94,6 @@ export NDRX_CCONFIG="$(pwd)/app.ini"
 
 export NDRX_CCTAG=GO_A/GO_B
 case "$(uname -s)" in
-    Darwin) export TEST_LIBEXT=dylib ;;
-    *) export TEST_LIBEXT=so ;;
+    Darwin) export TEST_XA_DRIVER=libndrxxanulls.dylib ;;
+    *) export TEST_XA_DRIVER=libndrxxanulls.so ;;
 esac

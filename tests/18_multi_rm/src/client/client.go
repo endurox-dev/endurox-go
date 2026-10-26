@@ -43,9 +43,11 @@ import (
 	"github.com/endurox-dev/endurox-go/v9/tests/testutil"
 	"os"
 	"time"
+	"ubftab"
 )
 
-// Exercise named opens, native connections and manual enlistment with a server.
+// Exercise named opens and manual enlistment with a server. Both RMs use the
+// null switch, which provides no native connection handle.
 // @return failure details
 func test_rms() error {
 	duration, durationErr := testutil.Duration()
@@ -71,8 +73,8 @@ func test_rms() error {
 	if err := ac.TpRMClose("B", 0); nil != err {
 		return err
 	}
-	if _, err := ac.TpGetConnRM(2); nil == err || atmi.TPEPROTO != err.Code() {
-		return fmt.Errorf("closed RM connection result: %v", err)
+	if err := ac.TpRMStart("B", 0); nil == err || atmi.TPEPROTO != err.Code() {
+		return fmt.Errorf("closed RM start result: %v", err)
 	}
 	if err := ac.TpRMOpen("B", 0); nil != err {
 		return err
@@ -85,24 +87,21 @@ func test_rms() error {
 		if err := ac.TpRMStart("B", 0); nil != err {
 			return err
 		}
-		a, err := ac.TpGetConnRM(1)
-		if nil != err {
-			return err
+		if _, err := ac.TpGetConnRM(1); nil == err || atmi.TPENOENT != err.Code() {
+			return fmt.Errorf("RM A connection result: %v", err)
 		}
-		b, err := ac.TpGetConnRM(2)
-		if nil != err || nil == a || nil == b || a == b {
-			return fmt.Errorf("RM handles were not distinct: %v", err)
+		if _, err := ac.TpGetConnRM(2); nil == err || atmi.TPENOENT != err.Code() {
+			return fmt.Errorf("RM B connection result: %v", err)
+		}
+		if err := data.BChg(ubftab.T_LONG_FLD, 0, int64(0)); nil != err {
+			return err
 		}
 		if _, err := ac.TpCall("GORM", data, 0); nil != err {
 			return err
 		}
-		av, uerr := data.BGetInt64(atmi.TMTXTRYCNT, 0)
-		if nil != uerr {
-			return uerr
-		}
-		bv, uerr := data.BGetInt64(atmi.TMTXTRYMAXCNT, 0)
-		if nil != uerr || 0 == av || 0 == bv || av == bv {
-			return fmt.Errorf("server RM handles: %v", uerr)
+		enlisted, uerr := data.BGetInt64(ubftab.T_LONG_FLD, 0)
+		if nil != uerr || 1 != enlisted {
+			return fmt.Errorf("server RM B enlistment: %d, %v", enlisted, uerr)
 		}
 		if err := ac.TpRMEnd("B", 0); nil != err {
 			return err

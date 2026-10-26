@@ -44,6 +44,7 @@ import (
 
 	atmi "github.com/endurox-dev/endurox-go/v9"
 	"github.com/endurox-dev/endurox-go/v9/tests/testutil"
+	"ubftab"
 )
 
 // Check Saga payload and transaction identifier validation.
@@ -158,20 +159,20 @@ func test_transactions() error {
 		if 2 == i%3 {
 			mode = "leave"
 		}
-		if err := data.BChg(atmi.EX_DATA_STR, 0, fmt.Sprintf("server-%d", i)); nil != err {
+		if err := data.BChg(ubftab.T_STRING_FLD, 0, fmt.Sprintf("server-%d", i)); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DATA_STR, 1, mode); nil != err {
+		if err := data.BChg(ubftab.T_STRING_FLD, 1, mode); nil != err {
 			return err
 		}
 		if _, err := ac.TpCall("GOREGISTER", data, 0); nil != err {
 			return err
 		}
-		second, uerr := data.BGetString(atmi.EX_DATA_STR, 0)
+		second, uerr := data.BGetString(ubftab.T_STRING_FLD, 0)
 		if nil != uerr {
 			return uerr
 		}
-		global, uerr := data.BGetString(atmi.EX_DATA_STR, 1)
+		global, uerr := data.BGetString(ubftab.T_STRING_FLD, 1)
 		if nil != uerr {
 			return uerr
 		}
@@ -282,13 +283,13 @@ func test_transactions() error {
 		}
 		var firstSequence int64
 		for index, branch := range []string{first.GetBranchXID(), second} {
-			if err := data.BChg(atmi.EX_DATA_STR, 0, branch); nil != err {
+			if err := data.BChg(ubftab.T_STRING_FLD, 0, branch); nil != err {
 				return err
 			}
 			if _, err := ac.TpCall("GOSTATE", data, atmi.TPNOTRAN); nil != err {
 				return err
 			}
-			count, err := data.BGetInt64(atmi.EX_NERROR_CODE, 0)
+			count, err := data.BGetInt64(ubftab.T_LONG_FLD, 0)
 			if nil != err {
 				return err
 			}
@@ -298,15 +299,15 @@ func test_transactions() error {
 				}
 				continue
 			}
-			action, err := data.BGetByte(atmi.TMSAGA_ACTION, 0)
+			action, err := data.BGetByte(ubftab.T_CHAR_FLD, 0)
 			if nil != err {
 				return err
 			}
-			payload, err := data.BGetString(atmi.EX_DATA_STR, 1)
+			payload, err := data.BGetString(ubftab.T_STRING_FLD, 1)
 			if nil != err {
 				return err
 			}
-			sequence, err := data.BGetInt64(atmi.TMTXTRYCNT, 0)
+			sequence, err := data.BGetInt64(ubftab.T_LONG_2_FLD, 0)
 			if nil != err {
 				return err
 			}

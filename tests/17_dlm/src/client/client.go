@@ -44,6 +44,7 @@ import (
 	"github.com/endurox-dev/endurox-go/v9/tests/testutil"
 	"os"
 	"time"
+	"ubftab"
 )
 
 // Exercise DLM via a Go server, native async replies and listing.
@@ -80,41 +81,41 @@ func test_dlm() error {
 		if err := ac.BInit(data, 8192); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_SET); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_SET); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_KEY, 0, key); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_KEY, 0, key); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_DATA_BLOB, 0, payload); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_DATA_BLOB, 0, payload); nil != err {
 			return err
 		}
 		if _, err := ac.TpCall("GODLM", data, 0); nil != err {
 			return err
 		}
-		rval, uerr := data.BGetInt64(atmi.EX_DLM_RVAL1, 0)
+		rval, uerr := data.BGetInt64(ubftab.EX_DLM_RVAL1, 0)
 		if nil != uerr || 0 != rval {
 			return fmt.Errorf("SET result %d: %v", rval, uerr)
 		}
 		if err := ac.BInit(data, 8192); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_GET); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_GET); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_KEY, 0, key); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_KEY, 0, key); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
 			return err
 		}
 		var ctl atmi.TpDlmCtl
@@ -131,23 +132,23 @@ func test_dlm() error {
 		if _, err := ac.TpGetRply(&cd, data, 0); nil != err {
 			return err
 		}
-		value, uerr := data.BGetByteArr(atmi.EX_DLM_DATA_BLOB, 0)
+		value, uerr := data.BGetByteArr(ubftab.EX_DLM_DATA_BLOB, 0)
 		if nil != uerr || !bytes.Equal(value, payload) {
 			return fmt.Errorf("GET payload %v: %v", value, uerr)
 		}
 		if err := ac.BInit(data, 8192); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_DLMCMD); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_DEL); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_CMD, 0, atmi.NDRX_DLM_CMD_DEL); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_FLAGS, 0, int64(atmi.NDRX_DLM_FL_FLATBLOB)); nil != err {
 			return err
 		}
-		if err := data.BChg(atmi.EX_DLM_KEY, 0, key); nil != err {
+		if err := data.BChg(ubftab.EX_DLM_KEY, 0, key); nil != err {
 			return err
 		}
 		ctl = atmi.TpDlmCtl{}
@@ -160,7 +161,7 @@ func test_dlm() error {
 		if _, err := ac.TpDLMCall(ctl.GetSvcName(), data, 0); nil != err {
 			return err
 		}
-		rval, uerr = data.BGetInt64(atmi.EX_DLM_RVAL1, 0)
+		rval, uerr = data.BGetInt64(ubftab.EX_DLM_RVAL1, 0)
 		if nil != uerr || 0 != rval {
 			return fmt.Errorf("DEL result %d: %v", rval, uerr)
 		}
@@ -169,13 +170,13 @@ func test_dlm() error {
 	if err := ac.BInit(data, 8192); nil != err {
 		return err
 	}
-	if err := data.BChg(atmi.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_LSSTORE); nil != err {
+	if err := data.BChg(ubftab.EX_DLM_OP, 0, atmi.NDRX_DLM_OP_LSSTORE); nil != err {
 		return err
 	}
-	if err := data.BChg(atmi.EX_DLM_KEY, 0, "GO17_.*"); nil != err {
+	if err := data.BChg(ubftab.EX_DLM_KEY, 0, "GO17_.*"); nil != err {
 		return err
 	}
-	if err := data.BChg(atmi.EX_DLM_OPFLAGS, 0, int64(atmi.NDRX_DLM_FL_REGEX|atmi.NDRX_DLM_FL_NODATA)); nil != err {
+	if err := data.BChg(ubftab.EX_DLM_OPFLAGS, 0, int64(atmi.NDRX_DLM_FL_REGEX|atmi.NDRX_DLM_FL_NODATA)); nil != err {
 		return err
 	}
 	var ctl atmi.TpDlmCtl
