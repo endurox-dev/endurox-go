@@ -282,10 +282,6 @@ END_MESSAGE
             {
                 $prefix = "16";
             }
-            elsif ($struct=~/^TpScrBytecode$/)
-            {
-                $prefix = "11";
-            }
             elsif ($struct=~/^TpScrError$/)
             {
                 $prefix = "12";
@@ -493,14 +489,7 @@ END_MESSAGE
 	}
 	
 
-    if ($name=~/^...TpScrBytecode\./ && $topic ne "TpScrBytecode")
-    {
-        $topic = "TpScrBytecode";
-        $output = $output."=== Scripting compiler output\n\n";
-        $output = $output."Compiler storage is released with *TpScrFree()*. "
-                ."*Bytes()* returns an independent Go copy.\n\n";
-    }
-    elsif ($name=~/^...TpScrVm\./ && $topic ne "TpScrVm")
+    if ($name=~/^...TpScrVm\./ && $topic ne "TpScrVm")
     {
         $topic = "TpScrVm";
         $output = $output."=== Scripting VM\n\n";

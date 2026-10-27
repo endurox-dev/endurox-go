@@ -55,7 +55,9 @@ const (
 	TPCONVCLTID                        = C.TPCONVCLTID
 	TPCONVTRANID                       = C.TPCONVTRANID
 	TPCONVXID                          = C.TPCONVXID
+	TPCONVXIDTRAN                      = C.TPCONVXIDTRAN
 	NDRX_SAGA_NAME_MAX                 = C.NDRX_SAGA_NAME_MAX
+	NDRX_LRA_CLIENT_ID_MAX             = C.NDRX_LRA_CLIENT_ID_MAX
 	NDRX_SAGA_PAYLOAD_MAX              = C.NDRX_SAGA_PAYLOAD_MAX
 	NDRX_SAGA_MIME_MAX                 = C.NDRX_SAGA_MIME_MAX
 	NDRX_SAGA_URL_MAX                  = C.NDRX_SAGA_URL_MAX
@@ -77,7 +79,12 @@ const (
 	TPSAGA_JOINXID                     = C.TPSAGA_JOINXID
 	TPSAGA_UPDATE                      = C.TPSAGA_UPDATE
 	TPSAGA_URLSONLY                    = C.TPSAGA_URLSONLY
+	TPSAGA_LRAJOIN                     = C.TPSAGA_LRAJOIN
+	TPSAGA_BYKEY                       = C.TPSAGA_BYKEY
+	TPSAGA_DATAONLY                    = C.TPSAGA_DATAONLY
 	TPTXS_XID                          = C.TPTXS_XID
+	TPTXC_ABORT                        = C.TPTXC_ABORT
+	TPTXR_EXTEND                       = C.TPTXR_EXTEND
 	TPTXS_BRXID                        = C.TPTXS_BRXID
 	TPTXS_TRANID                       = C.TPTXS_TRANID
 	TPTXS_STATUS_NOTFOUND              = C.TPTXS_STATUS_NOTFOUND
@@ -93,6 +100,7 @@ const (
 	TPQKEEPORIG                        = C.TPQKEEPORIG
 	TPTXOPENALL                        = C.TPTXOPENALL
 	TPSAGALRA                          = C.TPSAGALRA
+	TPTXABORTONLY                      = C.TPTXABORTONLY
 	NDRX_B58_CIDMAX                    = C.NDRX_B58_CIDMAX
 	NDRX_DLM_LM_NULL                   = C.NDRX_DLM_LM_NULL
 	NDRX_DLM_LM_CONCURRENT_READ        = C.NDRX_DLM_LM_CONCURRENT_READ

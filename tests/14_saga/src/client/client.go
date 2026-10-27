@@ -63,7 +63,19 @@ func test_saga() error {
 	defer ac.FreeATMICtx()
 	started = time.Now()
 	for i = 0; i < 1 || time.Since(started) < duration; i++ {
+		var nilID *atmi.TPTRANID
+		var emptyID atmi.TPTRANID
+		if nilID.GetXIDString() != "" || emptyID.GetXIDString() != "" {
+			return fmt.Errorf("nil/empty transaction ID returned data")
+		}
+		var nilCtl *atmi.TpSagaCtl
+		if nil != nilCtl.GetPreviousPayload() {
+			return fmt.Errorf("nil control returned previous data")
+		}
 		var ctl atmi.TpSagaCtl
+		if nil != ctl.GetPreviousPayload() {
+			return fmt.Errorf("new control returned previous data")
+		}
 		if err := ctl.SetPayload([]byte{1, 2, 3}); nil != err {
 			return err
 		}
@@ -89,6 +101,11 @@ func test_saga() error {
 		}
 		if _, err := ac.TpXIDFromString("bad\x00xid"); nil == err || atmi.TPEINVAL != err.Code() {
 			return fmt.Errorf("embedded NUL XID: %v", err)
+		}
+		for _, value := range []string{"", "not-a-xid", "AAAA", "bad\x00xid"} {
+			if _, err := ac.TpTranIDFromXID(value); nil == err || atmi.TPEINVAL != err.Code() {
+				return fmt.Errorf("invalid participant XID %q: %v", value, err)
+			}
 		}
 		var status atmi.TpTxStatus
 		if err := status.SetTranIDString("not-base64"); nil == err || atmi.TPEINVAL != err.Code() {
@@ -123,7 +140,7 @@ func test_transactions() error {
 	}
 	defer ac.TpFree(data.GetBuf())
 	started = time.Now()
-	for i = 0; i < 3 || i%3 != 0 || time.Since(started) < duration; i++ {
+	for i = 0; i < 6 || i%6 != 0 || time.Since(started) < duration; i++ {
 		if err := ac.TpBegin(60, atmi.TPSAGALRA); nil != err {
 			return err
 		}
@@ -215,6 +232,44 @@ func test_transactions() error {
 		if err := status.SetTranID(nativeToken); nil != err {
 			return err
 		}
+		participant, err := ac.TpTranIDFromXID(global)
+		if nil != err {
+			return err
+		}
+		if participant.GetXIDString() != global {
+			return fmt.Errorf("participant global XID mismatch")
+		}
+		if err := ac.TpResume(participant, 0); nil != err {
+			return err
+		}
+		if _, err := ac.TpCall("GOXA", data, 0); nil != err {
+			return err
+		}
+		joinedGlobal, uerr := data.BGetString(ubftab.T_STRING_FLD, 0)
+		if nil != uerr || joinedGlobal != global {
+			return fmt.Errorf("propagated participant XID %q: %v", joinedGlobal, uerr)
+		}
+		if err := ac.TpCommit(0); nil == err || atmi.TPEPROTO != err.Code() {
+			return fmt.Errorf("participant commit: %v", err)
+		}
+		if err := ac.TpAbort(0); nil == err || atmi.TPEPROTO != err.Code() {
+			return fmt.Errorf("participant abort: %v", err)
+		}
+		if 1 != ac.TpGetLev() {
+			return fmt.Errorf("rejected completion detached participant")
+		}
+		// every fifth participant fails its work and votes rollback-only
+		rbonly := 3 == i%5
+		var suspendFlags int64
+		if rbonly {
+			suspendFlags = atmi.TPTXABORTONLY
+		}
+		if err := ac.TpSuspend(participant, suspendFlags); nil != err {
+			return err
+		}
+		if 0 != ac.TpGetLev() {
+			return fmt.Errorf("participant did not detach")
+		}
 		if err := ac.TpResume(&nativeToken, 0); nil != err {
 			return err
 		}
@@ -270,11 +325,45 @@ func test_transactions() error {
 		if err := first.SetPayload(nil); nil != err {
 			return err
 		}
+		aborted := 1 == i%3
 		expected := byte(atmi.NDRX_SAGA_ACTION_COMMIT)
-		if 1 == i%3 {
+		if aborted || rbonly {
 			expected = byte(atmi.NDRX_SAGA_ACTION_ROLLBACK)
+		}
+		if 0 == i%2 {
+			var tid atmi.TPTRANID
+			if err := ac.TpSuspend(&tid, 0); nil != err {
+				return err
+			}
+			if tid.GetXIDString() != global {
+				return fmt.Errorf("suspended global XID mismatch")
+			}
+			var selected atmi.TpTxStatus
+			if err := selected.SetFlags(atmi.TPTXS_XID); nil != err {
+				return err
+			}
+			if err := selected.SetXID(first.GetXID()); nil != err {
+				return err
+			}
+			var flags int64
+			if aborted {
+				flags = atmi.TPTXC_ABORT
+			}
+			err := ac.TpTxComplete(&selected, nil, flags)
+			if rbonly && !aborted {
+				if nil == err || atmi.TPEABORT != err.Code() {
+					return fmt.Errorf("rollback-only close: %v", err)
+				}
+			} else if nil != err {
+				return err
+			}
+		} else if aborted {
 			if err := ac.TpAbort(0); nil != err {
 				return err
+			}
+		} else if rbonly {
+			if err := ac.TpCommit(0); nil == err || atmi.TPEABORT != err.Code() || 0 != ac.TpGetLev() {
+				return fmt.Errorf("rollback-only commit: %v", err)
 			}
 		} else {
 			if err := ac.TpCommit(0); nil != err {

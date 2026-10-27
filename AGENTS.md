@@ -50,7 +50,7 @@ maintainer preferences. Session instructions take precedence.
   registration returns its branch identifier.
   `TPTRANID` already wraps the native suspend record. String conveniences
   encode/decode that record at the accessor boundary, not inside every API call.
-- Opaque VMs and provider-owned compiler output retain their native handles.
+- Opaque VMs retain their native handles.
   Callback and lifetime bookkeeping is separate from application control data;
   it is not a reason to duplicate a C struct's fields.
 
@@ -72,12 +72,10 @@ maintainer preferences. Session instructions take precedence.
 - Callback buffers are borrowed for the invocation. Keep registered
   callbacks in stable native userdata via `runtime/cgo.Handle`, not Go pointers
   retained by C. Synchronize buffer edits before nested provider execution.
-- A `TpScrVm` and its `TpScrBytecode` belong to the `ATMICtx` that created them;
-  their operations are methods that use that context, never a context argument.
-  `FreeATMICtx` releases the context's open VMs and compiler outputs, and does
-  nothing while one of its VMs executes or compiler output stays unreleased.
-  While it releases them, new VMs and compiler output are refused (shutdown
-  callbacks), and `TpScrUninit` invalidates the VM before native shutdown.
+- A `TpScrVm` belongs to the `ATMICtx` that created it; its operations use
+  that context, never a context argument. `FreeATMICtx` releases open VMs
+  and does nothing while one is active. During cleanup, new VMs and
+  compilation are refused; `TpScrUninit` invalidates the VM before shutdown.
   Callbacks receive the owning context object itself, so resources created
   there join the owner's registry; an invocation from another native context
   is rejected.
@@ -86,8 +84,10 @@ maintainer preferences. Session instructions take precedence.
   provider state (e.g. errors without a VM) in the same native call, in C.
 - Destroy a VM explicitly through `vm.TpScrUninit`. Reject destruction during an
   active callback. A provider shutdown failure may already have consumed the
-  handle: invalidate it and do not query or retry it. Compiler output uses the
-  provider's `TpScrFree` allocator, not generic `free` or `TpFree`.
+  handle: invalidate it and do not query or retry it. `TpScrComp` returns owned
+  `[]byte`, valid after VM/context cleanup. Internally copy and immediately
+  release native compiler output with `tpscrfree`, never `free` or `TpFree`.
+  Preserve the compilation/copy error if native release also fails.
 - Preserve native diagnostics before cleanup or error-query calls overwrite
   them. `TpBufCmp` returning -1 is successful ordering; only -2 is an error.
   `TpGetRply` must initialize the native descriptor from the requested value

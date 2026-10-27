@@ -132,29 +132,6 @@ type scriptVMState struct {
 	active    int // native operations which may invoke host callbacks
 }
 
-// TpScrBytecode owns a compiler allocation of the context that compiled it.
-// Release it with TpScrFree, or FreeATMICtx of the owning context. Copies share
-// the same allocation; Bytes returns an independent Go copy.
-type TpScrBytecode struct{ state *scriptBytecodeState }
-
-type scriptBytecodeState struct {
-	ac     *ATMICtx // owning context used to release the allocation
-	ptr    *C.char
-	length C.long
-}
-
-// Bytes copies compiled bytecode into Go storage, or returns nil after release.
-// @return Independent Go copy of compiled bytecode, or nil if the allocation
-//
-//	is nil or released
-func (code *TpScrBytecode) Bytes() []byte {
-	if nil == code || nil == code.state || nil == code.state.ptr {
-		return nil
-	}
-	return append([]byte(nil), unsafe.Slice((*byte)(unsafe.Pointer(code.state.ptr)),
-		int(code.state.length))...)
-}
-
 // TpScrCallback processes ordinary typed buffers on the invoking context.
 // Buffer pointers and lengths are maintained by the binding, as for TpCall.
 // Input wrappers are borrowed and must not be retained after the callback.
@@ -321,15 +298,14 @@ func (vm *TpScrVm) TpScrUninit(flags int64) ATMIError {
 	return nil
 }
 
-// TpScrComp compiles source and returns an owned native bytecode allocation.
-// Use Bytes to obtain a Go copy, and TpScrFree to release the allocation.
+// TpScrComp compiles source and returns Go-owned bytecode. The native compiler
+// allocation is released before returning; bytes remain valid after VM/context
+// cleanup and can be passed directly to TpScrLoad.
 // @param source Script source text, passed with its byte length
 // @param flags Native compiler flags; normally 0
-// @return Owned compiler output and nil error, or nil and ATMIError; release
-//
-//	compiler storage with TpScrFree
+// @return Owned byte slice and nil error, or nil and ATMIError
 func (vm *TpScrVm) TpScrComp(source string,
-	flags int64) (*TpScrBytecode, ATMIError) {
+	flags int64) (code []byte, err ATMIError) {
 	if nil == vm || nil == vm.state || nil == vm.state.ptr {
 		return nil, NewCustomATMIError(TPEINVAL, "script VM is nil or released")
 	}
@@ -347,52 +323,44 @@ func (vm *TpScrVm) TpScrComp(source string,
 	state := vm.state
 	state.active++
 	defer func() { state.active-- }()
+
 	src := C.CString(source)
 	defer C.free(unsafe.Pointer(src))
 	var ptr *C.char
 	var length C.long
-	ret := C.Otpscrcomp(&ac.c_ctx, vm.state.ptr, src, C.long(len(source)),
+	ret := C.Otpscrcomp(&ac.c_ctx, state.ptr, src, C.long(len(source)),
 		&ptr, &length, C.long(flags))
+	defer func() {
+		if nil != ptr {
+			var native C.go_script_err_t
+			if C.go_tpscrfree(&ac.c_ctx, ptr, &native) != SUCCEED {
+				if nil == err {
+					failure := &TpScrError{ATMICode: int(native.atmi_code),
+						ScriptCode: int(native.script_code), Text: C.GoString(native.script_text)}
+					if failure.Text == "" {
+						failure.Text = C.GoString(native.atmi_text)
+					}
+					code, err = nil, failure
+				}
+				C.free(unsafe.Pointer(native.atmi_text))
+				C.free(unsafe.Pointer(native.script_text))
+			}
+		}
+	}()
 	if ret != SUCCEED {
-		err := ac.newScriptError(vm.state.ptr)
-		if nil != ptr {
-			C.Otpscrfree(&ac.c_ctx, ptr)
-		}
-		return nil, err
+		return nil, ac.newScriptError(state.ptr)
 	}
-	if nil == ptr || length < 0 || C.long(int(length)) != length {
-		if nil != ptr {
-			C.Otpscrfree(&ac.c_ctx, ptr)
-		}
+	if length < 0 || (nil == ptr && length != 0) {
 		return nil, NewCustomATMIError(TPESYSTEM, "invalid compiler bytecode result")
 	}
-	code := &scriptBytecodeState{ac: ac, ptr: ptr, length: length}
-	if nil == ac.scriptCodes {
-		ac.scriptCodes = make(map[*scriptBytecodeState]struct{})
+	if C.long(int(length)) != length || int(length) < 0 {
+		return nil, NewCustomATMIError(TPELIMIT, "compiler output exceeds Go slice capacity")
 	}
-	ac.scriptCodes[code] = struct{}{}
-	return &TpScrBytecode{state: code}, nil
-}
-
-// TpScrFree releases compiler output with the scripting allocator, using the
-// context that compiled it. Nil and already released bytecode need no action.
-// @return Nil on success, otherwise ATMIError
-func (code *TpScrBytecode) TpScrFree() ATMIError {
-	if nil == code || nil == code.state || nil == code.state.ptr {
-		return nil
+	code = make([]byte, int(length))
+	if length != 0 {
+		copy(code, unsafe.Slice((*byte)(unsafe.Pointer(ptr)), int(length)))
 	}
-	ac := code.state.ac
-	defer runtime.KeepAlive(ac)
-	if err := ac.checkContext(); nil != err {
-		return err
-	}
-	if C.Otpscrfree(&ac.c_ctx, code.state.ptr) != SUCCEED {
-		return ac.NewATMIError()
-	}
-	code.state.ptr = nil
-	code.state.length = 0
-	delete(ac.scriptCodes, code.state)
-	return nil
+	return code, nil
 }
 
 // TpScrLoad loads bytecode under name. Go owns bytes and may reuse it afterward.

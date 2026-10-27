@@ -272,7 +272,8 @@ field identifiers come from the installed Enduro/X 9 headers.
 | Area | Methods
 | Saga and recovery
 | `TpSagaEnlist`, `TpSagaEnd`, `TpSagaGet`, `TpSagaUpdate`, `TpSagaLeave`,
-`TpTxStatus`, `TpTxRenew`, `TpXIDToString`, `TpXIDFromString`
+`TpTxStatus`, `TpTxRenew`, `TpTxSetInfo`, `TpTxComplete`,
+`TpXIDToString`, `TpXIDFromString`
 | Multiple resource managers
 | `TpOpen2`, `TpRMOpen`, `TpRMClose`, `TpRMStart`, `TpRMEnd`, `TpGetConnRM`
 | Distributed lock manager
@@ -286,8 +287,7 @@ field identifiers come from the installed Enduro/X 9 headers.
 | Embedded scripting
 | `ATMICtx.TpScrInit`; `TpScrVm` methods `TpScrUninit`, `TpScrComp`,
 `TpScrLoad`, `TpScrLoadStr`, `TpScrUnload`, `TpScrRegCB`, `TpScrUnregCB`,
-`TpScrExec`, `TpScrError`, `TpScrErrno`, `TpScrSetError`;
-`TpScrBytecode.TpScrFree`
+`TpScrExec`, `TpScrError`, `TpScrErrno`, `TpScrSetError`
 | Buffer and event integration
 | `TpBufCmp`, `TpExport` using native `tpexport2`, `TpExtGetReplyQFD`
 |===
@@ -343,6 +343,24 @@ Distributed Lock Manager (DLM) of the Enduro/X Enterprise Edition. In case
 if `TPSAGA_NOLOCK` flag is set in `ctl.SetFlags`, `TpSagaEnd` shall not be called.
 `TpSagaLeave` removes the participant, so its actions are not called.
 
+For HTTP LRA coordinators, `TPSAGA_LRAJOIN` joins `ctl.GetXID()` directly,
+with `TPSAGA_NOLOCK` and no transaction on the calling context. Add
+`TPSAGA_UPDATE | TPSAGA_DATAONLY` to replace only participant data and read
+its previous value with `GetPreviousPayload()`. Callback URLs are preserved.
+After-only listeners may join while the LRA is completing.
+
+`TpSagaLeave` with `TPSAGA_BYKEY` removes by XID, SagaName and SagaKey without
+re-registering the participant. `TpTxComplete(st, ctl, flags)` completes an
+LRA, optionally replacing the selected participant's data under the same
+transaction lock; pass nil for no update, zero flags for close, or
+`TPTXC_ABORT` for cancel. Query status after errors to distinguish pending
+work from terminal failure.
+
+`TpTxSetInfo` stores `SetClientID()` on an active LRA. `TpTxStatus` returns
+`GetClientID()`, `GetStartTime()`, `GetFinishTime()`, `IsLRA()` and
+`IsRecovering()`. Timestamps use milliseconds since the Unix epoch; finish
+means the deadline while active and latest logged progress otherwise.
+
 Other methods (each takes the control and a separate `flags` argument):
 
 * `TpSagaGet` reads the registered URLs and settings by `SetBranchXID`, also
@@ -361,7 +379,23 @@ Other methods (each takes the control and a separate `flags` argument):
   `TPTXS_BRXID` (`SetBranchXID`) or `TPTXS_TRANID` (`SetTranID` with a
   `TpSuspend` result, or `SetTranIDString`). `TpTxRenew` sets the deadline to
   `SetTimeout` seconds from now. Read the result with `GetStatus`,
-  `GetTimeout` and `GetTimeoutLeft`. Their `flags` must be zero.
+  `GetTimeout` and `GetTimeoutLeft`. Use `TPTXR_EXTEND` on renewal to prevent shortening, atomically;
+  participant deadlines still bound the result. Status flags remain zero.
+* `TpTranIDFromXID(xidstr)` creates a participant `TPTRANID` from the global
+  XID received from an external caller. With XA open and no active association,
+  call `TpResume(token, 0)`, perform XA work, then `TpSuspend(token, 0)` to
+  detach. The token has no initiator rights: `TpCommit` and `TpAbort` fail
+  with `TPEPROTO`. Conversion is local; dynamic RMs enlist when used and
+  manual RMs need `TpRMStart` after resume. Pass the global XID string,
+  not the HTTP LRA URL or a Saga branch identifier.
+  If the work fails, detach with `TpSuspend(token, TPTXABORTONLY)`: the
+  transaction is marked rollback-only and the initiator's commit (or LRA
+  close) rolls back with `TPEABORT`. Use it also after a failed
+  transactional call: `TpSuspend(token, 0)` does not report the failure.
+* `TpTxComplete` performs coordinator completion by a selected global XID,
+  restricted to LRA transactions. `TPTRANID.GetXIDString()` reads the global
+  XID of an existing suspend token and returns an empty string for nil.
+
 
 There are three distinct identifier representations:
 
@@ -373,9 +407,9 @@ There are three distinct identifier representations:
   `TpSuspendString`. Its format depends on the runtime ABI; do not reuse v8
   tokens with v9.
 
-These bindings provide the native Saga operations. A public native API
-for completion by global XID is still needed before implementing the
-restincl LRA coordinator close/cancel routes.
+`TpTxComplete` provides LRA coordinator close/cancel. Participant association
+through `TpTranIDFromXID` leaves the outcome to that coordinator; the
+initiator must wait for the participant's result before completing.
 
 === Resource managers, DLM, and utilities
 
@@ -439,8 +473,9 @@ thread locking is needed.
 
 Load scripts with `vm.TpScrLoadStr(name, source, flags)`, or compile them once
 with `vm.TpScrComp(source, flags)` and load the result with
-`vm.TpScrLoad(name, code.Bytes(), flags)`; release compiled code with
-`code.TpScrFree()`. `vm.TpScrUnload` removes a script. The load flags are
+`vm.TpScrLoad(name, code, flags)`. The result is an owned `[]byte`; native
+compiler storage is released before returning. The bytes remain valid after
+VM/context cleanup. `vm.TpScrUnload` removes a script. The load flags are
 `NDRX_TPSCR_PACKAGE`, `NDRX_TPSCR_REPLACE` and `NDRX_TPSCR_FLAT`.
 
 Run a script with `TpScrExec`, using ordinary typed buffers:
@@ -474,7 +509,7 @@ message and code; `vm.TpScrSetError(code, message)` sets them, for example in
 a callback.
 
 Close the VM with `vm.TpScrUninit(flags)`. `FreeATMICtx()` also closes the
-open VMs and compiled code of the context, but does nothing while a VM of the
+open VMs of the context, but does nothing while a VM of the
 context runs, for example when it is called from a callback. A context with
 open VMs is not garbage collected. Do not use a VM after closing it, even if
 closing failed.
@@ -1698,14 +1733,11 @@ association.
 |Function
 |func (ac *ATMICtx) FreeATMICtx()
 |Description
-|Free up the ATMI Context Internally this will call the TpTerm too to termiante
-any XATMI client session in progress. Open scripting VMs and compiler outputs
-of the context are released first. While a VM of the context is executing (e.g.
-when called from its scripting callback) nothing is released: the request is
-logged and ignored, and the context stays usable. If compiler output cannot be
-released, the context also stays usable, so that TpScrFree can be retried.
-While the resources are released (e.g. from a VM shutdown callback), new VMs
-and compiler outputs cannot be created on the context..
+|Free up the ATMI Context Internally this calls TpTerm to terminate any XATMI
+client session. Open scripting VMs are released first. While a VM is executing
+(e.g. when called from its callback) nothing is released: the request is logged
+and ignored. Shutdown callbacks cannot create VMs or compile on the closing
+context..
 |Applies
 |XATMI client and server
 |===
@@ -3015,8 +3047,9 @@ end..
 TPSAGA_JOINXID. Read the returned identifiers with GetXID and GetBranchXID..
 *ctl* is Registration metadata, explicit callback URLs and payload up to
 NDRX_SAGA_PAYLOAD_MAX bytes; identifiers are available through getters.
-*flags* is 0, TPSAGA_JOINXID to register in ctl.GetXID(), or TPSAGA_UPDATE for
-	explicit replacement; separate from ctl.GetFlags().
+*flags* is TPSAGA_JOINXID or TPSAGA_LRAJOIN select ctl.GetXID(); TPSAGA_UPDATE
+for	 explicit replacement, with TPSAGA_DATAONLY to preserve URLs and return
+old data.
 |Returns
 |Nil on successful registration, otherwise ATMIError; plain duplicate
 registration in a branch fails
@@ -3049,9 +3082,9 @@ registration mode, global XID and URLs without returning payload bytes.
 |Description
 |TpSagaLeave withdraws ctl.GetBranchXID() from an active transaction,
 preventing its callbacks. It does not release the local working section;  call
-TpSagaEnd for that. The caller need not join; flags must be zero..
+TpSagaEnd for that. TPSAGA_BYKEY selects XID, SagaName and SagaKey..
 *ctl* is Control with BranchXID identifying the registered participant.
-*flags* is Reserved; must be 0.
+*flags* is 0 for BranchXID, TPSAGA_BYKEY for XID plus profile and key.
 |Returns
 |Nil on successful removal, otherwise ATMIError
 |Applies
@@ -3197,7 +3230,8 @@ flags int64) (int64, ATMIError)
 Architecture and Data Model e.g. ILP32, LP64, etc must not be mixed between
 suspends and resumes..
 *tranid* is Transaction Id reference.
-*flags* is Flags for suspend (must be 0).
+*flags* is 0, or TPTXABORTONLY for a participant to mark the transaction
+rollback-only and detach.
 |Returns
 |ATMI Error
 |Applies
@@ -3357,6 +3391,47 @@ must be zero. The selected Enduro/X context owns the copied value..
 |XATMI client and server
 |===
 
+==== ATMICtx.TpTranIDFromXID()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTranIDFromXID(xid string) (*TPTRANID, ATMIError)
+|Description
+|TpTranIDFromXID converts an Enduro/X global XID string to a participant  token
+for TpResume. It does not grant TpCommit or TpAbort initiator rights.  After XA
+work, detach with TpSuspend; the initiator decides the outcome.  On failure
+detach with TpSuspend(TPTXABORTONLY): the initiator's commit  then rolls back
+with TPEABORT.	Conversion does not contact the coordinator or check
+transaction state.  Dynamic RMs enlist when used, and manual RMs require
+TpRMStart after resume..
+*xid* is NUL-free global XID string, not a branch ID or an LRA URL.
+|Returns
+|Participant transaction identifier and nil error, or nil and ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTxComplete()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTxComplete(st *TpTxStatus, ctl *TpSagaCtl, flags int64)
+ATMIError
+|Description
+|TpTxComplete closes or cancels an LRA without joining the calling context.  An
+optional participant-data update is serialized with the completion decision.
+Query TpTxStatus afterward to distinguish pending completion from final
+failure..
+*st* is Transaction selector as for TpTxStatus; input only.
+*ctl* is Nil for no update, or SagaName, SagaKey and Payload for the final
+update.
+*flags* is 0 for close, TPTXC_ABORT for cancel.
+|Returns
+|Nil on completion, otherwise the native commit/abort ATMIError
+|Applies
+|XATMI client and server
+|===
+
 ==== ATMICtx.TpTxRenew()
 [cols="h,5a"]
 |===
@@ -3368,9 +3443,25 @@ participant deadline. The returned status contains the effective timeout.
 Flags selects one identifier; the call's flags argument must be zero..
 *st* is Transaction selector and requested Timeout in seconds from now;
 receives Status, Timeout and TimeoutLeft.
-*flags* is Reserved; must be 0.
+*flags* is 0, or TPTXR_EXTEND to ignore shortening under the TM lock.
 |Returns
 |Nil on successful renewal, otherwise ATMIError
+|Applies
+|XATMI client and server
+|===
+
+==== ATMICtx.TpTxSetInfo()
+[cols="h,5a"]
+|===
+|Function
+|func (ac *ATMICtx) TpTxSetInfo(st *TpTxStatus, flags int64) ATMIError
+|Description
+|TpTxSetInfo durably stores the client identity of an active LRA..
+*st* is Selector as for TpTxStatus and ClientID to store; receives current
+information.
+*flags* is Reserved; must be 0.
+|Returns
+|Nil after the metadata is stored, otherwise ATMIError
 |Applies
 |XATMI client and server
 |===
@@ -4661,39 +4752,6 @@ string is automatically allocated.
 |XATMI client and server
 |===
 
-=== Scripting compiler output
-
-Compiler storage is released with *TpScrFree()*. *Bytes()* returns an independent Go copy.
-
-==== TpScrBytecode.Bytes()
-[cols="h,5a"]
-|===
-|Function
-|func (code *TpScrBytecode) Bytes() []byte
-|Description
-|Bytes copies compiled bytecode into Go storage, or returns nil after release..
-
-|Returns
-|Independent Go copy of compiled bytecode, or nil if the allocation	is nil
-or released
-|Applies
-|XATMI client and server
-|===
-
-==== TpScrBytecode.TpScrFree()
-[cols="h,5a"]
-|===
-|Function
-|func (code *TpScrBytecode) TpScrFree() ATMIError
-|Description
-|TpScrFree releases compiler output with the scripting allocator, using the
-context that compiled it. Nil and already released bytecode need no action..
-|Returns
-|Nil on success, otherwise ATMIError
-|Applies
-|XATMI client and server
-|===
-
 === Scripting errors
 
 Scripting errors preserve the ATMI code, provider ScriptCode and diagnostic text.
@@ -4841,6 +4899,19 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |GetPayloadLen reads the payload length stored in the C record..
 |Returns
 |Payload length in bytes
+|Applies
+|XATMI client and server
+|===
+
+==== TpSagaCtl.GetPreviousPayload()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpSagaCtl) GetPreviousPayload() []byte
+|Description
+|GetPreviousPayload copies the data replaced by a TPSAGA_DATAONLY rejoin..
+|Returns
+|Previous participant data, or nil when empty or ctl is nil
 |Applies
 |XATMI client and server
 |===
@@ -5139,6 +5210,32 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |XATMI client and server
 |===
 
+==== TpTxStatus.GetClientID()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) GetClientID() string
+|Description
+|GetClientID reads the durable LRA client identity..
+|Returns
+|Client identifier returned by TpTxStatus or TpTxSetInfo
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetFinishTime()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) GetFinishTime() int64
+|Description
+|GetFinishTime reads the deadline while active, or latest progress timestamp..
+|Returns
+|Milliseconds since the Unix epoch, or zero for an unknown transaction
+|Applies
+|XATMI client and server
+|===
+
 ==== TpTxStatus.GetFlags()
 [cols="h,5a"]
 |===
@@ -5148,6 +5245,19 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |GetFlags reads TPTXS identifier selector from the native record..
 |Returns
 |Current TPTXS identifier selector
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.GetStartTime()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) GetStartTime() int64
+|Description
+|GetStartTime reads the transaction start timestamp..
+|Returns
+|Milliseconds since the Unix epoch, or zero for an unknown transaction
 |Applies
 |XATMI client and server
 |===
@@ -5230,6 +5340,32 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |XATMI client and server
 |===
 
+==== TpTxStatus.IsLRA()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) IsLRA() bool
+|Description
+|IsLRA reports whether the selected transaction was begun with TPSAGALRA..
+|Returns
+|True for LRA transactions
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.IsRecovering()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) IsRecovering() bool
+|Description
+|IsRecovering reports pending transaction completion or after notifications..
+|Returns
+|True while a known LRA has completion work remaining
+|Applies
+|XATMI client and server
+|===
+
 ==== TpTxStatus.SetBranchXID()
 [cols="h,5a"]
 |===
@@ -5240,6 +5376,20 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 *value* is New participant branch identifier.
 |Returns
 |Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetClientID()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) SetClientID(value string) ATMIError
+|Description
+|SetClientID selects the client identity to store through TpTxSetInfo..
+*value* is Client identity, at most NDRX_LRA_CLIENT_ID_MAX UTF-8 bytes.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the value
 |Applies
 |XATMI client and server
 |===
@@ -5513,6 +5663,20 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |XATMI client and server
 |===
 
+==== TPTRANID.GetXIDString()
+[cols="h,5a"]
+|===
+|Function
+|func (t *TPTRANID) GetXIDString() string
+|Description
+|GetXIDString returns the global XID of the transaction identifier in the
+native TPCONVXID string form, e.g. for building an LRA id..
+|Returns
+|Global XID string, or empty string for a nil or zero-value identifier
+|Applies
+|XATMI client and server
+|===
+
 === Scripting VM
 
 A VM belongs to the ATMI context which created it; its methods use that context. Release it with *TpScrUninit()* or *FreeATMICtx()* of the owner.
@@ -5521,16 +5685,16 @@ A VM belongs to the ATMI context which created it; its methods use that context.
 [cols="h,5a"]
 |===
 |Function
-|func (vm *TpScrVm) TpScrComp(source string,	flags int64) (*TpScrBytecode,
+|func (vm *TpScrVm) TpScrComp(source string,	flags int64) (code []byte, err
 ATMIError)
 |Description
-|TpScrComp compiles source and returns an owned native bytecode allocation.
-Use Bytes to obtain a Go copy, and TpScrFree to release the allocation..
+|TpScrComp compiles source and returns Go-owned bytecode. The native compiler
+allocation is released before returning; bytes remain valid after VM/context
+cleanup and can be passed directly to TpScrLoad..
 *source* is Script source text, passed with its byte length.
 *flags* is Native compiler flags; normally 0.
 |Returns
-|Owned compiler output and nil error, or nil and ATMIError; release
-compiler storage with TpScrFree
+|Owned byte slice and nil error, or nil and ATMIError
 |Applies
 |XATMI client and server
 |===

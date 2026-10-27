@@ -398,6 +398,17 @@ func (ctl *TpSagaCtl) SetPayloadLen(length int64) ATMIError {
 	return nil
 }
 
+// GetPreviousPayload copies the data replaced by a TPSAGA_DATAONLY rejoin.
+// @return Previous participant data, or nil when empty or ctl is nil
+func (ctl *TpSagaCtl) GetPreviousPayload() []byte {
+	defer runtime.KeepAlive(ctl)
+	if nil == ctl || ctl.native().previous_payload_len == 0 {
+		return nil
+	}
+	return C.GoBytes(unsafe.Pointer(&ctl.native().previous_payload[0]),
+		C.int(ctl.native().previous_payload_len))
+}
+
 // TpTxStatus holds one native transaction selector and status result.
 // The zero value is ready to use. Copies of an initialized value share the native record; use a new
 // value for independent state. Access a record serially.
@@ -628,6 +639,61 @@ func (ctl *TpTxStatus) SetTranIDString(value string) ATMIError {
 	return nil
 }
 
+// GetClientID reads the durable LRA client identity.
+// @return Client identifier returned by TpTxStatus or TpTxSetInfo
+func (st *TpTxStatus) GetClientID() string {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return ""
+	}
+	return C.GoString(&st.native().client_id[0])
+}
+
+// SetClientID selects the client identity to store through TpTxSetInfo.
+// @param value Client identity, at most NDRX_LRA_CLIENT_ID_MAX UTF-8 bytes
+// @return Nil on success, otherwise TPEINVAL without changing the value
+func (st *TpTxStatus) SetClientID(value string) ATMIError {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return NewCustomATMIError(TPEINVAL, "TpTxStatus is nil")
+	}
+	return copyCText(st.native().client_id[:], value, "ClientID")
+}
+
+// GetStartTime reads the transaction start timestamp.
+// @return Milliseconds since the Unix epoch, or zero for an unknown transaction
+func (st *TpTxStatus) GetStartTime() int64 {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return 0
+	}
+	return int64(st.native().start_time)
+}
+
+// GetFinishTime reads the deadline while active, or latest progress timestamp.
+// @return Milliseconds since the Unix epoch, or zero for an unknown transaction
+func (st *TpTxStatus) GetFinishTime() int64 {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return 0
+	}
+	return int64(st.native().finish_time)
+}
+
+// IsLRA reports whether the selected transaction was begun with TPSAGALRA.
+// @return True for LRA transactions
+func (st *TpTxStatus) IsLRA() bool {
+	defer runtime.KeepAlive(st)
+	return nil != st && st.native().is_lra != 0
+}
+
+// IsRecovering reports pending transaction completion or after notifications.
+// @return True while a known LRA has completion work remaining
+func (st *TpTxStatus) IsRecovering() bool {
+	defer runtime.KeepAlive(st)
+	return nil != st && st.native().is_recovering != 0
+}
+
 // TpXIDToString converts a global XID through the native TPCONVXID codec.
 // @param xid Native global XID obtained from Saga registration or
 //
@@ -676,15 +742,54 @@ func (ac *ATMICtx) TpXIDFromString(value string) (*XID, ATMIError) {
 	return &xid, nil
 }
 
+// TpTranIDFromXID converts an Enduro/X global XID string to a participant
+// token for TpResume. It does not grant TpCommit or TpAbort initiator rights.
+// After XA work, detach with TpSuspend; the initiator decides the outcome.
+// On failure detach with TpSuspend(TPTXABORTONLY): the initiator's commit
+// then rolls back with TPEABORT.
+// Conversion does not contact the coordinator or check transaction state.
+// Dynamic RMs enlist when used, and manual RMs require TpRMStart after resume.
+// @param xid NUL-free global XID string, not a branch ID or an LRA URL
+// @return Participant transaction identifier and nil error, or nil and ATMIError
+func (ac *ATMICtx) TpTranIDFromXID(xid string) (*TPTRANID, ATMIError) {
+	defer runtime.KeepAlive(ac)
+	if err := ac.checkContext(); nil != err {
+		return nil, err
+	}
+	if len(xid) == 0 || len(xid) >= C.TPCONVMAXSTR ||
+		strings.IndexByte(xid, 0) >= 0 {
+		return nil, NewCustomATMIError(TPEINVAL, "invalid global XID string")
+	}
+	cValue := C.CString(xid)
+	defer C.free(unsafe.Pointer(cValue))
+	var tranid TPTRANID
+	if C.Otpconvert(&ac.c_ctx, cValue, (*C.char)(unsafe.Pointer(&tranid.c_tptranid)),
+		C.TPCONVXIDTRAN) != SUCCEED {
+		return nil, ac.NewATMIError()
+	}
+	return &tranid, nil
+}
+
+// GetXIDString returns the global XID of the transaction identifier in the
+// native TPCONVXID string form, e.g. for building an LRA id.
+// @return Global XID string, or empty string for a nil or zero-value identifier
+func (t *TPTRANID) GetXIDString() string {
+	defer runtime.KeepAlive(t)
+	if nil == t {
+		return ""
+	}
+	return C.GoString(&t.c_tptranid.tmxid[0])
+}
+
 // TpSagaEnlist registers ctl in the current branch, or ctl.GetXID() with
 // TPSAGA_JOINXID. Read the returned identifiers with GetXID and GetBranchXID.
 // @param ctl Registration metadata, explicit callback URLs and payload up to
 //
 //	NDRX_SAGA_PAYLOAD_MAX bytes; identifiers are available through getters
 //
-// @param flags 0, TPSAGA_JOINXID to register in ctl.GetXID(), or TPSAGA_UPDATE for
+// @param flags TPSAGA_JOINXID or TPSAGA_LRAJOIN select ctl.GetXID(); TPSAGA_UPDATE for
 //
-//	explicit replacement; separate from ctl.GetFlags()
+//	explicit replacement, with TPSAGA_DATAONLY to preserve URLs and return old data
 //
 // @return Nil on successful registration, otherwise ATMIError; plain duplicate
 //
@@ -730,9 +835,9 @@ func (ac *ATMICtx) TpSagaEnd(ctl *TpSagaCtl, flags int64) ATMIError {
 
 // TpSagaLeave withdraws ctl.GetBranchXID() from an active transaction,
 // preventing its callbacks. It does not release the local working section;
-// call TpSagaEnd for that. The caller need not join; flags must be zero.
+// call TpSagaEnd for that. TPSAGA_BYKEY selects XID, SagaName and SagaKey.
 // @param ctl Control with BranchXID identifying the registered participant
-// @param flags Reserved; must be 0
+// @param flags 0 for BranchXID, TPSAGA_BYKEY for XID plus profile and key
 // @return Nil on successful removal, otherwise ATMIError
 func (ac *ATMICtx) TpSagaLeave(ctl *TpSagaCtl, flags int64) ATMIError {
 	defer runtime.KeepAlive(ac)
@@ -826,6 +931,52 @@ func (ac *ATMICtx) TpTxStatus(st *TpTxStatus, flags int64) ATMIError {
 	return nil
 }
 
+// TpTxSetInfo durably stores the client identity of an active LRA.
+// @param st Selector as for TpTxStatus and ClientID to store; receives current information
+// @param flags Reserved; must be 0
+// @return Nil after the metadata is stored, otherwise ATMIError
+func (ac *ATMICtx) TpTxSetInfo(st *TpTxStatus, flags int64) ATMIError {
+	defer runtime.KeepAlive(ac)
+	defer runtime.KeepAlive(st)
+	if err := ac.checkContext(); nil != err {
+		return err
+	}
+	if nil == st {
+		return NewCustomATMIError(TPEINVAL, "TpTxStatus is nil")
+	}
+	if C.Otptxsetinfo(&ac.c_ctx, st.native(), C.long(flags)) != SUCCEED {
+		return ac.NewATMIError()
+	}
+	return nil
+}
+
+// TpTxComplete closes or cancels an LRA without joining the calling context.
+// An optional participant-data update is serialized with the completion decision.
+// Query TpTxStatus afterward to distinguish pending completion from final failure.
+// @param st Transaction selector as for TpTxStatus; input only
+// @param ctl Nil for no update, or SagaName, SagaKey and Payload for the final update
+// @param flags 0 for close, TPTXC_ABORT for cancel
+// @return Nil on completion, otherwise the native commit/abort ATMIError
+func (ac *ATMICtx) TpTxComplete(st *TpTxStatus, ctl *TpSagaCtl, flags int64) ATMIError {
+	defer runtime.KeepAlive(ac)
+	defer runtime.KeepAlive(st)
+	defer runtime.KeepAlive(ctl)
+	if err := ac.checkContext(); nil != err {
+		return err
+	}
+	if nil == st {
+		return NewCustomATMIError(TPEINVAL, "TpTxStatus is nil")
+	}
+	var native *C.TPSAGACTL
+	if nil != ctl {
+		native = ctl.native()
+	}
+	if C.Otptxcomplete(&ac.c_ctx, st.native(), native, C.long(flags)) != SUCCEED {
+		return ac.NewATMIError()
+	}
+	return nil
+}
+
 // TpTxRenew requests st.GetTimeout() seconds from now, capped by the earliest
 // participant deadline. The returned status contains the effective timeout.
 // Flags selects one identifier; the call's flags argument must be zero.
@@ -833,7 +984,7 @@ func (ac *ATMICtx) TpTxStatus(st *TpTxStatus, flags int64) ATMIError {
 //
 //	receives Status, Timeout and TimeoutLeft
 //
-// @param flags Reserved; must be 0
+// @param flags 0, or TPTXR_EXTEND to ignore shortening under the TM lock
 // @return Nil on successful renewal, otherwise ATMIError
 func (ac *ATMICtx) TpTxRenew(st *TpTxStatus, flags int64) ATMIError {
 	defer runtime.KeepAlive(ac)

@@ -364,11 +364,10 @@ type TPTRANID struct {
 type ATMICtx struct {
 	gcoff int //dummy counter tricking the gc to suspend while using object in c
 	c_ctx C.TPCONTEXT_T
-	//Open scripting VMs and compiler outputs owned by this context; a context
+	//Open scripting VMs owned by this context; a context
 	//with open entries is not garbage collected, FreeATMICtx releases them
-	scriptVMs   map[*scriptVMState]struct{}
-	scriptCodes map[*scriptBytecodeState]struct{}
-	//FreeATMICtx is releasing them: no new VMs or compiler outputs
+	scriptVMs map[*scriptVMState]struct{}
+	//FreeATMICtx is releasing VMs: no new VMs or compilation
 	scriptClosing bool
 }
 
@@ -588,14 +587,10 @@ func NewATMICtx() (*ATMICtx, ATMIError) {
 }
 
 //Free up the ATMI Context
-//Internally this will call the TpTerm too to termiante any XATMI client
-//session in progress. Open scripting VMs and compiler outputs of the context
-//are released first. While a VM of the context is executing (e.g. when called
-//from its scripting callback) nothing is released: the request is logged and
-//ignored, and the context stays usable. If compiler output cannot be released,
-//the context also stays usable, so that TpScrFree can be retried. While the
-//resources are released (e.g. from a VM shutdown callback), new VMs and
-//compiler outputs cannot be created on the context.
+//Internally this calls TpTerm to terminate any XATMI client session. Open
+//scripting VMs are released first. While a VM is executing (e.g. when called
+//from its callback) nothing is released: the request is logged and ignored.
+//Shutdown callbacks cannot create VMs or compile on the closing context.
 func (ac *ATMICtx) FreeATMICtx() {
 
 	if ac.scriptClosing {
@@ -612,10 +607,7 @@ func (ac *ATMICtx) FreeATMICtx() {
 	for state := range ac.scriptVMs {
 		(&TpScrVm{state: state}).TpScrUninit(0)
 	}
-	for code := range ac.scriptCodes {
-		(&TpScrBytecode{state: code}).TpScrFree()
-	}
-	if 0 != len(ac.scriptVMs) || 0 != len(ac.scriptCodes) {
+	if 0 != len(ac.scriptVMs) {
 		ac.scriptClosing = false
 		ac.TpLogError("FreeATMICtx incomplete: scripting resources could not be released")
 		return
@@ -1076,7 +1068,8 @@ func (ac *ATMICtx) TpBegin(timeout uint64, flags int64) ATMIError {
 //NOTE! The string tranid value is platform dependent - CPU Architecture and Data Model
 //e.g. ILP32, LP64, etc must not be mixed between suspends and resumes.
 //@param tranid	Transaction Id reference
-//@param flags	Flags for suspend (must be 0)
+//@param flags	0, or TPTXABORTONLY for a participant to mark the transaction
+//	rollback-only and detach
 //@return 	ATMI Error
 func (ac *ATMICtx) TpSuspend(tranid *TPTRANID, flags int64) ATMIError {
 

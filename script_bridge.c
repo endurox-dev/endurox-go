@@ -142,6 +142,18 @@ int go_tpscruninit(TPCONTEXT_T *context, tpscr_vm_t *vm, long flags,
     return ret;
 }
 
+int go_tpscrfree(TPCONTEXT_T *context, char *bytes, go_script_err_t *err)
+{
+    int ret=Otpscrfree(context, bytes);
+
+    if (EXSUCCEED!=ret)
+    {
+        go_script_err_capture(context, err);
+    }
+
+    return ret;
+}
+
 int go_tpscrregcb(TPCONTEXT_T *context, tpscr_vm_t *vm,
         const char *name, void *token, long flags)
 {

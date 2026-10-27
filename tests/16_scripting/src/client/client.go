@@ -133,18 +133,11 @@ def main(name, param, incoming, flags):
 	if nil != err {
 		return err
 	}
-	saved := code.Bytes()
+	saved := append([]byte(nil), code...)
+	if len(saved) == 0 {
+		return fmt.Errorf("compiler returned empty bytecode")
+	}
 	if err := vm.TpScrLoad("echo", saved, atmi.NDRX_TPSCR_FLAT); nil != err {
-		return err
-	}
-	copyCode := *code
-	if err := code.TpScrFree(); nil != err {
-		return err
-	}
-	if copyCode.Bytes() != nil {
-		return fmt.Errorf("bytecode copy retained freed storage")
-	}
-	if err := copyCode.TpScrFree(); nil != err {
 		return err
 	}
 
@@ -335,7 +328,7 @@ def main(name, param, incoming, flags):
 	return <-done
 }
 
-// Check that freeing a context releases its open VMs and compiler outputs.
+// Check that bytecode survives its original context and can be loaded elsewhere.
 // @return Error if a released VM remains usable
 func test_context_release() error {
 	duration, durationErr := testutil.Duration()
@@ -362,17 +355,29 @@ func test_context_release() error {
 			return err
 		}
 		ctx.FreeATMICtx()
-		if code.Bytes() != nil {
-			return fmt.Errorf("bytecode survived FreeATMICtx")
-		}
-		if err := code.TpScrFree(); nil != err {
-			return fmt.Errorf("released bytecode free: %v", err)
-		}
 		if _, err := vm.TpScrExec("echo", nil, nil, 0); nil == err || err.Code() != atmi.TPEINVAL {
 			return fmt.Errorf("released VM exec: expected TPEINVAL, got %v", err)
 		}
 		if err := vm.TpScrUninit(0); nil == err || err.Code() != atmi.TPEINVAL {
 			return fmt.Errorf("released VM uninit: expected TPEINVAL, got %v", err)
+		}
+		next, err := atmi.NewATMICtx()
+		if nil != err {
+			return err
+		}
+		again, err := next.TpScrInit(nil, 0)
+		if nil != err {
+			next.FreeATMICtx()
+			return err
+		}
+		if err := again.TpScrLoad("echo", code, atmi.NDRX_TPSCR_FLAT); nil != err {
+			next.FreeATMICtx()
+			return err
+		}
+		output, err := again.TpScrExec("echo", nil, nil, 0)
+		next.FreeATMICtx()
+		if nil != err || nil != output {
+			return fmt.Errorf("bytecode after context release: %v", err)
 		}
 	}
 	fmt.Printf("Context release: %d iterations in %.3fs\n", i, time.Since(started).Seconds())

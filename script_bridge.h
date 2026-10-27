@@ -88,6 +88,15 @@ int go_tpscruninit(TPCONTEXT_T *context, tpscr_vm_t *vm, long flags,
         go_script_err_t *err);
 
 /**
+ * Free compiler output; capture failure diagnostics on the same native thread.
+ * @param context object-API context
+ * @param bytes provider-owned compiler allocation
+ * @param err diagnostics on failure; free its texts with free()
+ * @return native tpscrfree result
+ */
+int go_tpscrfree(TPCONTEXT_T *context, char *bytes, go_script_err_t *err);
+
+/**
  * Read the active callback-frame handle on this native thread.
  * @return runtime/cgo.Handle token, or zero outside a callback
  */

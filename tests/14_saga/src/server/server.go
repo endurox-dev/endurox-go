@@ -226,12 +226,41 @@ func GOSTATE(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
 	ac.TpReturn(atmi.TPSUCCESS, 0, data, 0)
 }
 
+// Check transaction propagation from a caller using a converted participant token.
+// @param ac server context
+// @param svc request; returns the associated global XID in T_STRING_FLD
+func GOXA(ac *atmi.ATMICtx, svc *atmi.TPSVCINFO) {
+	data, err := ac.CastToUBF(&svc.Data)
+	if nil != err || 1 != ac.TpGetLev() {
+		ac.TpLogError("TESTERROR: GOXA missing transaction: %v", err)
+		ac.TpReturn(atmi.TPFAIL, 0, &svc.Data, 0)
+		return
+	}
+	var token atmi.TPTRANID
+	if err := ac.TpSuspend(&token, 0); nil != err {
+		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
+		return
+	}
+	if err := ac.TpResume(&token, 0); nil != err {
+		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
+		return
+	}
+	if err := data.BChg(ubftab.T_STRING_FLD, 0, token.GetXIDString()); nil != err {
+		ac.TpReturn(atmi.TPFAIL, 0, data, 0)
+		return
+	}
+	ac.TpReturn(atmi.TPSUCCESS, 0, data, 0)
+}
+
 // Initialize XA and advertise work, completion and inspection services.
 // @param ac server context
 // @return SUCCEED or FAIL
 func Init(ac *atmi.ATMICtx) int {
 	if err := ac.TpOpen(); nil != err {
 		fmt.Println("TESTERROR:", err)
+		return atmi.FAIL
+	}
+	if err := ac.TpAdvertise("GOXA", "GOXA", GOXA); nil != err {
 		return atmi.FAIL
 	}
 	if err := ac.TpAdvertise("GOREGISTER", "GOREGISTER", GOREGISTER); nil != err {
