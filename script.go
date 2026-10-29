@@ -95,6 +95,18 @@ func (ctl *TpScrCfg) SetVersion(value int) ATMIError {
 	return nil
 }
 
+// GetCompFormat reads the compiled code format set by TpScrInit: compiled code
+// loads only into VMs reporting the same value. Store it next to the compiled
+// code and recompile on a mismatch.
+// @return Format of the VM's TpScrComp output, empty before TpScrInit
+func (ctl *TpScrCfg) GetCompFormat() string {
+	defer runtime.KeepAlive(ctl)
+	if nil == ctl {
+		return ""
+	}
+	return C.GoString(&ctl.native().compformat[0])
+}
+
 // GetInitString reads provider initialization string from the native record.
 // @return Current provider initialization string
 func (ctl *TpScrCfg) GetInitString() string {
@@ -205,7 +217,7 @@ func (ac *ATMICtx) newScriptError(vm *C.tpscr_vm_t) ATMIError {
 // environment. Initialization errors include the plugin's error details.
 // @param cfg Optional TpScrCfg configured with SetVersion and SetInitString; nil uses
 //
-//	configured plugin defaults
+//	configured plugin defaults; receives the compiled code format, see GetCompFormat
 //
 // @param flags Native scripting initialization flags; normally 0
 // @return Owned VM and nil error, or nil and ATMIError with initialization

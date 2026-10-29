@@ -660,6 +660,29 @@ func (st *TpTxStatus) SetClientID(value string) ATMIError {
 	return copyCText(st.native().client_id[:], value, "ClientID")
 }
 
+// GetLRAURL reads the durable LRA coordinator base URL; LRA ids are
+// <URL>/<global XID>.
+// @return Coordinator URL returned by TpTxStatus or TpTxSetInfo, empty if none
+func (st *TpTxStatus) GetLRAURL() string {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return ""
+	}
+	return C.GoString(&st.native().lra_url[0])
+}
+
+// SetLRAURL selects the coordinator base URL to store through TpTxSetInfo.
+// The participant callbacks of the LRA carry ids under this URL.
+// @param value Empty, or an http(s) URL of at most NDRX_SAGA_URL_MAX bytes
+// @return Nil on success, otherwise TPEINVAL without changing the value
+func (st *TpTxStatus) SetLRAURL(value string) ATMIError {
+	defer runtime.KeepAlive(st)
+	if nil == st {
+		return NewCustomATMIError(TPEINVAL, "TpTxStatus is nil")
+	}
+	return copyCText(st.native().lra_url[:], value, "LRAURL")
+}
+
 // GetStartTime reads the transaction start timestamp.
 // @return Milliseconds since the Unix epoch, or zero for an unknown transaction
 func (st *TpTxStatus) GetStartTime() int64 {
@@ -931,8 +954,9 @@ func (ac *ATMICtx) TpTxStatus(st *TpTxStatus, flags int64) ATMIError {
 	return nil
 }
 
-// TpTxSetInfo durably stores the client identity of an active LRA.
-// @param st Selector as for TpTxStatus and ClientID to store; receives current information
+// TpTxSetInfo durably stores the client identity and coordinator URL of an
+// active LRA.
+// @param st Selector, ClientID and LRAURL to store; receives current information
 // @param flags Reserved; must be 0
 // @return Nil after the metadata is stored, otherwise ATMIError
 func (ac *ATMICtx) TpTxSetInfo(st *TpTxStatus, flags int64) ATMIError {

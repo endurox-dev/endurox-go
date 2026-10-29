@@ -116,7 +116,7 @@ static void go_script_err_capture(TPCONTEXT_T *context, go_script_err_t *err)
     err->script_text=(NULL!=text ? strdup(text) : NULL);
 }
 
-tpscr_vm_t *go_tpscrinit(TPCONTEXT_T *context, const tpscr_cfg_t *cfg,
+tpscr_vm_t *go_tpscrinit(TPCONTEXT_T *context, tpscr_cfg_t *cfg,
         long flags, go_script_err_t *err)
 {
     tpscr_vm_t *vm=Otpscrinit(context, cfg, flags);

@@ -84,6 +84,22 @@ func test_scripting() (ret error) {
 			}
 		}
 	}()
+	// Compiled code is portable only between VMs of the same format
+	if !strings.HasPrefix(cfg.GetCompFormat(), "python:") || len(cfg.GetCompFormat()) <= len("python:") {
+		return fmt.Errorf("compiled code format [%s]", cfg.GetCompFormat())
+	}
+	var same atmi.TpScrCfg
+	other, err := ctx.TpScrInit(&same, 0)
+	if nil != err {
+		return err
+	}
+	if err := other.TpScrUninit(0); nil != err {
+		return err
+	}
+	if same.GetCompFormat() != cfg.GetCompFormat() {
+		return fmt.Errorf("compiled code format differs: [%s] [%s]",
+			same.GetCompFormat(), cfg.GetCompFormat())
+	}
 	if err := vm.TpScrSetError(1234, "manual error"); nil != err {
 		return err
 	}

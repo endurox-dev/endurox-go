@@ -73,7 +73,7 @@ typedef struct
  * @param err diagnostics on failure; free its texts with free()
  * @return native VM, or NULL with err filled
  */
-tpscr_vm_t *go_tpscrinit(TPCONTEXT_T *context, const tpscr_cfg_t *cfg,
+tpscr_vm_t *go_tpscrinit(TPCONTEXT_T *context, tpscr_cfg_t *cfg,
         long flags, go_script_err_t *err);
 
 /**

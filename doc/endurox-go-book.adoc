@@ -356,9 +356,10 @@ transaction lock; pass nil for no update, zero flags for close, or
 `TPTXC_ABORT` for cancel. Query status after errors to distinguish pending
 work from terminal failure.
 
-`TpTxSetInfo` stores `SetClientID()` on an active LRA. `TpTxStatus` returns
-`GetClientID()`, `GetStartTime()`, `GetFinishTime()`, `IsLRA()` and
-`IsRecovering()`. Timestamps use milliseconds since the Unix epoch; finish
+`TpTxSetInfo` stores `SetClientID()` and `SetLRAURL()` (the coordinator base
+URL of the LRA ids, used by the participant callbacks) on an active LRA; each
+call stores both. `TpTxStatus` returns `GetClientID()`, `GetLRAURL()`,
+`GetStartTime()`, `GetFinishTime()`, `IsLRA()` and `IsRecovering()`. Timestamps use milliseconds since the Unix epoch; finish
 means the deadline while active and latest logged progress otherwise.
 
 Other methods (each takes the control and a separate `flags` argument):
@@ -466,7 +467,9 @@ plugin of the separately licensed *endurox-python*. See *tpscrinit(3)* for the
 general rules.
 
 `ac.TpScrInit(cfg, flags)` creates a VM (`*TpScrVm`); pass nil as `cfg` for
-the plugin defaults. The VM belongs to the context `ac`: scripts run in its
+the plugin defaults. After the call `cfg.GetCompFormat()` returns the format
+of the code the VM compiles; store it with compiled code and recompile when a
+new VM reports another value. The VM belongs to the context `ac`: scripts run in its
 transaction, and the VM is used from one goroutine at a time, like the
 context. For parallel work, use one context and one VM per goroutine. No OS
 thread locking is needed.
@@ -3119,7 +3122,8 @@ relocate URLs during recovery.
 |TpScrInit creates a VM using cfg and the scripting plugin selected by the
 environment. Initialization errors include the plugin's error details..
 *cfg* is Optional TpScrCfg configured with SetVersion and SetInitString; nil
-uses	   configured plugin defaults.
+uses	   configured plugin defaults; receives the compiled code format, see
+GetCompFormat.
 *flags* is Native scripting initialization flags; normally 0.
 |Returns
 |Owned VM and nil error, or nil and ATMIError with initialization
@@ -3456,9 +3460,9 @@ receives Status, Timeout and TimeoutLeft.
 |Function
 |func (ac *ATMICtx) TpTxSetInfo(st *TpTxStatus, flags int64) ATMIError
 |Description
-|TpTxSetInfo durably stores the client identity of an active LRA..
-*st* is Selector as for TpTxStatus and ClientID to store; receives current
-information.
+|TpTxSetInfo durably stores the client identity and coordinator URL of an
+active LRA..
+*st* is Selector, ClientID and LRAURL to store; receives current information.
 *flags* is Reserved; must be 0.
 |Returns
 |Nil after the metadata is stored, otherwise ATMIError
@@ -5249,6 +5253,20 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 |XATMI client and server
 |===
 
+==== TpTxStatus.GetLRAURL()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) GetLRAURL() string
+|Description
+|GetLRAURL reads the durable LRA coordinator base URL; LRA ids are
+<URL>/<global XID>..
+|Returns
+|Coordinator URL returned by TpTxStatus or TpTxSetInfo, empty if none
+|Applies
+|XATMI client and server
+|===
+
 ==== TpTxStatus.GetStartTime()
 [cols="h,5a"]
 |===
@@ -5404,6 +5422,21 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 *value* is New TPTXS identifier selector.
 |Returns
 |Nil on success, otherwise TPEINVAL without changing the field
+|Applies
+|XATMI client and server
+|===
+
+==== TpTxStatus.SetLRAURL()
+[cols="h,5a"]
+|===
+|Function
+|func (st *TpTxStatus) SetLRAURL(value string) ATMIError
+|Description
+|SetLRAURL selects the coordinator base URL to store through TpTxSetInfo.  The
+participant callbacks of the LRA carry ids under this URL..
+*value* is Empty, or an http(s) URL of at most NDRX_SAGA_URL_MAX bytes.
+|Returns
+|Nil on success, otherwise TPEINVAL without changing the value
 |Applies
 |XATMI client and server
 |===
@@ -5608,6 +5641,21 @@ Getters and setters access one backing C record. XATMI calls use that same recor
 === TpScrCfg native control
 
 Getters and setters access one backing C record. XATMI calls use that same record. The zero value is ready to use; initialized copies share storage.
+
+==== TpScrCfg.GetCompFormat()
+[cols="h,5a"]
+|===
+|Function
+|func (ctl *TpScrCfg) GetCompFormat() string
+|Description
+|GetCompFormat reads the compiled code format set by TpScrInit: compiled code
+loads only into VMs reporting the same value. Store it next to the compiled
+code and recompile on a mismatch..
+|Returns
+|Format of the VM's TpScrComp output, empty before TpScrInit
+|Applies
+|XATMI client and server
+|===
 
 ==== TpScrCfg.GetInitString()
 [cols="h,5a"]
